@@ -16,7 +16,7 @@
 		"astro": "^6.4.5",
 		"astro-icon": "^1.1.5",
 		"rehype-external-links": "^3.0.0",
-		"sharp": "^0.34.5"
+		"sharp": "^0.35.1"
 	},
 	"devDependencies": {
 		"prettier": "^3.8.4",
