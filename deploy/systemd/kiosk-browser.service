@@ -1,0 +1,34 @@
+[Unit]
+Description=Digital Frame Cog Browser
+After=network.target kiosk-backend.service labwc.service
+
+# BindsTo stops the browser if labwc/backend stop; PartOf also propagates their
+# *restart* — needed so a labwc restart reconnects the kiosk, which is what
+# triggers the backend's screen reconcile.
+BindsTo=labwc.service kiosk-backend.service
+PartOf=labwc.service kiosk-backend.service
+
+[Service]
+# @@USER@@ is substituted by install.sh
+Type=simple
+User=@@USER@@
+
+Environment=XDG_RUNTIME_DIR=/run/picture-frame
+Environment=WAYLAND_DISPLAY=wayland-0
+
+# Wait for backend healthz and labwc's socket so cog doesn't crash-loop.
+ExecStartPre=/usr/bin/curl --silent --retry 30 --retry-all-errors --retry-delay 1 http://localhost:80/healthz
+ExecStartPre=/bin/sh -c 'i=0; until [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; do i=$((i+1)); [ "$i" -ge 150 ] && exit 1; sleep 0.2; done'
+
+# Wrapper handles DPMS-off restarts where labwc can't fullscreen cog.
+# @@INSTALL_DIR@@ is substituted by install.sh.
+ExecStart=@@INSTALL_DIR@@/kiosk-browser-launch.sh
+
+# labwc stays up across a cog restart, so the panel power state is preserved.
+Restart=always
+RestartSec=10
+
+SupplementaryGroups=video render
+
+[Install]
+WantedBy=multi-user.target

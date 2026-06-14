@@ -1,0 +1,11 @@
+{
+	"$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+	"testRunner": "vitest",
+	"vitest": { "configFile": "vitest.stryker.client.config.ts" },
+	"coverageAnalysis": "perTest",
+	"mutate": ["src/lib/sse.svelte.ts"],
+	"reporters": ["clear-text"],
+	"clearTextReporter": { "reportMutants": false, "skipFull": true },
+	"incrementalFile": "reports/mutation/incremental-client.json",
+	"thresholds": { "high": 80, "low": 70, "break": 75 }
+}

@@ -1,0 +1,30 @@
+---
+// Wraps Starlight's default footer (prev/next, last-updated, edit link) and
+// appends a subtle "Built with Starlight" credit.
+import Default from '@astrojs/starlight/components/Footer.astro';
+---
+
+<Default><slot /></Default>
+
+<p class="built-with-starlight">
+	<a href="https://starlight.astro.build" target="_blank" rel="noopener noreferrer"
+		>Built with Starlight</a
+	>
+</p>
+
+<style>
+	.built-with-starlight {
+		margin-top: 1.5rem;
+		text-align: center;
+		font-size: var(--sl-text-xs);
+		color: var(--sl-color-gray-3);
+	}
+	.built-with-starlight a {
+		color: inherit;
+		text-decoration: none;
+	}
+	.built-with-starlight a:hover {
+		color: var(--sl-color-text-accent);
+		text-decoration: underline;
+	}
+</style>

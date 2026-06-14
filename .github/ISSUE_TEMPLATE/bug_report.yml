@@ -1,0 +1,62 @@
+name: Bug report
+description: Something the frame does wrong
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for the report. Please search existing issues first.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: From the admin dashboard (click the version) or the release tag.
+    validations:
+      required: true
+  - type: dropdown
+    id: arch
+    attributes:
+      label: Architecture
+      options:
+        - linux_armv6 (Pi Zero / Zero W / Pi 1)
+        - linux_armv7 (Pi Zero 2 W / Pi 2 / Pi 3 32-bit)
+        - linux_arm64 (Pi 3 / 4 / 5 64-bit)
+        - other
+    validations:
+      required: true
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Display backend
+      options:
+        - wlopm (default, labwc)
+        - vcgencmd (legacy)
+        - not sure
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and OS
+      placeholder: Raspberry Pi Zero W, Raspberry Pi OS Trixie Lite
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant output from `journalctl -u kiosk-backend`. Redact anything private.
+      render: text

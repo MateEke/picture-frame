@@ -1,0 +1,32 @@
+/* Shared theme for the admin shell and the login page (the kiosk has its own,
+   leaner CSS). Import from a route's layout/page, not globally, so the kiosk
+   bundle stays free of Skeleton. */
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+@import '@skeletonlabs/skeleton';
+@import '@skeletonlabs/skeleton-svelte';
+@import '@skeletonlabs/skeleton/themes/cerberus';
+
+/* Latin subsets only, the bare import pulls every script subset (~2.5MB)
+   into the build and the Go binary that embeds it. */
+@import '@fontsource/google-sans/latin-400.css';
+@import '@fontsource/google-sans/latin-ext-400.css';
+@import '@fontsource/google-sans/latin-500.css';
+@import '@fontsource/google-sans/latin-ext-500.css';
+
+@theme {
+	--font-sans: 'Google Sans', sans-serif;
+}
+
+html {
+	@apply h-full;
+}
+/* Body grows past the viewport so the document scrolls. */
+body {
+	@apply min-h-full;
+}
+
+/* One orchestrated load reveal: cards fade up on first paint (motion permitting). */
+@utility reveal {
+	@apply transition duration-500 motion-safe:starting:translate-y-2 motion-safe:starting:opacity-0;
+}

@@ -1,0 +1,23 @@
+# GitHub auto-generated release notes (goreleaser publishes via changelog.use: github-native).
+# Categories key on PR labels; .github/workflows/pr-label.yml applies them from the
+# conventional-commit PR title (feat/perf -> enhancement, fix -> bug, docs -> documentation).
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+    authors:
+      - dependabot
+      - github-actions
+  categories:
+    - title: 🚀 Features
+      labels:
+        - enhancement
+    - title: 🐛 Fixes
+      labels:
+        - bug
+    - title: 📚 Documentation
+      labels:
+        - documentation
+    - title: 🧰 Other Changes
+      labels:
+        - "*"

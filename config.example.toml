@@ -1,0 +1,261 @@
+# HTTP listen address. Port 80 keeps the hostname-only URL (pictureframe-XXXX.local)
+# and is required for captive-portal probes; the kiosk-backend service gets
+# CAP_NET_BIND_SERVICE to bind it. Dev configs use :8080 so `go run` works unprivileged.
+addr = ":80"
+
+# HCI device to use for BLE sensors. Run "hciconfig -a" to list available
+# adapters. Default: "hci0" (built-in on most Pi models).
+# bluetooth_adapter = "hci0"
+
+# Display
+
+[display]
+# Blank the screen after this much time with no motion detected.
+# Set to "0s" to disable idle-blank entirely, recommended when you have no
+# motion sensor, so the screen stays on until turned off (e.g. via the HA switch).
+blank_after = "20m"
+
+# Screen-power backend:
+#   "wlopm" (default): full KMS (vc4-kms-v3d), via the labwc compositor.
+#   "vcgencmd":        legacy fkms (vc4-fkms-v3d), no compositor.
+# backend = "wlopm"
+#
+# Connector wlopm targets (run `wlopm` to list; ignored by vcgencmd).
+# output = "HDMI-A-1"
+#
+# BCP-47 locale the kiosk uses to format the clock and date (e.g. "en-US",
+# "en-GB", "hu-HU"). Drives both the date wording and 12h/24h time. Default "en-US".
+# locale = "en-US"
+#
+# Captions shown under the readings on the frame, in your own words (e.g.
+# "Outside" / "Kint" / "Garden"). Empty or omitted hides that caption.
+# [display.labels]
+# outside = "Outside"
+# inside = "Inside"
+# humidity = "Humidity"
+
+# Slideshow
+
+[slideshow]
+# How long each image is shown before advancing to the next.
+interval = "120s"
+# Root for image storage. The fs backend writes/reads here directly; remote
+# backends use a subfolder (e.g. images/immich/), so `rm -rf images/immich/`
+# clears the remote cache without touching local uploads.
+images_dir = "images"
+# Randomize the slideshow order on each full cycle.
+randomize = false
+
+# Library backend
+
+[library]
+# "fs" (default): local uploads via the admin page only.
+# "immich": sync from a shared Immich album; admin page becomes read-only.
+backend = "fs"
+
+# Immich backend (only used when backend = "immich").
+# Create a shared link in the Immich UI; password is optional but recommended.
+# On Immich >= 2.6.0 the password is exchanged for a session token (kept out of
+# URLs and logs); older servers fall back to a query parameter. Either way, keep
+# the server behind TLS and don't put a high-trust password here.
+#
+# [library.immich]
+# share_url      = "https://photos.example.com/share/<key>"
+# share_password = ""           # leave empty if the share has no password
+# sync_interval  = "15m"        # how often to reconcile with the album
+
+# Sensors, multiple [[sensor]] blocks allowed; each needs a unique id and type.
+
+# BLE sensor (example, uncomment and edit to enable; needs Bluetooth + the
+# service user in the 'bluetooth' group). A fresh frame ships with no sensors.
+# [[sensor]]
+# id           = "living_room"
+# type         = "ble"
+# role         = "inside"   # display role: kiosk indexes this sensor's readings as "inside:temperature" etc.
+# mac          = "AA:BB:CC:DD:EE:FF"
+# address_type = "random"  # "random" or "public"
+
+# Each characteristic maps a GATT UUID to a reading kind and decoder.
+# [[sensor.characteristic]]
+# uuid    = "00002a6e-0000-1000-8000-00805f9b34fb"
+# kind    = "temperature"
+# decoder = "int16le_div100"
+
+# [[sensor.characteristic]]
+# uuid    = "00002a6f-0000-1000-8000-00805f9b34fb"
+# kind    = "humidity"
+# decoder = "uint16be_div10"
+
+# [[sensor.characteristic]]
+# uuid    = "0000a001-0000-1000-8000-00805f9b34fb"
+# kind    = "motion"
+# decoder = "bool_nonzero"
+
+# poll_interval: how often to read all characteristics as a fallback/heartbeat.
+# Default: 80s
+# poll_interval = "80s"
+
+# reset_after: power-cycle the Bluetooth adapter if connecting has been failing
+# for this long. Useful when BlueZ wedges silently. Omit or set to "0s" to
+# disable, recommended if you have other BLE devices that must not be
+# interrupted.
+# Default: disabled
+# reset_after = "5m"
+
+# MQTT-subscriber sensor
+# Turns any MQTT state topic (Home Assistant, Zigbee2MQTT, Ecowitt → HA, etc.)
+# into a sensor reading. Requires [mqtt].broker to be set below.
+#
+# Each (role, kind) pair must be unique across all sensors, two sensors
+# claiming the same key (e.g. role="inside" + kind="temperature") would race
+# on the overlay. Configure separate kinds per topic.
+#
+# Decoder choices for `parser`:
+#   raw_float, payload is a number, e.g. "23.4"
+#   raw_int, payload is an integer
+#   onoff_to_bool, "ON"/"on"/"true"/"1" → 1, else 0 (HA binary_sensor)
+#   bool_nonzero, any non-zero byte → 1 (BLE-style binary)
+#
+# Bundled JSON payloads (one topic carrying many fields), set `json_field` to
+# a dotted path; the leaf value is fed to `parser`. Object navigation only:
+# arrays aren't indexable (e.g. "items.0.value" won't work). If you need to
+# pull from an array, point the publisher at a flatter topic instead.
+#
+# WARNING: do NOT subscribe to topics owned by this app's own bridge
+# (anything under base_topic, e.g. "picture-frame/sensor/.../..."), you'd
+# loop your own published readings back into the kiosk.
+#
+# Flat (HA standard sensor exposure, one topic per measurement):
+# [[sensor]]
+# id     = "ha_living_room_temp"
+# type   = "mqtt-subscriber"
+# role   = "inside"
+# topic  = "homeassistant/sensor/living_room_temperature/state"
+# kind   = "temperature"
+# parser = "raw_float"
+#
+# [[sensor]]
+# id     = "ha_living_room_humidity"
+# type   = "mqtt-subscriber"
+# role   = "inside"
+# topic  = "homeassistant/sensor/living_room_humidity/state"
+# kind   = "humidity"
+# parser = "raw_float"
+#
+# [[sensor]]
+# id     = "ha_living_room_motion"
+# type   = "mqtt-subscriber"
+# role   = "inside"
+# topic  = "homeassistant/binary_sensor/living_room_motion/state"
+# kind   = "motion"
+# parser = "onoff_to_bool"
+#
+# Bundled JSON (one topic, dotted-path extraction):
+# [[sensor]]
+# id         = "wittboy_outside_temp"
+# type       = "mqtt-subscriber"
+# role       = "outside"   # the kiosk overlay prefers this over OWM for temp
+# topic      = "ecowitt/wittboy"
+# json_field = "tempinf"   # dotted paths supported, e.g. "main.temp"
+# kind       = "temperature"
+# parser     = "raw_float"
+
+# Mock sensor
+# Emits readings on a configurable interval. Useful for local development and
+# Playwright tests, no hardware required.
+# delta is added to value after every full cycle; omit or set to 0 for constant.
+# [[sensor]]
+# id            = "mock_inside"
+# type          = "mock"
+# role          = "inside"
+# poll_interval = "3s"
+#
+# [[sensor.mock_reading]]
+# kind  = "temperature"
+# value = 22.0
+# delta = 0.5     # 22.0 → 22.5 → 23.0 → …
+#
+# [[sensor.mock_reading]]
+# kind  = "humidity"
+# value = 48.0
+# delta = -1.0    # 48.0 → 47.0 → 46.0 → …
+#
+# [[sensor.mock_reading]]
+# kind  = "motion"
+# value = 1.0
+
+# Weather (OpenWeatherMap)
+
+[weather]
+api_key        = ""       # OWM API key, leave empty to disable weather
+lat            = 0.0
+lon            = 0.0
+poll_interval  = "10m"
+retry_interval = "30s"    # first delay after a failed poll; backs off up to poll_interval (0 = retry only at poll_interval)
+units          = "metric" # "standard" (K), "metric" (°C), or "imperial" (°F)
+
+# MQTT, connection settings (shared by [mqtt.bridge] and mqtt-subscriber sensors).
+# A connection is opened iff [mqtt.bridge].enabled is true OR any sensor of
+# type "mqtt-subscriber" is configured.
+#
+# [mqtt]
+# broker    = "tcp://192.168.1.10:1883"  # tcp:// or ssl://, host:port
+# username  = ""
+# password  = ""
+# client_id = "picture-frame"  # must be unique per running instance, duplicates
+#                              # cause the broker to disconnect one of them
+#
+# [mqtt.bridge], outbound Home Assistant auto-discovery.
+# Publishes your BLE sensors' readings and a screen switch to your broker.
+# Only BLE sensors are bridged: mock sensors are a dev aid and mqtt-subscriber
+# readings already come from MQTT (republishing would loop). Disabled by default.
+#
+# [mqtt.bridge]
+# enabled          = true
+# node_id          = "picture_frame"   # this frame's identity: HA device id +
+#                                      # unique_id prefix + discovery topic group.
+#                                      # Use distinct values for multiple frames.
+# base_topic       = "picture-frame"   # namespaces state/availability/command topics
+# discovery_prefix = "homeassistant"   # must match HA's MQTT discovery prefix
+# stale_after      = "10m"             # mark a sensor unavailable in HA if no
+#                                      # reading arrives within this window;
+#                                      # set "0s" to disable freshness expiry
+#                                      # (sensor stays online once first seen)
+#
+# Topics produced (node_id "picture_frame", base_topic "picture-frame",
+# sensor id "living_room"):
+#   discovery:    homeassistant/sensor/picture_frame/living_room_temperature/config
+#   state:        picture-frame/sensor/living_room/temperature
+#   motion state: picture-frame/sensor/living_room/motion          ("ON"/"OFF")
+#   screen:       picture-frame/switch/screen/state  +  .../switch/screen/set
+#   availability: picture-frame/availability (bridge, LWT) and
+#                 picture-frame/sensor/living_room/availability (per-sensor freshness)
+# An entity is shown available in HA only when BOTH its bridge and per-sensor
+# availability are online, so a dead frame or a stale sensor both surface
+# correctly instead of leaving the last value looking live.
+#
+# Screen switch: ON re-enables motion auto-wake (auto mode), OFF forces the
+# screen off and suppresses auto-wake. Motion-driven blank/wake does not move
+# the switch. With no motion sensor (set blank_after = "0s"), ON/OFF is a plain
+# screen on/off.
+
+
+# WiFi AP fallback, moved-device recovery
+# When the configured WiFi disappears, the Pi raises its own AP so you can
+# reconnect via a phone without SSH. Active by default (ap_ssid is set).
+# Clear ap_ssid to disable the AP fallback entirely.
+[wifi]
+ap_ssid              = "PictureFrame"    # hotspot name; clear to disable AP fallback
+# ap_password        = ""               # WPA2 passphrase; leave absent for open AP
+ap_timeout_minutes   = 3                 # minutes disconnected before raising AP
+scan_interval_minutes = 5               # minutes between AP-mode scans for known networks
+
+
+# In-app self-updater. Checks always run; auto_update gates the nightly apply.
+# On by default, only same-major (non-breaking minor/patch) releases auto-apply;
+# a new major is surfaced but applied manually from the admin UI.
+[updater]
+auto_update = true       # nightly auto-apply of same-major releases
+update_hour = 2          # device-local hour (0–23) for the scheduled check+apply
+# github_repo  = ""      # override the release source ("owner/name") for forks
+# github_token = ""      # auth for a private release source (PF_GITHUB_TOKEN env also works)

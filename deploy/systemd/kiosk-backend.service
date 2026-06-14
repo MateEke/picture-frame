@@ -1,0 +1,42 @@
+[Unit]
+Description=Digital Frame Go Backend
+After=network.target bluetooth.target labwc.service
+Wants=bluetooth.target labwc.service kiosk-browser.service
+
+# Stop restart-looping after 5 failures in 30 min (e.g. display unplugged or a
+# broken browser); the unit drops to a recoverable 'failed' state.
+StartLimitBurst=5
+StartLimitIntervalSec=30min
+# On giving up, run the rollback unit. It's a no-op unless an update is mid-verification
+# (the .updating marker), so an unrelated crash-loop just stays failed.
+OnFailure=picture-frame-rollback.service
+
+[Service]
+# @@USER@@ and @@INSTALL_DIR@@ are substituted by install.sh
+Type=notify
+WatchdogSec=30
+User=@@USER@@
+
+# Listen on port 80 — captive-portal probes, and no port suffix in the UI URL.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+ProtectSystem=strict
+ReadWritePaths=@@INSTALL_DIR@@
+SupplementaryGroups=video bluetooth
+# ProtectSystem=strict makes the host /tmp read-only; give the backend its own
+# writable /tmp for upload multipart spills. Private tmpfs, wiped on restart.
+PrivateTmp=true
+
+WorkingDirectory=@@INSTALL_DIR@@
+Environment=GO_ENV=prod
+# So wlopm can reach labwc's socket; must match labwc.service. If labwc isn't up
+# yet, the backend degrades and re-asserts on the first kiosk reconnect.
+Environment=XDG_RUNTIME_DIR=/run/picture-frame
+Environment=WAYLAND_DISPLAY=wayland-0
+ExecStart=@@INSTALL_DIR@@/picture-frame
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

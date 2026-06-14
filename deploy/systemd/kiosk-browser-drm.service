@@ -1,0 +1,28 @@
+[Unit]
+Description=Digital Frame Cog Browser (legacy DRM/vcgencmd)
+# seatd brokers DRM/seat access; cog-on-DRM can't become DRM master without it.
+After=network.target kiosk-backend.service seatd.service
+Wants=seatd.service
+
+# Restart with the backend so its restart reconnects the kiosk.
+BindsTo=kiosk-backend.service
+PartOf=kiosk-backend.service
+
+[Service]
+# @@USER@@ substituted by install.sh
+Type=simple
+User=@@USER@@
+
+# Wait for healthz so cog doesn't crash-loop before the backend is up.
+ExecStartPre=/usr/bin/curl --silent --retry 30 --retry-all-errors --retry-delay 1 http://localhost:80/healthz
+
+# No Wayland socket: cog uses its DRM/GBM platform.
+ExecStart=/usr/bin/cog -P drm --webprocess-failure=restart http://localhost:80/kiosk
+
+Restart=always
+RestartSec=10
+
+SupplementaryGroups=video render
+
+[Install]
+WantedBy=multi-user.target

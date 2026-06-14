@@ -1,0 +1,2577 @@
+{
+  "components": {
+    "schemas": {
+      "APRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/APRequest.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "enabled": {
+            "description": "Whether to enable the access point",
+            "type": "boolean"
+          },
+          "password": {
+            "description": "Access point password (omit to keep current, empty string to clear)",
+            "type": "string"
+          },
+          "ssid": {
+            "description": "Access point SSID",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "ssid"
+        ],
+        "type": "object"
+      },
+      "AuthStatusResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/AuthStatusResponse.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "authenticated": {
+            "description": "true if the request carries a valid session",
+            "type": "boolean"
+          },
+          "required": {
+            "description": "true if an admin password is set",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "required",
+          "authenticated"
+        ],
+        "type": "object"
+      },
+      "CharacteristicDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "decoder": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uuid",
+          "kind",
+          "decoder"
+        ],
+        "type": "object"
+      },
+      "ConfigDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ConfigDTO.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "bluetooth_adapter": {
+            "description": "HCI device ID, e.g. hci0",
+            "type": "string"
+          },
+          "display": {
+            "$ref": "#/components/schemas/DisplayDTO"
+          },
+          "library": {
+            "$ref": "#/components/schemas/LibraryDTO"
+          },
+          "log_level": {
+            "description": "Logging verbosity; applied live",
+            "enum": [
+              "debug",
+              "info",
+              "warn",
+              "error"
+            ],
+            "type": "string"
+          },
+          "mqtt": {
+            "$ref": "#/components/schemas/MqttDTO"
+          },
+          "sensors": {
+            "items": {
+              "$ref": "#/components/schemas/SensorDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "slideshow": {
+            "$ref": "#/components/schemas/SlideshowDTO"
+          },
+          "updater": {
+            "$ref": "#/components/schemas/UpdaterDTO"
+          },
+          "weather": {
+            "$ref": "#/components/schemas/WeatherDTO"
+          }
+        },
+        "required": [
+          "log_level",
+          "bluetooth_adapter",
+          "display",
+          "slideshow",
+          "library",
+          "sensors",
+          "weather",
+          "mqtt",
+          "updater"
+        ],
+        "type": "object"
+      },
+      "ConfigMetaBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ConfigMetaBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "address_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "backends": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "decoders": {
+            "description": "Decoder/parser names from the sensor registry",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "log_levels": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "sensor_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "units": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "decoders",
+          "kinds",
+          "units",
+          "backends",
+          "sensor_types",
+          "address_types",
+          "log_levels"
+        ],
+        "type": "object"
+      },
+      "ConfigResponseBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ConfigResponseBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "bluetooth_adapter": {
+            "description": "HCI device ID, e.g. hci0",
+            "type": "string"
+          },
+          "display": {
+            "$ref": "#/components/schemas/DisplayDTO"
+          },
+          "library": {
+            "$ref": "#/components/schemas/LibraryDTO"
+          },
+          "log_level": {
+            "description": "Logging verbosity; applied live",
+            "enum": [
+              "debug",
+              "info",
+              "warn",
+              "error"
+            ],
+            "type": "string"
+          },
+          "mqtt": {
+            "$ref": "#/components/schemas/MqttDTO"
+          },
+          "restart_pending": {
+            "type": "boolean"
+          },
+          "sensors": {
+            "items": {
+              "$ref": "#/components/schemas/SensorDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "slideshow": {
+            "$ref": "#/components/schemas/SlideshowDTO"
+          },
+          "updater": {
+            "$ref": "#/components/schemas/UpdaterDTO"
+          },
+          "weather": {
+            "$ref": "#/components/schemas/WeatherDTO"
+          }
+        },
+        "required": [
+          "restart_pending",
+          "log_level",
+          "bluetooth_adapter",
+          "display",
+          "slideshow",
+          "library",
+          "sensors",
+          "weather",
+          "mqtt",
+          "updater"
+        ],
+        "type": "object"
+      },
+      "Cookie": {
+        "additionalProperties": false,
+        "properties": {
+          "Domain": {
+            "type": "string"
+          },
+          "Expires": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "HttpOnly": {
+            "type": "boolean"
+          },
+          "MaxAge": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "Partitioned": {
+            "type": "boolean"
+          },
+          "Path": {
+            "type": "string"
+          },
+          "Quoted": {
+            "type": "boolean"
+          },
+          "Raw": {
+            "type": "string"
+          },
+          "RawExpires": {
+            "type": "string"
+          },
+          "SameSite": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "Secure": {
+            "type": "boolean"
+          },
+          "Unparsed": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "Value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "Name",
+          "Value",
+          "Quoted",
+          "Path",
+          "Domain",
+          "Expires",
+          "RawExpires",
+          "MaxAge",
+          "Secure",
+          "HttpOnly",
+          "SameSite",
+          "Partitioned",
+          "Raw",
+          "Unparsed"
+        ],
+        "type": "object"
+      },
+      "DisplayDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "backend": {
+            "enum": [
+              "wlopm",
+              "vcgencmd"
+            ],
+            "type": "string"
+          },
+          "blank_after": {
+            "description": "Idle duration before screen blanks, e.g. \"20m\"",
+            "type": "string"
+          },
+          "labels": {
+            "$ref": "#/components/schemas/KioskLabelsDTO"
+          },
+          "locale": {
+            "description": "BCP-47 date/time locale for the kiosk clock, e.g. en-US",
+            "type": "string"
+          },
+          "output": {
+            "description": "Wayland connector name, e.g. \"HDMI-A-1\" (wlopm only)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "blank_after",
+          "backend",
+          "output",
+          "locale",
+          "labels"
+        ],
+        "type": "object"
+      },
+      "ErrorDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "location": {
+            "description": "Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'",
+            "type": "string"
+          },
+          "message": {
+            "description": "Error message text",
+            "type": "string"
+          },
+          "value": {
+            "description": "The value at the given location"
+          }
+        },
+        "type": "object"
+      },
+      "ErrorModel": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ErrorModel.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "detail": {
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "examples": [
+              "Property foo is required but is missing."
+            ],
+            "type": "string"
+          },
+          "errors": {
+            "description": "Optional list of individual error details",
+            "items": {
+              "$ref": "#/components/schemas/ErrorDetail"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "instance": {
+            "description": "A URI reference that identifies the specific occurrence of the problem.",
+            "examples": [
+              "https://example.com/error-log/abc123"
+            ],
+            "format": "uri",
+            "type": "string"
+          },
+          "status": {
+            "description": "HTTP status code",
+            "examples": [
+              400
+            ],
+            "format": "int64",
+            "type": "integer"
+          },
+          "title": {
+            "description": "A short, human-readable summary of the problem type. This value should not change between occurrences of the error.",
+            "examples": [
+              "Bad Request"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "default": "about:blank",
+            "description": "A URI reference to human-readable documentation for the error.",
+            "examples": [
+              "https://example.com/errors/example"
+            ],
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "FormFile": {
+        "additionalProperties": false,
+        "properties": {
+          "ContentType": {
+            "type": "string"
+          },
+          "Filename": {
+            "type": "string"
+          },
+          "IsSet": {
+            "type": "boolean"
+          },
+          "Size": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ContentType",
+          "IsSet",
+          "Size",
+          "Filename"
+        ],
+        "type": "object"
+      },
+      "ImageItem": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ImageItem.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "name": {
+            "description": "Image filename",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "ImagePayload": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "ImmichLibraryDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "share_password": {
+            "description": "Write-only; leave blank to keep current",
+            "type": "string"
+          },
+          "share_password_set": {
+            "description": "true if a password is stored; set false on PUT to clear",
+            "type": "boolean"
+          },
+          "share_url": {
+            "type": "string"
+          },
+          "sync_interval": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "share_url",
+          "share_password_set",
+          "sync_interval"
+        ],
+        "type": "object"
+      },
+      "KioskLabels": {
+        "additionalProperties": false,
+        "properties": {
+          "humidity": {
+            "type": "string"
+          },
+          "inside": {
+            "type": "string"
+          },
+          "outside": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "outside",
+          "inside",
+          "humidity"
+        ],
+        "type": "object"
+      },
+      "KioskLabelsDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "humidity": {
+            "description": "Caption under the humidity reading; empty hides it",
+            "type": "string"
+          },
+          "inside": {
+            "description": "Caption under the inside reading; empty hides it",
+            "type": "string"
+          },
+          "outside": {
+            "description": "Caption under the outside reading; empty hides it",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outside",
+          "inside",
+          "humidity"
+        ],
+        "type": "object"
+      },
+      "KioskPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "labels": {
+            "$ref": "#/components/schemas/KioskLabels"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "sensors": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "string"
+          },
+          "weather": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "version",
+          "locale",
+          "sensors",
+          "weather",
+          "labels"
+        ],
+        "type": "object"
+      },
+      "LibraryDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "backend": {
+            "enum": [
+              "fs",
+              "immich"
+            ],
+            "type": "string"
+          },
+          "immich": {
+            "$ref": "#/components/schemas/ImmichLibraryDTO"
+          }
+        },
+        "required": [
+          "backend",
+          "immich"
+        ],
+        "type": "object"
+      },
+      "LibraryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/LibraryResponse.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "backend": {
+            "description": "Active library backend (fs or immich)",
+            "type": "string"
+          },
+          "sync": {
+            "$ref": "#/components/schemas/LibrarySync",
+            "description": "Sync status for remote backends"
+          }
+        },
+        "required": [
+          "backend"
+        ],
+        "type": "object"
+      },
+      "LibrarySync": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_count": {
+            "description": "Number of synced assets",
+            "format": "int64",
+            "type": "integer"
+          },
+          "last_error": {
+            "description": "Error from last sync attempt",
+            "type": "string"
+          },
+          "last_sync": {
+            "description": "Timestamp of last successful sync",
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_count"
+        ],
+        "type": "object"
+      },
+      "LoginRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/LoginRequest.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "type": "object"
+      },
+      "MockReadingDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "delta": {
+            "format": "double",
+            "type": "number"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "value": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "value",
+          "delta"
+        ],
+        "type": "object"
+      },
+      "MqttBridgeDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "base_topic": {
+            "type": "string"
+          },
+          "discovery_prefix": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "node_id": {
+            "type": "string"
+          },
+          "stale_after": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "node_id",
+          "base_topic",
+          "discovery_prefix",
+          "stale_after"
+        ],
+        "type": "object"
+      },
+      "MqttDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "bridge": {
+            "$ref": "#/components/schemas/MqttBridgeDTO"
+          },
+          "broker": {
+            "type": "string"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "password": {
+            "description": "Write-only; leave blank to keep current",
+            "type": "string"
+          },
+          "password_set": {
+            "description": "true if a password is stored; set false on PUT to clear",
+            "type": "boolean"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "broker",
+          "username",
+          "password_set",
+          "client_id",
+          "bridge"
+        ],
+        "type": "object"
+      },
+      "PingEvent": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "PutConfigResponseBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/PutConfigResponseBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "restart_pending": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "restart_pending"
+        ],
+        "type": "object"
+      },
+      "ReadyEvent": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "ScreenPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "auto": {
+            "type": "boolean"
+          },
+          "on": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "on",
+          "auto"
+        ],
+        "type": "object"
+      },
+      "ScreenStateResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ScreenStateResponse.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "auto": {
+            "description": "Whether automatic power management is active",
+            "type": "boolean"
+          },
+          "state": {
+            "description": "Current screen power state",
+            "enum": [
+              "on",
+              "off"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "auto"
+        ],
+        "type": "object"
+      },
+      "SensorDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "address_type": {
+            "enum": [
+              "random",
+              "public"
+            ],
+            "type": "string"
+          },
+          "characteristics": {
+            "items": {
+              "$ref": "#/components/schemas/CharacteristicDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "json_field": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "mac": {
+            "type": "string"
+          },
+          "mock_readings": {
+            "items": {
+              "$ref": "#/components/schemas/MockReadingDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "parser": {
+            "type": "string"
+          },
+          "poll_interval": {
+            "type": "string"
+          },
+          "reset_after": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "ble",
+              "mqtt-subscriber",
+              "mock"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "role"
+        ],
+        "type": "object"
+      },
+      "SensorPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "value": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "device_id",
+          "kind",
+          "value",
+          "timestamp"
+        ],
+        "type": "object"
+      },
+      "SetPasswordRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/SetPasswordRequest.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "current": {
+            "description": "Current password; required when one is already set",
+            "type": "string"
+          },
+          "new": {
+            "description": "New password; empty disables protection",
+            "maxLength": 72,
+            "type": "string"
+          }
+        },
+        "required": [
+          "new"
+        ],
+        "type": "object"
+      },
+      "SetScreenRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/SetScreenRequest.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "state": {
+            "description": "Desired screen power state",
+            "enum": [
+              "on",
+              "off"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "type": "object"
+      },
+      "SlideshowDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "images_dir": {
+            "type": "string"
+          },
+          "interval": {
+            "description": "Image advance interval, e.g. \"2m\"",
+            "type": "string"
+          },
+          "randomize": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "interval",
+          "randomize",
+          "images_dir"
+        ],
+        "type": "object"
+      },
+      "SystemDevicesBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/SystemDevicesBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "bluetooth_adapters": {
+            "description": "HCI device IDs, e.g. hci0",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "display_outputs": {
+            "description": "Connected display connectors, e.g. HDMI-A-1",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "bluetooth_adapters",
+          "display_outputs"
+        ],
+        "type": "object"
+      },
+      "SystemInfoBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/SystemInfoBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "hostname": {
+            "description": "OS hostname",
+            "type": "string"
+          },
+          "ip": {
+            "description": "Primary non-loopback IPv4, empty if none",
+            "type": "string"
+          },
+          "platform": {
+            "description": "Build target, e.g. linux_armv6",
+            "type": "string"
+          },
+          "uptime": {
+            "description": "Process uptime as a Go duration, e.g. 3h12m0s",
+            "type": "string"
+          },
+          "version": {
+            "description": "Build version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "platform",
+          "uptime",
+          "hostname",
+          "ip"
+        ],
+        "type": "object"
+      },
+      "UpdateStatusResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/UpdateStatusResponse.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "available": {
+            "description": "Whether a newer version is available",
+            "type": "boolean"
+          },
+          "current": {
+            "description": "Running version",
+            "type": "string"
+          },
+          "last_check": {
+            "description": "RFC3339 time of the last check",
+            "type": "string"
+          },
+          "last_check_ok": {
+            "description": "False when the last check couldn't reach the release source",
+            "type": "boolean"
+          },
+          "last_result": {
+            "description": "Outcome of the last apply, e.g. 'rolled back from v1.2.0'",
+            "type": "string"
+          },
+          "last_result_seq": {
+            "description": "Bumps each time a result is recorded; lets the UI detect a repeated outcome",
+            "format": "int64",
+            "type": "integer"
+          },
+          "latest": {
+            "description": "Newest available version",
+            "type": "string"
+          },
+          "notes_url": {
+            "description": "Release notes page for the newest version",
+            "type": "string"
+          },
+          "phase": {
+            "description": "Current updater activity",
+            "enum": [
+              "idle",
+              "checking",
+              "downloading",
+              "verifying",
+              "applying"
+            ],
+            "type": "string"
+          },
+          "platform": {
+            "description": "Build target, e.g. linux_armv6",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current",
+          "platform",
+          "available",
+          "last_check_ok",
+          "phase"
+        ],
+        "type": "object"
+      },
+      "UpdaterDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "auto_update": {
+            "type": "boolean"
+          },
+          "github_repo": {
+            "type": "string"
+          },
+          "github_token": {
+            "description": "Write-only; leave blank to keep current",
+            "type": "string"
+          },
+          "github_token_set": {
+            "description": "true if a token is stored; set false on PUT to clear",
+            "type": "boolean"
+          },
+          "update_hour": {
+            "format": "int64",
+            "maximum": 23,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "auto_update",
+          "update_hour",
+          "github_repo",
+          "github_token_set"
+        ],
+        "type": "object"
+      },
+      "WeatherDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "api_key": {
+            "description": "Write-only; leave blank to keep current",
+            "type": "string"
+          },
+          "api_key_set": {
+            "description": "true if an API key is stored; set false on PUT to clear",
+            "type": "boolean"
+          },
+          "lat": {
+            "format": "double",
+            "type": "number"
+          },
+          "lon": {
+            "format": "double",
+            "type": "number"
+          },
+          "poll_interval": {
+            "type": "string"
+          },
+          "retry_interval": {
+            "type": "string"
+          },
+          "units": {
+            "enum": [
+              "standard",
+              "metric",
+              "imperial"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_key_set",
+          "lat",
+          "lon",
+          "poll_interval",
+          "retry_interval",
+          "units"
+        ],
+        "type": "object"
+      },
+      "WeatherPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "humidity": {
+            "format": "double",
+            "type": "number"
+          },
+          "icon_code": {
+            "type": "string"
+          },
+          "temp": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "icon_code",
+          "temp",
+          "humidity"
+        ],
+        "type": "object"
+      },
+      "WiFiConnectRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/WiFiConnectRequest.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "password": {
+            "description": "Network password",
+            "type": "string"
+          },
+          "ssid": {
+            "description": "Network SSID to connect to",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "ssid"
+        ],
+        "type": "object"
+      },
+      "WiFiNetwork": {
+        "additionalProperties": false,
+        "properties": {
+          "known": {
+            "type": "boolean"
+          },
+          "security": {
+            "type": "string"
+          },
+          "signal": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "ssid": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ssid",
+          "signal",
+          "security",
+          "known"
+        ],
+        "type": "object"
+      },
+      "WiFiState": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/WiFiState.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "ap_enabled": {
+            "type": "boolean"
+          },
+          "ap_has_password": {
+            "type": "boolean"
+          },
+          "ap_ssid": {
+            "type": "string"
+          },
+          "hostname": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          },
+          "last_connect_error": {
+            "type": "string"
+          },
+          "last_connect_ssid": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "security": {
+            "type": "string"
+          },
+          "signal": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "ssid": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "ssid",
+          "ip",
+          "signal",
+          "security",
+          "ap_enabled",
+          "ap_ssid",
+          "ap_has_password",
+          "hostname"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Picture frame kiosk API",
+    "title": "Picture Frame",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/auth/login": {
+      "post": {
+        "operationId": "auth-login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Log in to the admin UI"
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "auth-logout",
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Log out of the admin UI"
+      }
+    },
+    "/api/auth/password": {
+      "post": {
+        "operationId": "auth-set-password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Set, change, or clear the admin password"
+      }
+    },
+    "/api/auth/status": {
+      "get": {
+        "operationId": "auth-status",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "pf_session",
+            "schema": {
+              "$ref": "#/components/schemas/Cookie"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthStatusResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Report whether auth is required and the caller is logged in"
+      }
+    },
+    "/api/config": {
+      "get": {
+        "operationId": "get-config",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigResponseBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Get current configuration"
+      },
+      "put": {
+        "operationId": "put-config",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PutConfigResponseBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Save configuration (Tier-1 fields apply live; others require restart)"
+      }
+    },
+    "/api/config/meta": {
+      "get": {
+        "operationId": "get-config-meta",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigMetaBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Get configuration metadata (enum values for UI selects)"
+      }
+    },
+    "/api/heartbeat": {
+      "post": {
+        "operationId": "heartbeat",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "version",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Record kiosk heartbeat"
+      }
+    },
+    "/api/images": {
+      "get": {
+        "operationId": "list-images",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ImageItem"
+                  },
+                  "type": [
+                    "array",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List all images"
+      },
+      "post": {
+        "operationId": "upload-image",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "encoding": {
+                "image": {
+                  "contentType": "application/octet-stream"
+                }
+              },
+              "schema": {
+                "properties": {
+                  "image": {
+                    "contentEncoding": "binary",
+                    "contentMediaType": "application/octet-stream",
+                    "format": "binary",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "image"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageItem"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Upload an image"
+      }
+    },
+    "/api/images/{name}": {
+      "delete": {
+        "operationId": "delete-image",
+        "parameters": [
+          {
+            "description": "Image filename",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "description": "Image filename",
+              "pattern": "^[a-zA-Z0-9_.~-]+\\.(jpe?g|png)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Delete an image"
+      }
+    },
+    "/api/library": {
+      "get": {
+        "operationId": "get-library",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Get library info"
+      }
+    },
+    "/api/library/sync": {
+      "post": {
+        "operationId": "sync-library",
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Trigger a remote library sync"
+      }
+    },
+    "/api/screen": {
+      "get": {
+        "operationId": "get-screen",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenStateResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Get screen state"
+      },
+      "post": {
+        "operationId": "set-screen",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetScreenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Set screen state"
+      }
+    },
+    "/api/slideshow/next": {
+      "post": {
+        "operationId": "slideshow-next",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Advance slideshow to next image"
+      }
+    },
+    "/api/system/devices": {
+      "get": {
+        "operationId": "get-system-devices",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemDevicesBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Enumerate Bluetooth adapters and display outputs from sysfs"
+      }
+    },
+    "/api/system/info": {
+      "get": {
+        "operationId": "get-system-info",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemInfoBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Report version, uptime, hostname and primary IP"
+      }
+    },
+    "/api/system/licenses": {
+      "get": {
+        "operationId": "get-licenses",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "contentEncoding": "base64",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Content-Type": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Third-party dependency notices (plain text)"
+      }
+    },
+    "/api/system/restart": {
+      "post": {
+        "operationId": "system-restart",
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Reload the frame backend in place (re-exec; systemd sees no crash)"
+      }
+    },
+    "/api/system/update": {
+      "get": {
+        "operationId": "get-update",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateStatusResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Get self-update status"
+      },
+      "post": {
+        "operationId": "apply-update",
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Download, verify, and apply the latest release"
+      }
+    },
+    "/api/system/update/check": {
+      "post": {
+        "operationId": "check-update",
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Check the release source for a newer version now"
+      }
+    },
+    "/api/wifi/ap": {
+      "put": {
+        "operationId": "configure-ap",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/APRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiFiState"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Configure the access point"
+      }
+    },
+    "/api/wifi/connect": {
+      "post": {
+        "operationId": "wifi-connect",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WiFiConnectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Connect to a WiFi network"
+      }
+    },
+    "/api/wifi/network/{ssid}": {
+      "delete": {
+        "operationId": "wifi-forget",
+        "parameters": [
+          {
+            "description": "Network SSID to forget",
+            "in": "path",
+            "name": "ssid",
+            "required": true,
+            "schema": {
+              "description": "Network SSID to forget",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Forget a saved WiFi network"
+      }
+    },
+    "/api/wifi/networks": {
+      "get": {
+        "operationId": "get-wifi-networks",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WiFiNetwork"
+                  },
+                  "type": [
+                    "array",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Scan for WiFi networks"
+      }
+    },
+    "/api/wifi/status": {
+      "get": {
+        "operationId": "get-wifi-status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiFiState"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Get WiFi status"
+      }
+    },
+    "/events": {
+      "get": {
+        "operationId": "events",
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "description": "Each oneOf object in the array represents one possible Server Sent Events (SSE) message, serialized as UTF-8 text according to the SSE specification.",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "properties": {
+                          "data": {
+                            "$ref": "#/components/schemas/ImagePayload"
+                          },
+                          "event": {
+                            "const": "image",
+                            "description": "The event name.",
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "The event ID.",
+                            "type": "integer"
+                          },
+                          "retry": {
+                            "description": "The retry time in milliseconds.",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "event"
+                        ],
+                        "title": "Event image",
+                        "type": "object"
+                      },
+                      {
+                        "properties": {
+                          "data": {
+                            "$ref": "#/components/schemas/KioskPayload"
+                          },
+                          "event": {
+                            "const": "kiosk",
+                            "description": "The event name.",
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "The event ID.",
+                            "type": "integer"
+                          },
+                          "retry": {
+                            "description": "The retry time in milliseconds.",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "event"
+                        ],
+                        "title": "Event kiosk",
+                        "type": "object"
+                      },
+                      {
+                        "properties": {
+                          "data": {
+                            "$ref": "#/components/schemas/PingEvent"
+                          },
+                          "event": {
+                            "const": "ping",
+                            "description": "The event name.",
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "The event ID.",
+                            "type": "integer"
+                          },
+                          "retry": {
+                            "description": "The retry time in milliseconds.",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "event"
+                        ],
+                        "title": "Event ping",
+                        "type": "object"
+                      },
+                      {
+                        "properties": {
+                          "data": {
+                            "$ref": "#/components/schemas/ReadyEvent"
+                          },
+                          "event": {
+                            "const": "ready",
+                            "description": "The event name.",
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "The event ID.",
+                            "type": "integer"
+                          },
+                          "retry": {
+                            "description": "The retry time in milliseconds.",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "event"
+                        ],
+                        "title": "Event ready",
+                        "type": "object"
+                      },
+                      {
+                        "properties": {
+                          "data": {
+                            "$ref": "#/components/schemas/ScreenPayload"
+                          },
+                          "event": {
+                            "const": "screen",
+                            "description": "The event name.",
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "The event ID.",
+                            "type": "integer"
+                          },
+                          "retry": {
+                            "description": "The retry time in milliseconds.",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "event"
+                        ],
+                        "title": "Event screen",
+                        "type": "object"
+                      },
+                      {
+                        "properties": {
+                          "data": {
+                            "$ref": "#/components/schemas/SensorPayload"
+                          },
+                          "event": {
+                            "const": "sensor",
+                            "description": "The event name.",
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "The event ID.",
+                            "type": "integer"
+                          },
+                          "retry": {
+                            "description": "The retry time in milliseconds.",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "event"
+                        ],
+                        "title": "Event sensor",
+                        "type": "object"
+                      },
+                      {
+                        "properties": {
+                          "data": {
+                            "$ref": "#/components/schemas/WeatherPayload"
+                          },
+                          "event": {
+                            "const": "weather",
+                            "description": "The event name.",
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "The event ID.",
+                            "type": "integer"
+                          },
+                          "retry": {
+                            "description": "The retry time in milliseconds.",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "event"
+                        ],
+                        "title": "Event weather",
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "title": "Server Sent Events",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "SSE event stream"
+      }
+    },
+    "/healthz": {
+      "get": {
+        "operationId": "healthz",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Health check"
+      }
+    },
+    "/img/{name}": {
+      "get": {
+        "operationId": "serve-image",
+        "parameters": [
+          {
+            "description": "Image filename",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "description": "Image filename",
+              "pattern": "^[a-zA-Z0-9_.~-]+\\.(jpe?g|png)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Serve an image file"
+      }
+    }
+  }
+}

@@ -1,0 +1,307 @@
+/* Picture Frame docs theme: amber accent + Fraunces display face site-wide,
+   with the landing page styled by the .pf-* classes below. */
+
+@import '@fontsource-variable/fraunces';
+
+:root {
+	--pf-display: 'Fraunces Variable', Georgia, 'Times New Roman', serif;
+}
+
+/* Amber accent, overrides Starlight's default blue for links, buttons, focus. */
+:root {
+	--sl-color-accent-low: #2a1c06;
+	--sl-color-accent: #9c6712;
+	--sl-color-accent-high: #f0c178;
+	--pf-amber: #f0b860;
+	--pf-amber-soft: rgba(240, 184, 96, 0.13);
+	/* Hairline ring defines edges on dark; soft shadow for depth. */
+	--pf-ring: rgba(255, 255, 255, 0.09);
+	--pf-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
+}
+:root[data-theme='light'] {
+	--sl-color-accent-low: #f8e8cc;
+	--sl-color-accent: #bd7d23;
+	--sl-color-accent-high: #5a380c;
+	--pf-amber: #b9750f;
+	--pf-amber-soft: rgba(185, 117, 15, 0.1);
+	--pf-ring: var(--sl-color-gray-5);
+	--pf-shadow: 0 4px 14px rgba(2, 6, 23, 0.14);
+}
+
+/* Splash provides its own hero <h1>; hide Starlight's now-empty title panel. */
+body:has(.pf-hero) .content-panel:has(#_top) {
+	display: none;
+}
+
+/* Display face for headings, site-wide, at low specificity so Starlight keeps its sizing. */
+:where(h1, h2, h3, h4) {
+	font-family: var(--pf-display);
+	font-weight: 600;
+	letter-spacing: -0.012em;
+}
+
+/* Page-content screenshots get the same ring + shadow framing as the landing. */
+.sl-markdown-content img {
+	border-radius: 10px;
+	border: 1px solid var(--pf-ring);
+	box-shadow: var(--pf-shadow);
+}
+
+/* ---- Landing ---- */
+
+.pf-hero {
+	display: grid;
+	grid-template-columns: 1.05fr 1fr;
+	gap: clamp(2rem, 3.5vw, 3rem);
+	align-items: center;
+	padding: clamp(1.5rem, 4vw, 3rem) 0 clamp(1.5rem, 3vw, 2.5rem);
+}
+.pf-eyebrow {
+	margin: 0 0 1rem;
+	font-size: var(--sl-text-xs);
+	font-weight: 600;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: var(--pf-amber);
+}
+.pf-hero__title {
+	margin: 0;
+	font-size: clamp(2.1rem, 3.6vw, 2.9rem);
+	line-height: 1.08;
+	letter-spacing: -0.02em;
+	text-wrap: balance;
+}
+.pf-hero__title em {
+	font-style: italic;
+	color: var(--pf-amber);
+}
+.pf-hero__tagline {
+	margin: 1.1rem 0 0;
+	max-width: 44ch;
+	font-size: clamp(1rem, 1.3vw, 1.15rem);
+	line-height: 1.6;
+	text-wrap: pretty;
+	color: var(--sl-color-gray-2);
+}
+.pf-hero__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.85rem;
+	margin-top: 2rem;
+}
+.pf-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.7rem 1.3rem;
+	border-radius: 9px;
+	font-weight: 600;
+	font-size: 1rem;
+	text-decoration: none;
+	transition:
+		transform 0.15s ease,
+		box-shadow 0.2s ease,
+		background-color 0.2s ease;
+}
+.pf-btn--primary {
+	background: var(--pf-amber);
+	color: #1a1206;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+.pf-btn--primary:hover {
+	transform: translateY(-1px);
+	filter: brightness(1.05);
+}
+.pf-btn--ghost {
+	color: var(--sl-color-white);
+	border: 1px solid var(--sl-color-gray-4);
+}
+.pf-btn--ghost:hover {
+	border-color: var(--pf-amber);
+	color: var(--pf-amber);
+}
+
+/* Screenshots as cards: hairline border + soft shadow. */
+.pf-frame {
+	border: 1px solid var(--pf-ring);
+	border-radius: 12px;
+	overflow: hidden;
+	box-shadow: var(--pf-shadow);
+	background: var(--sl-color-bg);
+}
+.pf-frame img {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+/* ---- Features ---- */
+
+.pf-features {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: clamp(0.9rem, 2vw, 1.4rem);
+	margin: clamp(2rem, 5vw, 3.5rem) 0 0;
+	padding: 0;
+	list-style: none;
+}
+.pf-feature {
+	padding: clamp(1.2rem, 2vw, 1.7rem);
+	border: 1px solid var(--sl-color-gray-5);
+	border-radius: 14px;
+	background: var(--sl-color-bg-nav);
+	transition:
+		transform 0.18s ease,
+		border-color 0.18s ease,
+		box-shadow 0.2s ease;
+}
+.pf-feature:hover {
+	transform: translateY(-2px);
+	border-color: color-mix(in oklab, var(--pf-amber) 50%, var(--pf-ring));
+	box-shadow: var(--pf-shadow);
+}
+.pf-feature__head {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	margin-bottom: 0.7rem;
+}
+.pf-feature__icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	width: 2.4rem;
+	height: 2.4rem;
+	border-radius: 9px;
+	background: var(--pf-amber-soft);
+	color: var(--pf-amber);
+}
+.pf-feature__icon svg {
+	width: 1.35rem;
+	height: 1.35rem;
+}
+.pf-feature h3 {
+	margin: 0;
+	font-size: 1.18rem;
+	line-height: 1.25;
+}
+.pf-feature p {
+	margin: 0;
+	font-size: 0.96rem;
+	line-height: 1.55;
+	color: var(--sl-color-gray-2);
+}
+
+/* ---- Why beat ---- */
+
+.pf-why {
+	margin-top: clamp(2.5rem, 5vw, 3.5rem);
+	padding: clamp(1.8rem, 4vw, 3rem) clamp(1.5rem, 4vw, 3rem);
+	border: 1px solid var(--pf-ring);
+	border-radius: 18px;
+	background: var(--sl-color-bg-nav);
+	text-align: center;
+}
+.pf-why h2 {
+	margin: 0 0 0.7rem;
+	font-size: clamp(1.5rem, 2.6vw, 2rem);
+	border: 0;
+}
+.pf-why p {
+	max-width: 68ch;
+	margin: 0 auto;
+	color: var(--sl-color-gray-1);
+	line-height: 1.65;
+}
+.pf-why__cta {
+	margin-top: clamp(1.2rem, 2vw, 1.6rem);
+}
+
+/* ---- Showcase ---- */
+
+.pf-showcase {
+	margin-top: clamp(2.5rem, 5vw, 3.5rem);
+	padding: clamp(1.8rem, 4vw, 3rem) clamp(1.5rem, 4vw, 3rem);
+	border: 1px solid var(--pf-ring);
+	border-radius: 18px;
+	background: var(--sl-color-bg-nav);
+	text-align: center;
+}
+.pf-showcase h2 {
+	margin: 0 0 0.6rem;
+	font-size: clamp(1.6rem, 3vw, 2.2rem);
+	border: 0; /* Starlight underlines h2 in content; not here */
+}
+.pf-showcase p {
+	max-width: 56ch;
+	margin: 0 auto;
+	color: var(--sl-color-gray-2);
+	line-height: 1.6;
+}
+/* Inside a panel the screenshot drops its own border to avoid a doubled edge. */
+.pf-showcase .pf-frame {
+	max-width: 820px;
+	margin: clamp(1.5rem, 4vw, 2.5rem) auto 0;
+	border: none;
+}
+
+/* ---- Responsive ---- */
+
+@media (max-width: 50rem) {
+	.pf-hero {
+		grid-template-columns: 1fr;
+		gap: 2.25rem;
+		text-align: center;
+	}
+	.pf-hero__tagline {
+		margin-inline: auto;
+	}
+	.pf-hero__actions {
+		justify-content: center;
+	}
+	.pf-features {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* ---- Load motion (one orchestrated reveal) ---- */
+
+@media (prefers-reduced-motion: no-preference) {
+	/* `backwards` (not `both`): the final state reverts to normal CSS once the
+	   reveal finishes, so :hover transforms aren't pinned by the animation. */
+	.pf-reveal {
+		animation: pf-rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+	}
+	.pf-reveal:nth-child(2) {
+		animation-delay: 0.06s;
+	}
+	.pf-reveal:nth-child(3) {
+		animation-delay: 0.12s;
+	}
+	.pf-hero__media.pf-reveal {
+		animation-delay: 0.16s;
+	}
+	.pf-feature.pf-reveal:nth-child(1) {
+		animation-delay: 0.05s;
+	}
+	.pf-feature.pf-reveal:nth-child(2) {
+		animation-delay: 0.12s;
+	}
+	.pf-feature.pf-reveal:nth-child(3) {
+		animation-delay: 0.19s;
+	}
+	.pf-feature.pf-reveal:nth-child(4) {
+		animation-delay: 0.26s;
+	}
+}
+@keyframes pf-rise {
+	from {
+		opacity: 0;
+		transform: translateY(14px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}

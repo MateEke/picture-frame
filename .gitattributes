@@ -1,0 +1,5 @@
+web/src/lib/api/*.gen.ts linguist-generated=true
+web/src/lib/api/index.ts linguist-generated=true
+web/src/lib/api/client/index.ts linguist-generated=true
+web/openapi.json linguist-generated=true
+internal/licenses/THIRD_PARTY_NOTICES.txt linguist-generated=true

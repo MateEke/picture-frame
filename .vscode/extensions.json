@@ -1,0 +1,16 @@
+{
+  "recommendations": [
+    // Go
+    "golang.go",
+    // Svelte + formatting
+    "svelte.svelte-vscode",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    // Tailwind CSS
+    "bradlc.vscode-tailwindcss",
+    // Tooling
+    "EditorConfig.EditorConfig",
+    "usernamehw.errorlens",
+    "vitest.explorer"
+  ]
+}
