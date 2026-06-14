@@ -1,0 +1,52 @@
+commit-msg:
+  commands:
+    conventional:
+      # Conventional-commit subject check (zero deps; the CI PR-title lint is the real gate).
+      # {1} is the commit-message file. A leading "Merge ..." subject is allowed.
+      run: |
+        head -1 {1} | grep -qE '^(Merge |(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?: .+)' || { echo '✖ Commit subject must follow Conventional Commits, e.g. feat(updater): add toggle'; exit 1; }
+
+pre-commit:
+  parallel: false
+  commands:
+    01_lint-go:
+      glob: "**/*.go"
+      run: golangci-lint run --fix
+      stage_fixed: true
+    02_generate-api:
+      glob: "internal/**/*.go"
+      run: make generate
+      stage_fixed: true
+    03_lint-frontend:
+      root: "web/"
+      glob: "web/src/**/*.{ts,svelte}"
+      run: npx prettier --write {staged_files} && npx eslint --no-warn-ignored --fix {staged_files}
+      stage_fixed: true
+    04_check-frontend:
+      root: "web/"
+      glob: "web/src/**/*.{ts,svelte}"
+      run: npm run check
+    05_lint-workflows:
+      glob: ".github/**/*.{yml,yaml}"
+      run: actionlint
+    06_format-docs:
+      root: "docs/"
+      glob: "docs/**/*.{md,mdx,astro,ts,mjs,json,css}"
+      run: npx prettier --write {staged_files}
+      stage_fixed: true
+
+pre-push:
+  parallel: true
+  commands:
+    test-go:
+      glob: "**/*.go"
+      run: go test ./internal/...
+    test-frontend:
+      root: "web/"
+      glob: "web/src/**/*.{ts,svelte}"
+      run: npm run test:unit -- --run
+    build-docs:
+      # `npm run build` also runs starlight-links-validator, so this is the link check too.
+      root: "docs/"
+      glob: "docs/**/*.{md,mdx,astro,ts,mjs,json,css}"
+      run: npm run build

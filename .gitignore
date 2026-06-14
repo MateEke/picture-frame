@@ -1,0 +1,67 @@
+# If you prefer the allow list template instead of the deny list, see community template:
+# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
+#
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/openapi
+
+# Test binary, built with `go test -c`
+*.test
+
+# Code coverage profiles and other test artifacts
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# env file
+.env
+
+# Editor/IDE — commit settings.json (project conventions), ignore personal overrides
+.vscode/*.local
+.idea/
+
+# AI tools — commit CLAUDE.md at root, ignore tool dirs (personal/ephemeral)
+.claude/
+.cursor/
+.continue/
+.aider
+.aider*
+*.aider.md
+.copilot/
+
+# CI/local build output
+dist/
+tmp/
+
+# Signing keys — only the minisign PUBLIC key (deploy/minisign.pub) is ever committed.
+# The secret key lives in CI secrets / locally, never in the repo.
+*.key
+
+# Config files — commit *.example.toml templates, ignore real configs (may contain secrets)
+*.toml
+!*.example.toml
+!.air.toml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Playwright MCP scratch output (page snapshots from doc self-checks)
+.playwright-mcp/
+
+# Uploaded images — local content, not part of the repo.
+# Leading slash anchors to repo root so it does NOT match web/src/routes/admin/images.
+/images/
+web/openapi-ts-error-*.log

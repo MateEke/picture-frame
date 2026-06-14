@@ -1,0 +1,46 @@
+name: pr-label
+
+# Label PRs from their conventional-commit title so release notes (.github/release.yml) can
+# group them. Uses `pull_request` (not pull_request_target) with a label-only write token; it
+# never checks out or runs PR code, and the title is matched by regex (never shell-interpolated),
+# so there is no injection surface.
+on:
+  pull_request:
+    # synchronize/reopened so the required title check re-reports on every push.
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const title = context.payload.pull_request.title || '';
+            const type = (title.match(/^(\w+)/) || [])[1];
+            const label = { feat: 'enhancement', perf: 'enhancement', fix: 'bug', docs: 'documentation' }[type];
+            if (!label) return;
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                labels: [label],
+              });
+            } catch (e) {
+              core.info(`skipped labeling (likely a fork PR): ${e.message}`);
+            }
+
+  # Required check: squash-merge makes the PR title the commit subject, and the
+  # goreleaser changelog is grouped from it. Lefthook's commit-msg regex is only
+  # local hygiene, so this is the real gate.
+  pr-title:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

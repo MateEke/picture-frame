@@ -1,0 +1,288 @@
+name: ci
+
+# Quality gates for PRs and pushes to main. Also reusable (workflow_call) so release.yml
+# re-runs the gates on the exact tagged commit before publishing.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+# Cancel superseded runs per ref, but never a release (tag) gate run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # golangci's typecheck compiles the web package, //go:embed needs the dir.
+      - name: Seed embed placeholder
+        run: make embed-seed
+
+      - uses: golangci/golangci-lint-action@v9
+
+      - name: Shellcheck
+        run: shellcheck deploy/*.sh scripts/*.sh
+
+      - name: Lint workflows
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@latest
+
+      - name: Install frontend deps
+        working-directory: web
+        run: npm ci
+
+      - name: Frontend lint + check
+        working-directory: web
+        run: |
+          npm run lint
+          npm run check
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # `make test` runs Vitest but does not install deps itself.
+      - name: Install frontend deps
+        working-directory: web
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-shell-${{ hashFiles('web/package-lock.json') }}
+
+      # The Vitest browser project (sse tests) runs in Chromium's headless shell.
+      - name: Install Chromium headless shell
+        working-directory: web
+        run: npx playwright install --with-deps --only-shell
+
+      - name: Tests (Go coverage gate + Vitest)
+        run: make test
+
+  # Fails when the committed OpenAPI spec / generated TS client is stale.
+  codegen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Regenerate API spec + client
+        run: make generate
+
+      - name: Fail on drift
+        run: git diff --exit-code
+
+  # Prove the ARMv6 cross-compile + UI embed compile and the goreleaser config is valid.
+  # The production UI build is exercised by every e2e leg (Playwright's webServer runs
+  # `npm run build`), so only the embed dir is seeded here.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # Makefile derives VERSION from git describe
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Cross-compile (ARMv6)
+        run: make build-go
+
+      - name: Validate goreleaser config
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: "~> v2"
+          args: check
+
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Desktop chromium runs on the runner's preinstalled Chrome (channel: 'chrome');
+          # the other projects need their bundled browser installed.
+          - project: chromium
+            browsers: ""
+          - project: firefox
+            browsers: firefox
+          - project: webkit
+            browsers: webkit
+          - project: mobile-chromium
+            browsers: chromium
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: web
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        if: matrix.browsers != ''
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ matrix.browsers }}-${{ hashFiles('web/package-lock.json') }}
+
+      - name: Install Playwright browsers
+        if: matrix.browsers != ''
+        working-directory: web
+        run: npx playwright install --with-deps ${{ matrix.browsers }}
+
+      - name: Run e2e (${{ matrix.project }})
+        working-directory: web
+        run: npx playwright test --project=${{ matrix.project }}
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-${{ matrix.project }}
+          path: web/playwright-report/
+          retention-days: 7
+
+  # Diff-scoped mutation testing: PRs mutate their diff vs the base branch; pushes to
+  # main mutate what just landed and refresh the main Stryker baseline. NOT a required
+  # check: a red X is a signal to look at, not a merge blocker.
+  mutation:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # gremlins --diff needs the base branch
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: web
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-shell-${{ hashFiles('web/package-lock.json') }}
+
+      # Stryker's client config drives the Vitest browser project (Chromium headless shell).
+      - name: Install Chromium headless shell
+        working-directory: web
+        run: npx playwright install --with-deps --only-shell
+
+      # Split restore/save so the incremental cache persists even when the score gate
+      # fails the job (its normal failure mode). PR runs reuse their own branch's cache
+      # and fall back to the main baseline, which the push-to-main runs keep fresh
+      # (default-branch caches are readable from every PR).
+      - name: Restore Stryker incremental cache
+        uses: actions/cache/restore@v5
+        with:
+          path: web/reports/mutation
+          key: stryker-incremental-${{ github.head_ref || github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            stryker-incremental-${{ github.head_ref || github.ref_name }}-
+            stryker-incremental-main-
+
+      # PRs diff vs their base branch (checkout doesn't create origin/<base>, fetch it);
+      # main pushes diff vs the pre-push commit (already present with fetch-depth 0).
+      - name: Mutation testing (Stryker incremental + gremlins diff)
+        env:
+          BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            git fetch --no-tags origin "+refs/heads/$GITHUB_BASE_REF:refs/remotes/origin/$GITHUB_BASE_REF"
+          fi
+          make mutation-diff BASE_REF="$BASE_REF"
+
+      - name: Save Stryker incremental cache
+        if: always()
+        uses: actions/cache/save@v5
+        with:
+          path: web/reports/mutation
+          key: stryker-incremental-${{ github.head_ref || github.ref_name }}-${{ github.sha }}
+
+  # Known-CVE gate: govulncheck (reachable Go) + osv-scanner on the bundled-npm SBOM.
+  vuln:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: web
+        run: npm ci
+
+      # Prebuilt binary, `go run` would compile osv-scanner from scratch (~2min).
+      - name: Install osv-scanner
+        run: |
+          curl -fsSL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o "$RUNNER_TEMP/osv-scanner"
+          chmod +x "$RUNNER_TEMP/osv-scanner"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Vulnerability scan
+        run: make vuln

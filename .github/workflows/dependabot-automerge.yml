@@ -1,0 +1,28 @@
+name: dependabot-automerge
+
+# Security bumps merge themselves once the required checks pass (native auto-merge
+# waits on the branch ruleset). Routine version bumps are untouched, owner merges.
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    # Private repos can't have rulesets, so without required checks --auto merges
+    # instantly, skipping CI. The job is gated to public repos for that reason.
+    if: github.actor == 'dependabot[bot]' && !github.event.repository.private
+    runs-on: ubuntu-latest
+    steps:
+      - id: meta
+        uses: dependabot/fetch-metadata@v3
+
+      # dependabot.yml groups ALL version updates and groups never cover security PRs,
+      # so ungrouped ⇒ security (alert-state would need a PAT). Majors get human eyes.
+      - if: steps.meta.outputs.dependency-group == '' && steps.meta.outputs.update-type != 'version-update:semver-major'
+        name: Enable auto-merge (squash)
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

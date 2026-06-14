@@ -1,0 +1,59 @@
+name: release
+
+# Cut a release by pushing a semver tag (vX.Y.Z, or vX.Y.Z-rc.N for a pre-release).
+# The full CI gate re-runs on the tagged commit first; publish only happens on green.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write # create the GitHub Release
+
+# One release at a time; don't cancel an in-flight publish.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Re-run the quality gates on the exact tagged commit (mutation self-skips: PR-only).
+  gates:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history for the changelog + git describe
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: web/.nvmrc
+
+      # goreleaser's `signs` shells out to `minisign`; install it (version from go.mod, the
+      # same aead.dev/minisign the updater verifies with) and put it on PATH.
+      - name: Install minisign
+        run: |
+          go install aead.dev/minisign/cmd/minisign
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      # Write the passwordless minisign secret key (a repo secret) to a file goreleaser reads.
+      - name: Provision signing key
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+        run: |
+          printf '%s\n' "$MINISIGN_SECRET_KEY" > "$RUNNER_TEMP/minisign.key"
+          echo "MINISIGN_KEY_FILE=$RUNNER_TEMP/minisign.key" >> "$GITHUB_ENV"
+
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

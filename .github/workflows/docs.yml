@@ -1,0 +1,31 @@
+name: Docs
+
+# Builds the docs site and validates every internal link, so broken links and build
+# failures are caught before merge. Deployment is handled by Cloudflare Pages, not by
+# this workflow.
+#
+# Runs on every PR (no path filter) so `docs-build` can be a required check without
+# deadlocking non-docs PRs; it also gates auto-merge of docs-dependency bumps. The Astro
+# build is fast, so running it on every PR is cheap next to the existing gates.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Named `docs-build` (not `build`) so its check does not collide with ci.yml's required
+  # `build` context on docs-touching PRs.
+  docs-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history for Starlight's "Last updated" stamps
+      - uses: withastro/action@v6
+        with:
+          path: ./docs

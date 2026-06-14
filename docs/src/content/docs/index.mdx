@@ -1,0 +1,128 @@
+---
+title: Picture Frame
+description: A self-hosted ambient display for the Raspberry Pi. Your photos beside the clock, the weather, and your room's own temperature. Motion-aware, private, and plugged into Home Assistant.
+template: splash
+---
+
+import { Image } from 'astro:assets';
+import { Icon } from 'astro-icon/components';
+import kiosk from '../../assets/screenshots/kiosk.png';
+import dashboard from '../../assets/screenshots/dashboard-dark.png';
+
+<div class="pf-hero">
+	<div class="pf-hero__text">
+		<p class="pf-eyebrow pf-reveal">Self-hosted ambient display</p>
+		<h1 class="pf-hero__title pf-reveal">
+			A picture frame that knows the <em>room</em>.
+		</h1>
+		<p class="pf-hero__tagline pf-reveal">
+			Turn the cheapest Raspberry Pi and a screen you already own into a private ambient display:
+			your photos beside the time, the weather, and the real temperature in your rooms. It powers
+			down when you leave, and plugs straight into Home Assistant.
+		</p>
+		<div class="pf-hero__actions pf-reveal">
+			<a class="pf-btn pf-btn--primary" href="/getting-started/overview/">
+				Get started
+			</a>
+			<a
+				class="pf-btn pf-btn--ghost"
+				href="https://github.com/MateEke/picture-frame"
+				target="_blank"
+				rel="noopener noreferrer"
+			>
+				View on GitHub
+			</a>
+		</div>
+	</div>
+	<div class="pf-hero__media pf-reveal">
+		<div class="pf-frame">
+			<Image
+				src={kiosk}
+				alt="The frame showing a photo, with the time, date, and indoor and outdoor readings along the bottom."
+			/>
+		</div>
+	</div>
+</div>
+
+<ul class="pf-features">
+	<li class="pf-feature pf-reveal">
+		<div class="pf-feature__head">
+			<span class="pf-feature__icon" aria-hidden="true">
+				<Icon name="lucide:layout-dashboard" />
+			</span>
+			<h3>An ambient display, not a slideshow</h3>
+		</div>
+		<p>
+			Your photos share the screen with a clock, the weather, and the real temperature and humidity
+			in your rooms, read from your own Bluetooth or MQTT sensors. Photos crossfade gently, smooth
+			even on a Pi Zero W.
+		</p>
+	</li>
+	<li class="pf-feature pf-reveal">
+		<div class="pf-feature__head">
+			<span class="pf-feature__icon" aria-hidden="true">
+				<Icon name="lucide:house" />
+			</span>
+			<h3>Plugs into Home Assistant</h3>
+		</div>
+		<p>
+			Over MQTT auto-discovery it publishes its sensors and a screen switch, and reads your existing
+			sensors back. Drive the frame from your dashboard, or fold its motion and climate into
+			automations. No helpers, no YAML.
+		</p>
+	</li>
+	<li class="pf-feature pf-reveal">
+		<div class="pf-feature__head">
+			<span class="pf-feature__icon" aria-hidden="true">
+				<Icon name="lucide:moon" />
+			</span>
+			<h3>Powers down when you leave</h3>
+		</div>
+		<p>
+			A motion sensor blanks the panel when the room empties and wakes it the instant you return.
+			That's a true screen-off, not a black image. Built from a dead laptop's screen and the
+			cheapest Pi, it barely sips power.
+		</p>
+	</li>
+	<li class="pf-feature pf-reveal">
+		<div class="pf-feature__head">
+			<span class="pf-feature__icon" aria-hidden="true">
+				<Icon name="lucide:shield-check" />
+			</span>
+			<h3>Private and self-contained</h3>
+		</div>
+		<p>
+			No cloud, no accounts, no telemetry. One small program is the whole device: install, kiosk,
+			Wi-Fi recovery, and signed self-updates. Immich connects through a shared link, never an API
+			key.
+		</p>
+	</li>
+</ul>
+
+<div class="pf-showcase">
+	<h2>Everything, from one screen</h2>
+	<p>
+		Photos, sensors, networking, software updates: the admin interface keeps the whole frame in view
+		and a click away.
+	</p>
+	<div class="pf-frame">
+		<Image
+			src={dashboard}
+			alt="The admin dashboard, showing the current photo, connection and sensor status, live readings, and system information."
+		/>
+	</div>
+</div>
+
+<div class="pf-why pf-reveal">
+	<h2>Why Picture Frame?</h2>
+	<p>
+		Plenty of projects turn a screen into an Immich slideshow. This one is built to be lived with.
+		It shows your photos beside the clock, the weather, and the real temperature in your rooms,
+		powers the panel down when you leave and wakes it when you're back, and joins Home Assistant as
+		a proper device, not a web page. One small program runs all of it (install, kiosk, networking,
+		updates) on the cheapest Pi and a screen you already owned. No cloud, no account, no telemetry.
+	</p>
+	<a class="pf-btn pf-btn--primary pf-why__cta" href="/getting-started/overview/">
+		Get started
+	</a>
+</div>

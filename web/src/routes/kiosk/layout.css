@@ -1,0 +1,8 @@
+@import '@fontsource-variable/schibsted-grotesk';
+@import 'tailwindcss';
+
+@theme {
+	--font-sans: 'Schibsted Grotesk Variable', sans-serif;
+	/* overlay foreground; the meteocons vite plugin bakes it into the icons too */
+	--color-kiosk-fg: #fff8f0;
+}

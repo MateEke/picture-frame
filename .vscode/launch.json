@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "picframe (dev)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/picture-frame",
+      "env": {
+        "GO_ENV": "development"
+      },
+      "preLaunchTask": "Start Frontend"
+    },
+    {
+      "name": "picframe (prod embed)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/picture-frame",
+      "env": {
+        "GO_ENV": "production"
+      },
+      "preLaunchTask": "Build Frontend"
+    }
+  ]
+}

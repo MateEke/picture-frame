@@ -1,0 +1,25 @@
+{
+	"$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+	"testRunner": "vitest",
+	"vitest": { "configFile": "vitest.stryker.config.ts" },
+	"coverageAnalysis": "perTest",
+	"mutate": [
+		"src/**/*.ts",
+		"src/**/*.svelte.ts",
+		"!src/**/*.test.ts",
+		"!src/**/*.spec.ts",
+		"!src/**/*.d.ts",
+		"!src/lib/api/**",
+		"!src/lib/sse.svelte.ts",
+		"!src/lib/toaster.ts",
+		"!src/lib/sessionGuard.ts",
+		"!src/routes/+page.ts",
+		"!src/routes/+layout.ts",
+		"!src/routes/admin/settings/+page.ts",
+		"!src/routes/admin/wifi/+page.ts"
+	],
+	"reporters": ["clear-text"],
+	"clearTextReporter": { "reportMutants": false, "skipFull": true },
+	"incrementalFile": "reports/mutation/incremental-server.json",
+	"thresholds": { "high": 95, "low": 85, "break": 90 }
+}

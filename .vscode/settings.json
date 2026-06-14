@@ -1,0 +1,35 @@
+{
+  // --- Editor baseline ---
+  "editor.rulers": [100],
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  // --- Go (overrides — different formatter, extra save actions) ---
+  "go.formatTool": "goimports",
+  "go.lintTool": "golangci-lint",
+  "go.lintOnSave": "workspace",
+  "go.vetOnSave": "workspace",
+  "[go]": {
+    "editor.defaultFormatter": "golang.go",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+
+  // --- Svelte (override — extension handles prettier-plugin-svelte internally) ---
+  "[svelte]": {
+    "editor.defaultFormatter": "svelte.svelte-vscode"
+  },
+
+  // --- File associations ---
+  "files.associations": {
+    "*.toml": "toml",
+    "*.css": "tailwindcss"
+  },
+
+  // --- Test explorer ---
+  "go.testFlags": ["-v", "-race"],
+  "go.coverOnSave": false
+}

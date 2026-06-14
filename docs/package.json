@@ -1,0 +1,29 @@
+{
+	"name": "docs",
+	"type": "module",
+	"version": "0.0.1",
+	"scripts": {
+		"dev": "astro dev",
+		"start": "astro dev",
+		"build": "astro build",
+		"preview": "astro preview",
+		"astro": "astro"
+	},
+	"dependencies": {
+		"@astrojs/starlight": "^0.40.0",
+		"@fontsource-variable/fraunces": "^5.2.9",
+		"@iconify-json/lucide": "^1.2.112",
+		"astro": "^6.4.5",
+		"astro-icon": "^1.1.5",
+		"rehype-external-links": "^3.0.0",
+		"sharp": "^0.34.5"
+	},
+	"devDependencies": {
+		"prettier": "^3.8.4",
+		"prettier-plugin-astro": "^0.14.1",
+		"starlight-links-validator": "^0.24.1"
+	},
+	"overrides": {
+		"esbuild": "^0.28.1"
+	}
+}

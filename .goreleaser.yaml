@@ -1,0 +1,110 @@
+# goreleaser config, builds the multi-arch release artifacts for picture-frame.
+# Local dry run (no publish):  make release-snapshot   (goreleaser release --snapshot --clean)
+# Real release: pushing a vX.Y.Z tag triggers .github/workflows/release.yml.
+# Build flags mirror Makefile's build-go, keep them in sync (release-snapshot catches drift).
+version: 2
+
+project_name: picture-frame
+
+# UI must be embedded and notices generated before the per-arch Go builds compile.
+# Order matters: build-ui populates web/build (the //go:embed target) AND emits the
+# frontend notices; notices then merges them with the Go license texts.
+before:
+  hooks:
+    # Pass the version as a make var so the baked frontend matches the version.Version ldflag
+    # below, a mismatch rolls back every update on the commit gate.
+    - make build-ui PUBLIC_APP_VERSION={{ .Version }}
+    - make notices
+    - make sbom-go
+
+builds:
+  # 32-bit ARM: armv6 (Pi Zero W / Pi 1 floor) + armv7 (Zero 2W / 3 / 4 on 32-bit OS).
+  - id: arm
+    main: ./cmd/picture-frame
+    binary: picture-frame
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    goos: [linux]
+    goarch: [arm]
+    goarm: ["6", "7"]
+    ldflags:
+      - -s -w
+      - -X github.com/MateEke/picture-frame/internal/version.Version={{ .Version }}
+      - -X github.com/MateEke/picture-frame/internal/version.UpdateRepo={{ .Env.GITHUB_REPOSITORY }}
+      - -X github.com/MateEke/picture-frame/internal/version.Platform={{ .Os }}_{{ .Arch }}v{{ .Arm }}
+  # 64-bit ARM: Zero 2W / 3 / 4 / Pi 5 on a 64-bit OS. Separate build so .Arm stays empty
+  # (a single arm+arm64 matrix would mislabel arm64 as "arm64v7").
+  - id: arm64
+    main: ./cmd/picture-frame
+    binary: picture-frame
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    goos: [linux]
+    goarch: [arm64]
+    ldflags:
+      - -s -w
+      - -X github.com/MateEke/picture-frame/internal/version.Version={{ .Version }}
+      - -X github.com/MateEke/picture-frame/internal/version.UpdateRepo={{ .Env.GITHUB_REPOSITORY }}
+      - -X github.com/MateEke/picture-frame/internal/version.Platform={{ .Os }}_{{ .Arch }}
+
+archives:
+  - id: picture-frame
+    # picture-frame_<version>_linux_armv6.tar.gz | _armv7 | _arm64, parsed by install.sh/updater.
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}"
+    formats: ["tar.gz"]
+    # Self-contained, version-matched: binary + deploy tree + installer + notices.
+    files:
+      # deploy/** (not deploy/**/*) so top-level files like install.sh are included too.
+      - src: deploy/**
+      - src: config.example.toml
+      - src: LICENSE
+      - src: README.md
+      - src: internal/licenses/THIRD_PARTY_NOTICES.txt
+        dst: .
+        strip_parent: true
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+# Sign the checksums file with minisign; the updater embeds the public key and verifies
+# authenticity (not just integrity). Reads the passwordless secret key from MINISIGN_KEY_FILE
+# (the workflow writes it from a GH secret; `make release-snapshot` uses a throwaway key).
+signs:
+  - id: minisign
+    cmd: minisign
+    signature: "${artifact}.minisig"
+    args:
+      - -S
+      - -s
+      - "{{ .Env.MINISIGN_KEY_FILE }}"
+      - -m
+      - "${artifact}"
+      - -x
+      - "${signature}"
+    artifacts: checksum
+
+release:
+  # vX.Y.Z-rc.N tags are published as GitHub pre-releases (excluded from "latest"), so the
+  # updater's "latest stable in my major" query skips them.
+  prerelease: auto
+  # CycloneDX SBOMs, supply-chain transparency for OSS consumers. Two halves of the
+  # product: frontend = JS bundled into the embed (emitted by the UI build, scanned in
+  # CI), backend = Go modules linked into the binary (cyclonedx-gomod app mode).
+  extra_files:
+    - glob: web/.svelte-kit/output/client/cyclonedx/bom.json
+      name_template: sbom.frontend.cyclonedx.json
+    - glob: tmp/sbom.backend.cyclonedx.json
+      name_template: sbom.backend.cyclonedx.json
+    # Standalone bootstrap installer so `releases/latest/download/install.sh` resolves.
+    - glob: deploy/install.sh
+
+changelog:
+  # Let GitHub generate the notes: linked PRs, short refs, contributors, and a
+  # "Full Changelog" compare link, far cleaner than goreleaser's full-hash git log.
+  # Categories/exclusions are configured in .github/release.yml.
+  use: github-native

@@ -1,0 +1,48 @@
+version: "2"
+linters:
+  enable:
+    - gosec
+    - revive
+    - gocyclo
+    - gocognit
+    - dupl
+    - errorlint
+    - bodyclose
+    - unconvert
+    - misspell
+    - funlen
+    - nestif
+    - nakedret
+    - unparam
+  settings:
+    # gocyclo/gocognit are the real complexity guards; funlen is just a length
+    # backstop against monster functions, so the limits are generous.
+    funlen:
+      lines: 90
+      statements: 80
+      ignore-comments: true
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - unused
+        path: internal/state/events\.go
+      # Table-driven tests are legitimately long, and test helpers may take
+      # intentionally fixed arguments for readability.
+      - linters:
+          - dupl
+          - funlen
+          - unparam
+        path: _test\.go
+    paths:
+      - web/node_modules
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    paths:
+      - web/node_modules

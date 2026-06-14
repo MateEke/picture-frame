@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or idea
+    url: https://github.com/MateEke/picture-frame/discussions
+    about: For usage questions and open-ended ideas, please start a discussion.
+  - name: Documentation
+    url: https://picture-frame-2kf.pages.dev/
+    about: Setup, configuration, and the user manual.

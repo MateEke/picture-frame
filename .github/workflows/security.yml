@@ -1,0 +1,55 @@
+name: security
+
+# Daily CVE sweep, vulnerabilities appear without pushes; a red run IS the notification.
+# NOTE: GitHub disables cron schedules after 60 idle days (re-enable in the Actions tab).
+on:
+  schedule:
+    - cron: '14 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vuln:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: web
+        run: npm ci
+
+      # Prebuilt binary, `go run` would compile osv-scanner from scratch (~2min).
+      - name: Install osv-scanner
+        run: |
+          curl -fsSL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o "$RUNNER_TEMP/osv-scanner"
+          chmod +x "$RUNNER_TEMP/osv-scanner"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Vulnerability scan (tier 1, product)
+        run: make vuln
+
+  # Full tree incl. build tooling, too noisy to gate PRs; the lockfile alone is enough.
+  toolchain-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: web/.nvmrc
+
+      - name: Audit full npm tree (tier 2, toolchain)
+        working-directory: web
+        run: npm audit --audit-level=high

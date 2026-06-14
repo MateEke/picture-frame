@@ -1,0 +1,48 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Frontend",
+      "type": "shell",
+      // The command to start Vite
+      "command": "npm run dev",
+      "options": {
+        // Tell it to run inside your web directory
+        "cwd": "${workspaceFolder}/web"
+      },
+      // This tells VS Code the task runs continuously in the background
+      "isBackground": true,
+      "problemMatcher": {
+        // This is the crucial part. It tells VS Code to stop waiting and
+        // launch the Go debugger as soon as Vite prints "ready in" or "Local:"
+        "pattern": {
+          "regexp": "^.*$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*Vite server.*$",
+          "endsPattern": "ready in|Local:"
+        }
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Build Frontend",
+      "type": "shell",
+      "command": "npm i && npm run build",
+      "options": {
+        "cwd": "${workspaceFolder}/web"
+      },
+      "presentation": {
+        // "silent" means it won't pop open the terminal unless it fails
+        "reveal": "silent",
+        "panel": "shared"
+      }
+      // Notice: No isBackground or problemMatcher needed here!
+      // VS Code knows to just wait for the script to exit.
+    }
+  ]
+}
