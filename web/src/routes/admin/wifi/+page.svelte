@@ -9,6 +9,7 @@
 	import NetworkList from './components/NetworkList.svelte';
 	import ConnectDialog from './components/ConnectDialog.svelte';
 	import ForgetDialog from './components/ForgetDialog.svelte';
+	import HiddenNetworkDialog from './components/HiddenNetworkDialog.svelte';
 	import APFallback from './components/APFallback.svelte';
 
 	let { data }: PageProps = $props();
@@ -19,6 +20,7 @@
 	let networks = $state<WiFiNetwork[]>([]);
 	let scanning = $state(false);
 	let showConnectDialog = $state(false);
+	let showHiddenDialog = $state(false);
 	let selectedNetwork = $state<WiFiNetwork | null>(null);
 	let pollTimer: ReturnType<typeof setTimeout> | undefined;
 	let pollAbort: AbortController | undefined;
@@ -108,17 +110,17 @@
 	// Known and open networks connect in one click; only unknown secured networks open the dialog.
 	function startConnect(net: WiFiNetwork) {
 		if (net.known || net.security === '') {
-			connectToNetwork(net.ssid, net.known);
+			connectToNetwork(net.ssid, net.known, '', net.hidden);
 		} else {
 			selectedNetwork = net;
 			showConnectDialog = true;
 		}
 	}
 
-	async function connectToNetwork(ssid: string, known: boolean, password = '') {
+	async function connectToNetwork(ssid: string, known: boolean, password = '', hidden = false) {
 		showConnectDialog = false;
 		setBanner({ ssid, phase: 'connecting', known, startedAt: Date.now() });
-		const ok = await connectWiFi(ssid, password);
+		const ok = await connectWiFi(ssid, password, hidden);
 		if (!ok) {
 			// connectWiFi already toasted the cause (busy / network error).
 			setBanner({
@@ -207,6 +209,7 @@
 			onscan={handleScan}
 			onconnect={startConnect}
 			onforget={askForget}
+			onjoinhidden={() => (showHiddenDialog = true)}
 		/>
 
 		<APFallback {status} onsave={(newState) => (polledStatus = newState)} />
@@ -218,6 +221,16 @@
 		network={selectedNetwork}
 		onconnect={(ssid, password) => connectToNetwork(ssid, false, password)}
 		oncancel={() => (showConnectDialog = false)}
+	/>
+{/if}
+
+{#if showHiddenDialog}
+	<HiddenNetworkDialog
+		onconnect={(ssid, password) => {
+			showHiddenDialog = false;
+			connectToNetwork(ssid, false, password, true);
+		}}
+		oncancel={() => (showHiddenDialog = false)}
 	/>
 {/if}
 

@@ -13,7 +13,7 @@ import (
 type WiFiManager interface {
 	Status() wifi.WiFiState
 	Scan(ctx context.Context) ([]wifi.WiFiNetwork, error)
-	Connect(ctx context.Context, ssid, pass string) error
+	Connect(ctx context.Context, ssid, pass string, hidden bool) error
 	Forget(ctx context.Context, ssid string) error
 	Configure(ctx context.Context, enabled bool, ssid string, pw *string) error
 }
@@ -29,6 +29,7 @@ type GetWiFiNetworksOutput struct {
 type WiFiConnectRequest struct {
 	SSID     string `json:"ssid" minLength:"1" doc:"Network SSID to connect to"`
 	Password string `json:"password,omitempty" doc:"Network password"`
+	Hidden   bool   `json:"hidden,omitempty" doc:"Whether the network is hidden (non-broadcasting)"`
 }
 
 type WiFiConnectInput struct {
@@ -96,7 +97,7 @@ func (s *server) registerWiFiRoutes(api huma.API) {
 		if s.wifiMgr == nil {
 			return nil, huma.Error503ServiceUnavailable("wifi not available")
 		}
-		err := s.wifiMgr.Connect(ctx, input.Body.SSID, input.Body.Password)
+		err := s.wifiMgr.Connect(ctx, input.Body.SSID, input.Body.Password, input.Body.Hidden)
 		if errors.Is(err, wifi.ErrBusy) {
 			return nil, huma.Error503ServiceUnavailable("wifi manager busy")
 		}

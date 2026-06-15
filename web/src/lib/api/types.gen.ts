@@ -548,6 +548,10 @@ export type WiFiConnectRequest = {
      */
     readonly $schema?: string;
     /**
+     * Whether the network is hidden (non-broadcasting)
+     */
+    hidden?: boolean;
+    /**
      * Network password
      */
     password?: string;
@@ -558,6 +562,7 @@ export type WiFiConnectRequest = {
 };
 
 export type WiFiNetwork = {
+    hidden: boolean;
     known: boolean;
     security: string;
     signal: number;
@@ -818,6 +823,10 @@ export type UpdateStatusResponseWritable = {
 };
 
 export type WiFiConnectRequestWritable = {
+    /**
+     * Whether the network is hidden (non-broadcasting)
+     */
+    hidden?: boolean;
     /**
      * Network password
      */

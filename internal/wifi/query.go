@@ -8,6 +8,12 @@ import (
 	"time"
 )
 
+// profileInfo is a saved WiFi profile's resolved SSID plus whether it is hidden.
+type profileInfo struct {
+	ssid   string
+	hidden bool
+}
+
 type activeLink struct {
 	ssid     string
 	ip       string
@@ -90,7 +96,11 @@ func (m *Manager) doScan(ctx context.Context) ([]WiFiNetwork, error) {
 		return nil, err
 	}
 
-	knownSSIDs, _ := m.knownSSIDs(ctx)
+	profiles, _ := m.wifiProfiles(ctx)
+	known := make(map[string]bool, len(profiles))
+	for _, info := range profiles {
+		known[info.ssid] = true
+	}
 
 	seen := map[string]bool{}
 	var nets []WiFiNetwork
@@ -113,22 +123,30 @@ func (m *Manager) doScan(ctx context.Context) ([]WiFiNetwork, error) {
 			SSID:     ssid,
 			Signal:   signal,
 			Security: fields[7],
-			Known:    knownSSIDs[ssid],
+			Known:    known[ssid],
 		})
+	}
+
+	// Merge saved-hidden profiles missing from the scan so they keep a Forget row.
+	for _, info := range profiles {
+		if info.hidden && !seen[info.ssid] {
+			seen[info.ssid] = true
+			nets = append(nets, WiFiNetwork{SSID: info.ssid, Known: true, Hidden: true})
+		}
 	}
 	return nets, nil
 }
 
-// wifiProfiles returns saved WiFi profiles as connection-id → SSID, excluding the
-// "hotspot" profile. It reads each profile's 802-11-wireless.ssid because
+// wifiProfiles returns saved WiFi profiles as connection-id → profileInfo, excluding
+// the "hotspot" profile. It reads each profile's 802-11-wireless.ssid because
 // provisioning tools (netplan, Pi imager) name profiles arbitrarily, so the
 // connection-id rarely matches the SSID.
-func (m *Manager) wifiProfiles(ctx context.Context) (map[string]string, error) {
+func (m *Manager) wifiProfiles(ctx context.Context) (map[string]profileInfo, error) {
 	out, err := m.nmcli.Output(ctx, "nmcli", "-t", "-f", "NAME,TYPE", "connection", "show")
 	if err != nil {
 		return nil, err
 	}
-	profiles := map[string]string{}
+	profiles := map[string]profileInfo{}
 	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
 		fields := parseTerseFields(line)
 		if len(fields) < 2 {
@@ -143,22 +161,30 @@ func (m *Manager) wifiProfiles(ctx context.Context) (map[string]string, error) {
 			continue
 		}
 		if ssid := m.profileSSID(ctx, name); ssid != "" {
-			profiles[name] = ssid
+			profiles[name] = profileInfo{ssid: ssid, hidden: m.profileHidden(ctx, name)}
 		}
 	}
 	return profiles, nil
 }
 
-func (m *Manager) knownSSIDs(ctx context.Context) (map[string]bool, error) {
-	profiles, err := m.wifiProfiles(ctx)
+// profileNameForSSID returns the connection name of a saved profile with this SSID.
+func (m *Manager) profileNameForSSID(ctx context.Context, ssid string) (string, bool) {
+	profiles, _ := m.wifiProfiles(ctx)
+	for name, info := range profiles {
+		if info.ssid == ssid {
+			return name, true
+		}
+	}
+	return "", false
+}
+
+// profileHidden reports whether a saved profile has 802-11-wireless.hidden=yes.
+func (m *Manager) profileHidden(ctx context.Context, name string) bool {
+	out, err := m.nmcli.Output(ctx, "nmcli", "-g", "802-11-wireless.hidden", "connection", "show", name)
 	if err != nil {
-		return nil, err
+		return false
 	}
-	known := make(map[string]bool, len(profiles))
-	for _, ssid := range profiles {
-		known[ssid] = true
-	}
-	return known, nil
+	return strings.TrimSpace(string(out)) == "yes"
 }
 
 // forgetSSID deletes every saved WiFi profile whose SSID matches. Deleting by
@@ -170,8 +196,8 @@ func (m *Manager) forgetSSID(ctx context.Context, ssid string) error {
 		return err
 	}
 	var names []string
-	for name, savedSSID := range profiles {
-		if savedSSID == ssid {
+	for name, info := range profiles {
+		if info.ssid == ssid {
 			names = append(names, name)
 		}
 	}

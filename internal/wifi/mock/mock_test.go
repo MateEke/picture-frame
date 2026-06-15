@@ -54,7 +54,7 @@ func TestScanReturnsCopyOfNetworks(t *testing.T) {
 
 func TestConnectAdoptsNetworkSignalAndMarksKnown(t *testing.T) {
 	m := seeded()
-	if err := m.Connect(context.Background(), "Cafe", ""); err != nil {
+	if err := m.Connect(context.Background(), "Cafe", "", false); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	s := m.Status()
@@ -72,7 +72,7 @@ func TestConnectAdoptsNetworkSignalAndMarksKnown(t *testing.T) {
 
 func TestConnectToUnlistedNetworkLeavesSignalUntouched(t *testing.T) {
 	m := seeded()
-	if err := m.Connect(context.Background(), "Unlisted", "pw"); err != nil {
+	if err := m.Connect(context.Background(), "Unlisted", "pw", false); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	if s := m.Status(); s.SSID != "Unlisted" || s.Signal != 70 {

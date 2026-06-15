@@ -8,7 +8,7 @@ import (
 	"github.com/MateEke/picture-frame/internal/config"
 )
 
-func (m *Manager) doConnect(ctx context.Context, ssid, pass string) {
+func (m *Manager) doConnect(ctx context.Context, ssid, pass string, hidden bool) {
 	current := m.Status()
 	wasAP := current.Mode == ModeAP
 	if wasAP {
@@ -24,11 +24,7 @@ func (m *Manager) doConnect(ctx context.Context, ssid, pass string) {
 	next.LastConnectSSID = ""
 	m.setState(next)
 
-	args := []string{"--wait", "30", "device", "wifi", "connect", ssid}
-	if pass != "" {
-		args = append(args, "password", pass)
-	}
-	out, err := m.nmcli.Output(ctx, "nmcli", args...)
+	out, err := m.runConnect(ctx, ssid, pass, hidden)
 	if err != nil {
 		m.log.Warn("wifi: connect failed", "ssid", ssid, "err", err, "output", string(out))
 		m.recoverFromFailedConnect(ctx, next, ssid, prevSSID, wasAP)
@@ -44,6 +40,49 @@ func (m *Manager) doConnect(ctx context.Context, ssid, pass string) {
 	next.Signal = link.signal
 	next.Security = link.security
 	m.setState(next)
+}
+
+// runConnect associates with ssid. A password is a (re-)join, so any stale profile is
+// deleted first (nmcli errors on a pre-existing one); no password reuses the saved key.
+func (m *Manager) runConnect(ctx context.Context, ssid, pass string, hidden bool) ([]byte, error) {
+	if pass != "" {
+		// Delete by resolved name: provisioning tools don't name profiles after the SSID.
+		_ = m.forgetSSID(ctx, ssid)
+	}
+
+	if hidden {
+		return m.runHiddenConnect(ctx, ssid, pass)
+	}
+
+	args := []string{"--wait", "30", "device", "wifi", "connect", ssid}
+	if pass != "" {
+		args = append(args, "password", pass)
+	}
+	return m.nmcli.Output(ctx, "nmcli", args...)
+}
+
+// runHiddenConnect joins/reconnects a hidden network via a hidden=yes profile, since
+// device wifi connect can't probe a non-broadcasting SSID.
+func (m *Manager) runHiddenConnect(ctx context.Context, ssid, pass string) ([]byte, error) {
+	if pass != "" {
+		add := []string{"connection", "add", "type", "wifi", "con-name", ssid, "ssid", ssid,
+			"802-11-wireless.hidden", "yes", "wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", pass}
+		if out, err := m.nmcli.Output(ctx, "nmcli", add...); err != nil {
+			return out, err
+		}
+		return m.nmcli.Output(ctx, "nmcli", "--wait", "30", "connection", "up", ssid)
+	}
+
+	// No password: reconnect the saved profile, or create an open profile to join one.
+	name, ok := m.profileNameForSSID(ctx, ssid)
+	if !ok {
+		name = ssid
+		add := []string{"connection", "add", "type", "wifi", "con-name", ssid, "ssid", ssid, "802-11-wireless.hidden", "yes"}
+		if out, err := m.nmcli.Output(ctx, "nmcli", add...); err != nil {
+			return out, err
+		}
+	}
+	return m.nmcli.Output(ctx, "nmcli", "--wait", "30", "connection", "up", name)
 }
 
 // recoverFromFailedConnect cleans up after a failed connect and resolves state:
@@ -156,7 +195,9 @@ func (m *Manager) hasKnownNetwork(nets []WiFiNetwork) bool {
 
 func (m *Manager) connectToFirstKnown(ctx context.Context, nets []WiFiNetwork) error {
 	for _, network := range nets {
-		if !network.Known {
+		// Skip hidden profiles: a plain connect can't reach a non-broadcasting AP and
+		// would delete the profile on failure. NM autoconnect probes them instead.
+		if !network.Known || network.Hidden {
 			continue
 		}
 		args := []string{"--wait", "30", "device", "wifi", "connect", network.SSID}

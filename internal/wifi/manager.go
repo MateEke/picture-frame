@@ -49,6 +49,7 @@ type WiFiNetwork struct { //nolint:revive // name drives generated TypeScript ty
 	Signal   int    `json:"signal"`
 	Security string `json:"security"`
 	Known    bool   `json:"known"`
+	Hidden   bool   `json:"hidden"`
 }
 
 type Config struct {
@@ -84,6 +85,8 @@ type command struct {
 	// passSet distinguishes "no password supplied" (keep stored) from explicit ""
 	// (clear it / open AP). Only meaningful for actConfigure.
 	passSet bool
+	// hidden signals a non-broadcasting network NM won't find in a scan.
+	hidden  bool
 	enabled bool
 	result  chan error
 	scan    chan scanResult
@@ -145,9 +148,9 @@ func (m *Manager) Status() WiFiState {
 }
 
 // Connect enqueues a connection attempt. Returns nil (HTTP 202) or ErrBusy (HTTP 503).
-func (m *Manager) Connect(_ context.Context, ssid, pass string) error {
+func (m *Manager) Connect(_ context.Context, ssid, pass string, hidden bool) error {
 	select {
-	case m.commands <- command{action: actConnect, ssid: ssid, pass: pass}:
+	case m.commands <- command{action: actConnect, ssid: ssid, pass: pass, hidden: hidden}:
 		return nil
 	default:
 		return ErrBusy
@@ -216,6 +219,8 @@ const (
 	apCooldown      = 60 * time.Second
 	pollInterval    = 30 * time.Second
 	nmRetryInterval = 5 * time.Second
+	// recoverPollInterval re-polls fast while disconnected so an NM autoconnect shows up quickly.
+	recoverPollInterval = 5 * time.Second
 )
 
 // Run is the single writer of state; uses real time calls (testable via synctest).
@@ -232,6 +237,10 @@ func (m *Manager) Run(ctx context.Context) {
 
 		case cmd := <-m.commands:
 			repollSoon := m.handleCommand(ctx, cmd)
+			// A scan changes no state, so don't reset the poll (it would delay the next check).
+			if cmd.action == actScan {
+				continue
+			}
 			// A poll tick may have fired while the command ran; its NM read is now
 			// stale relative to the state the command just set, discard it.
 			if !poll.Stop() {
@@ -261,7 +270,7 @@ func (m *Manager) Run(ctx context.Context) {
 func (m *Manager) handleCommand(ctx context.Context, cmd command) (repollSoon bool) {
 	switch cmd.action {
 	case actConnect:
-		m.doConnect(ctx, cmd.ssid, cmd.pass)
+		m.doConnect(ctx, cmd.ssid, cmd.pass, cmd.hidden)
 
 	case actForget:
 		// Forgetting the active network drops the link. Reset booted so the next
@@ -369,6 +378,7 @@ func (m *Manager) onDisconnected(ctx context.Context, next WiFiState) time.Durat
 	m.setState(next)
 
 	if m.cfg.APSSID == "" {
+		// No AP timeout to bound a fast cadence, so stay on the normal interval.
 		m.apTimeoutUntil = time.Time{}
 		return pollInterval
 	}
@@ -381,8 +391,10 @@ func (m *Manager) onDisconnected(ctx context.Context, next WiFiState) time.Durat
 		m.activateAP(ctx)
 		m.setAPMode(next)
 		m.apTimeoutUntil = time.Time{}
+		return pollInterval
 	}
-	return pollInterval
+	// Counting down to AP: re-check soon to catch a reconnection (bounded by the timeout).
+	return recoverPollInterval
 }
 
 // bootFastTrackAP raises the hotspot immediately at boot when no known network is

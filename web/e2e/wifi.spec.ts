@@ -14,13 +14,22 @@ test.describe('wifi', () => {
 
 	test('scans and lists networks', async ({ wifi }) => {
 		await wifi.scan.click();
-		await expect(wifi.networks).toHaveCount(6);
+		await expect(wifi.networks).toHaveCount(7);
+	});
+
+	test('joins a hidden network by typing its SSID', async ({ wifi }) => {
+		await wifi.joinHidden.click();
+		await expect(wifi.hiddenDialog).toBeVisible();
+		await wifi.hiddenSsid.fill('MySecretNet');
+		await wifi.hiddenPassword.fill('hunter2');
+		await wifi.hiddenConnect.click();
+		await expect(wifi.banner).toContainText('Connected to MySecretNet', { timeout: 8000 });
 	});
 
 	test.describe('after scanning', () => {
 		test.beforeEach(async ({ wifi }) => {
 			await wifi.scan.click();
-			await expect(wifi.networks).toHaveCount(6);
+			await expect(wifi.networks).toHaveCount(7);
 		});
 
 		test('connects to a saved network in one click', async ({ wifi }) => {
@@ -42,6 +51,18 @@ test.describe('wifi', () => {
 			await expect(wifi.banner).toContainText('Connected to Home-WiFi-5G', { timeout: 8000 });
 		});
 
+		test('only the active network shows Connected after switching', async ({ wifi }) => {
+			const connectedBadges = wifi.networks.getByText('Connected', { exact: true });
+			await expect(connectedBadges).toHaveCount(1); // Home-WiFi is active at start
+			await wifi.connectButton('OldRouter').click();
+			await expect(wifi.banner).toContainText('Connected to OldRouter', { timeout: 8000 });
+			// The badge must move, not duplicate.
+			await expect(connectedBadges).toHaveCount(1);
+			await expect(
+				wifi.networks.filter({ hasText: 'OldRouter' }).getByText('Connected', { exact: true })
+			).toBeVisible();
+		});
+
 		test('marks WPA3-only networks unsupported (no connect)', async ({ wifi }) => {
 			await expect(wifi.connectButton('SecureCorp')).toHaveCount(0);
 		});
@@ -51,6 +72,15 @@ test.describe('wifi', () => {
 			await expect(wifi.forgetDialog).toBeVisible();
 			await wifi.forgetConfirm.click();
 			await expect(wifi.forgetButton('OldRouter')).toHaveCount(0);
+		});
+
+		test('shows and forgets a saved hidden network', async ({ wifi }) => {
+			const row = wifi.networks.filter({ hasText: 'Hidden-Office' });
+			await expect(row.getByText('Hidden', { exact: true })).toBeVisible();
+			await wifi.forgetButton('Hidden-Office').click();
+			await expect(wifi.forgetDialog).toBeVisible();
+			await wifi.forgetConfirm.click();
+			await expect(wifi.forgetButton('Hidden-Office')).toHaveCount(0);
 		});
 	});
 

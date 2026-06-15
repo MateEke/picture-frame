@@ -10,6 +10,11 @@ export class WifiPage {
 	readonly dialogConnect: Locator;
 	readonly forgetDialog: Locator;
 	readonly forgetConfirm: Locator;
+	readonly joinHidden: Locator;
+	readonly hiddenDialog: Locator;
+	readonly hiddenSsid: Locator;
+	readonly hiddenPassword: Locator;
+	readonly hiddenConnect: Locator;
 	readonly unavailable: Locator;
 	readonly apCard: Locator;
 	readonly apSsid: Locator;
@@ -27,6 +32,11 @@ export class WifiPage {
 		this.dialogConnect = page.getByTestId('wifi-dialog-connect');
 		this.forgetDialog = page.getByTestId('wifi-forget-dialog');
 		this.forgetConfirm = page.getByTestId('wifi-forget-confirm');
+		this.joinHidden = page.getByTestId('wifi-join-hidden');
+		this.hiddenDialog = page.getByTestId('wifi-hidden-dialog');
+		this.hiddenSsid = page.getByTestId('wifi-hidden-ssid');
+		this.hiddenPassword = page.getByTestId('wifi-hidden-password');
+		this.hiddenConnect = page.getByTestId('wifi-hidden-connect');
 		this.unavailable = page.getByTestId('wifi-unavailable');
 		this.apCard = page.getByTestId('wifi-ap');
 		this.apSsid = page.getByTestId('ap-ssid');

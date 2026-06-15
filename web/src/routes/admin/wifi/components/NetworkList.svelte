@@ -11,7 +11,8 @@
 		isConnecting,
 		onscan,
 		onconnect,
-		onforget
+		onforget,
+		onjoinhidden
 	}: {
 		networks: WiFiNetwork[];
 		status: WiFiState;
@@ -20,6 +21,7 @@
 		onscan: () => void;
 		onconnect: (net: WiFiNetwork) => void;
 		onforget: (net: WiFiNetwork) => void;
+		onjoinhidden: () => void;
 	} = $props();
 
 	function isActive(net: WiFiNetwork): boolean {
@@ -32,7 +34,7 @@
 
 {#snippet networkRow(net: WiFiNetwork)}
 	{const wpa3Only = isWPA3Only(net.security)}
-	{const active = isActive(net)}
+	{const active = $derived(isActive(net))}
 	<div
 		data-testid="wifi-net"
 		class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg p-3 {wpa3Only
@@ -44,6 +46,9 @@
 		<div class="flex w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto">
 			{#if net.security}
 				<span class="badge preset-tonal-surface text-xs">{net.security}</span>
+			{/if}
+			{#if net.hidden}
+				<span class="badge preset-tonal-surface text-xs">Hidden</span>
 			{/if}
 			{#if active}
 				<span class="badge preset-tonal-success text-xs">Connected</span>
@@ -79,15 +84,25 @@
 <div class="card bg-surface-100-900 reveal space-y-4 p-6">
 	<div class="flex items-center justify-between">
 		<h2 class="h4">Networks</h2>
-		<button
-			class="btn preset-tonal-surface btn-sm"
-			data-testid="wifi-scan"
-			onclick={onscan}
-			disabled={scanning || status.mode === 'connecting' || isConnecting}
-		>
-			<RefreshCwIcon class="size-4 {scanning ? 'animate-spin' : ''}" />
-			{scanning ? 'Scanning…' : 'Scan'}
-		</button>
+		<div class="flex items-center gap-2">
+			<button
+				class="btn preset-tonal-surface btn-sm"
+				data-testid="wifi-join-hidden"
+				onclick={onjoinhidden}
+				disabled={status.mode === 'connecting' || isConnecting}
+			>
+				Join hidden
+			</button>
+			<button
+				class="btn preset-tonal-surface btn-sm"
+				data-testid="wifi-scan"
+				onclick={onscan}
+				disabled={scanning || status.mode === 'connecting' || isConnecting}
+			>
+				<RefreshCwIcon class="size-4 {scanning ? 'animate-spin' : ''}" />
+				{scanning ? 'Scanning…' : 'Scan'}
+			</button>
+		</div>
 	</div>
 
 	{#if networks.length === 0}
