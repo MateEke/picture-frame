@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
 	import { restartFrame } from '$lib/config';
 
 	let {
@@ -45,39 +46,54 @@
 	});
 </script>
 
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-	{#if restarting}
-		<div class="card bg-surface-50-950 w-full max-w-sm space-y-4 p-6 text-center shadow-xl">
-			<p class="text-lg font-semibold">Restarting…</p>
-			<p class="text-surface-500-400 text-sm">Waiting for the frame to come back online.</p>
-		</div>
-	{:else}
-		<div
-			data-testid="restart-dialog"
-			class="card bg-surface-50-950 w-full max-w-sm space-y-4 p-6 shadow-xl"
-		>
-			<h3 class="h4">Restart frame?</h3>
-			<p class="text-surface-600-300 text-sm">
-				The frame will restart and be unreachable for a few seconds. Unsaved changes will be lost.
-			</p>
-			<div class="flex justify-end gap-2">
-				<button
-					type="button"
-					class="btn preset-tonal-surface"
-					data-testid="restart-cancel"
-					onclick={oncancel}
+<Dialog
+	open
+	onOpenChange={(d: { open: boolean }) => {
+		if (!d.open && !restarting) oncancel();
+	}}
+>
+	<Portal>
+		<Dialog.Backdrop class="fixed inset-0 z-50 bg-black/50" />
+		<Dialog.Positioner class="fixed inset-0 z-50 flex items-center justify-center p-4">
+			{#if restarting}
+				<Dialog.Content
+					class="card bg-surface-100-900 w-full max-w-sm space-y-4 p-6 text-center shadow-xl"
 				>
-					Cancel
-				</button>
-				<button
-					type="button"
-					class="btn preset-tonal-error"
-					data-testid="restart-confirm"
-					onclick={handleConfirm}
+					<Dialog.Title class="text-lg font-semibold">Restarting…</Dialog.Title>
+					<Dialog.Description class="text-surface-500-400 text-sm">
+						Waiting for the frame to come back online.
+					</Dialog.Description>
+				</Dialog.Content>
+			{:else}
+				<Dialog.Content
+					data-testid="restart-dialog"
+					class="card bg-surface-100-900 w-full max-w-sm space-y-4 p-6 shadow-xl"
 				>
-					Restart
-				</button>
-			</div>
-		</div>
-	{/if}
-</div>
+					<Dialog.Title class="h4">Restart frame?</Dialog.Title>
+					<Dialog.Description class="text-surface-600-300 text-sm">
+						The frame will restart and be unreachable for a few seconds. Unsaved changes will be
+						lost.
+					</Dialog.Description>
+					<div class="flex justify-end gap-2">
+						<button
+							type="button"
+							class="btn preset-tonal-surface"
+							data-testid="restart-cancel"
+							onclick={oncancel}
+						>
+							Cancel
+						</button>
+						<button
+							type="button"
+							class="btn preset-tonal-error"
+							data-testid="restart-confirm"
+							onclick={handleConfirm}
+						>
+							Restart
+						</button>
+					</div>
+				</Dialog.Content>
+			{/if}
+		</Dialog.Positioner>
+	</Portal>
+</Dialog>

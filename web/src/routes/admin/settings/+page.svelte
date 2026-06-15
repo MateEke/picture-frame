@@ -150,7 +150,10 @@
 		saveError = null;
 		const result = await saveConfig(draft);
 		saving = false;
-		if (result.ok) return;
+		if (result.ok) {
+			if (result.restart_pending) showRestartDialog = true;
+			return;
+		}
 		saveError = result.detail;
 		// Open the section the backend named.
 		const section = sectionFromDetail(result.detail);

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { SensorDto, ConfigMetaBody } from '$lib/api/types.gen';
 	import { untrack } from 'svelte';
+	import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
 	import { RadioIcon } from '@lucide/svelte';
 	import Field from './Field.svelte';
 	import BleFields from './BleFields.svelte';
@@ -94,83 +95,91 @@
 	}
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && onCancel()} />
-
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-	<form
-		class="card bg-surface-50-950 max-h-[90vh] w-full max-w-lg space-y-5 overflow-y-auto p-6 shadow-xl"
-		onsubmit={handleSubmit}
-	>
-		<h3 class="h4 flex items-center gap-2">
-			<RadioIcon class="text-primary-500 size-5" />
-			{isNew ? 'Add sensor' : 'Edit sensor'}
-		</h3>
-
-		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-			<Field label="ID" help="Unique name for this sensor." error={idConflict}>
-				<input
-					class="input"
-					type="text"
-					bind:value={draft.id}
-					placeholder="sensor1"
-					required
-					data-testid="sensor-dialog-id"
-				/>
-			</Field>
-			<Field label="Role" help="Groups readings on the frame, e.g. inside or outside.">
-				<input
-					class="input"
-					type="text"
-					bind:value={draft.role}
-					placeholder="inside"
-					required
-					data-testid="sensor-dialog-role"
-				/>
-			</Field>
-		</div>
-
-		<Field label="Type" help="Bluetooth (BLE), an MQTT topic, or a built-in mock source.">
-			<select
-				class="select"
-				value={draft.type}
-				onchange={(e) => (draft.type = toSensorType(e.currentTarget.value) ?? draft.type)}
+<Dialog
+	open
+	onOpenChange={(d: { open: boolean }) => {
+		if (!d.open) onCancel();
+	}}
+>
+	<Portal>
+		<Dialog.Backdrop class="fixed inset-0 z-50 bg-black/50" />
+		<Dialog.Positioner class="fixed inset-0 z-50 flex items-center justify-center p-4">
+			<Dialog.Content
+				class="card bg-surface-100-900 max-h-[90vh] w-full max-w-lg overflow-y-auto p-6 shadow-xl"
 			>
-				{#each meta.sensor_types ?? [] as t (t)}
-					<option value={t}>{TYPE_LABELS[t] ?? t}</option>
-				{/each}
-			</select>
-		</Field>
+				<Dialog.Title class="h4 flex items-center gap-2">
+					<RadioIcon class="text-primary-500 size-5" />
+					{isNew ? 'Add sensor' : 'Edit sensor'}
+				</Dialog.Title>
+				<form class="mt-5 space-y-5" onsubmit={handleSubmit}>
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+						<Field label="ID" help="Unique name for this sensor." error={idConflict}>
+							<input
+								class="input"
+								type="text"
+								bind:value={draft.id}
+								placeholder="sensor1"
+								required
+								data-testid="sensor-dialog-id"
+							/>
+						</Field>
+						<Field label="Role" help="Groups readings on the frame, e.g. inside or outside.">
+							<input
+								class="input"
+								type="text"
+								bind:value={draft.role}
+								placeholder="inside"
+								required
+								data-testid="sensor-dialog-role"
+							/>
+						</Field>
+					</div>
 
-		{#if draft.type === 'ble'}
-			<BleFields bind:draft {meta} />
-		{:else if draft.type === 'mqtt-subscriber'}
-			<MqttSubscriberFields bind:draft {meta} />
-		{:else if draft.type === 'mock'}
-			<MockFields bind:draft {meta} />
-		{/if}
+					<Field label="Type" help="Bluetooth (BLE), an MQTT topic, or a built-in mock source.">
+						<select
+							class="select"
+							value={draft.type}
+							onchange={(e) => (draft.type = toSensorType(e.currentTarget.value) ?? draft.type)}
+						>
+							{#each meta.sensor_types ?? [] as t (t)}
+								<option value={t}>{TYPE_LABELS[t] ?? t}</option>
+							{/each}
+						</select>
+					</Field>
 
-		{#if typeError}
-			<p class="text-error-500 text-sm">{typeError}</p>
-		{/if}
-		{#if roleKindConflict}
-			<p class="text-error-500 text-sm">{roleKindConflict}</p>
-		{/if}
+					{#if draft.type === 'ble'}
+						<BleFields bind:draft {meta} />
+					{:else if draft.type === 'mqtt-subscriber'}
+						<MqttSubscriberFields bind:draft {meta} />
+					{:else if draft.type === 'mock'}
+						<MockFields bind:draft {meta} />
+					{/if}
 
-		<div class="flex justify-end gap-2 pt-2">
-			<button
-				type="button"
-				class="btn preset-tonal-surface"
-				onclick={onCancel}
-				data-testid="sensor-dialog-cancel">Cancel</button
-			>
-			<button
-				type="submit"
-				class="btn preset-tonal-primary"
-				disabled={!canSave}
-				data-testid="sensor-dialog-save"
-			>
-				{isNew ? 'Add' : 'Save'}
-			</button>
-		</div>
-	</form>
-</div>
+					{#if typeError}
+						<p class="text-error-500 text-sm">{typeError}</p>
+					{/if}
+					{#if roleKindConflict}
+						<p class="text-error-500 text-sm">{roleKindConflict}</p>
+					{/if}
+
+					<div class="flex justify-end gap-2 pt-2">
+						<button
+							type="button"
+							class="btn preset-tonal-surface"
+							onclick={onCancel}
+							data-testid="sensor-dialog-cancel">Cancel</button
+						>
+						<button
+							type="submit"
+							class="btn preset-tonal-primary"
+							disabled={!canSave}
+							data-testid="sensor-dialog-save"
+						>
+							{isNew ? 'Add' : 'Save'}
+						</button>
+					</div>
+				</form>
+			</Dialog.Content>
+		</Dialog.Positioner>
+	</Portal>
+</Dialog>
