@@ -63,10 +63,15 @@ export function timeAgo(iso: string, now = Date.now()): string {
 // Threshold for treating a sensor reading as stale.
 export const SENSOR_STALE_MS = 10 * 60 * 1000;
 
-/** Returns true if the ISO timestamp is absent or older than maxAgeMs. */
-export function isSensorStale(timestamp: string | undefined, maxAgeMs = SENSOR_STALE_MS): boolean {
+// True if the timestamp is absent or older than maxAgeMs. `now` is injectable so a
+// reactive caller can pass a ticking clock (and for tests); defaults to the wall clock.
+export function isSensorStale(
+	timestamp: string | undefined,
+	maxAgeMs = SENSOR_STALE_MS,
+	now = Date.now()
+): boolean {
 	if (!timestamp) return true;
-	return Date.now() - new Date(timestamp).getTime() > maxAgeMs;
+	return now - new Date(timestamp).getTime() > maxAgeMs;
 }
 
 /**
