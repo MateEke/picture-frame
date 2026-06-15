@@ -1,15 +1,32 @@
-# picture-frame
+<div align="center">
+
+# Picture Frame
+
+**A self-hosted digital picture frame for the Raspberry Pi.**
+
+Your photos beside the time, the weather, and the real temperature in your rooms. Motion-aware,
+private, and plugged into Home Assistant.
+
+[![Documentation](https://img.shields.io/badge/Documentation-4F46E5?style=for-the-badge)](https://picture-frame-2kf.pages.dev)
+&nbsp;
+[![Install](https://img.shields.io/badge/Install-334155?style=for-the-badge)](#install)
+&nbsp;
+[![Contributing](https://img.shields.io/badge/Contributing-334155?style=for-the-badge)](CONTRIBUTING.md)
+
+<br>
 
 [![CI](https://github.com/MateEke/picture-frame/actions/workflows/ci.yml/badge.svg)](https://github.com/MateEke/picture-frame/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/MateEke/picture-frame)](https://github.com/MateEke/picture-frame/releases/latest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/MateEke/picture-frame)](https://goreportcard.com/report/github.com/MateEke/picture-frame)
 [![License](https://img.shields.io/github/license/MateEke/picture-frame)](LICENSE)
 
-A self-hosted digital picture frame for low-power devices like the Raspberry Pi, written in Go and
-Svelte. It runs as a single static binary that serves both the on-screen kiosk display and a
-browser admin interface, so you configure everything without re-flashing.
+</div>
 
 ![The frame showing a photo with the time, date, and indoor and outdoor readings](docs/src/assets/screenshots/kiosk.png)
+
+It runs as a single static binary that serves both the on-screen kiosk display and a browser admin
+interface, so you set everything up without re-flashing. It is light enough for a Raspberry Pi Zero
+W driving an HD screen, and written in Go and Svelte.
 
 ## Highlights
 
@@ -30,6 +47,12 @@ browser admin interface, so you configure everything without re-flashing.
   offline, even air-gapped.
 - **Highly customizable:** every option is set from the admin interface and saved to a TOML file.
 
+## Documentation
+
+The full documentation lives at **<https://picture-frame-2kf.pages.dev>**. It covers installation,
+a guided tour of the admin interface, every configuration option, and the engineering notes behind
+the project.
+
 ## Install
 
 On a fresh Raspberry Pi OS Trixie Lite, reachable over SSH:
@@ -40,11 +63,6 @@ curl -fsSL https://github.com/MateEke/picture-frame/releases/latest/download/ins
 
 See the [Install guide](https://picture-frame-2kf.pages.dev/getting-started/install/) for the
 requirements, options, and first setup.
-
-## Documentation
-
-The full documentation, covering installation, the admin interface, every configuration option, and
-the engineering notes behind the project, is at **<https://picture-frame-2kf.pages.dev>**.
 
 ## Development
 

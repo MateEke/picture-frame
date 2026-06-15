@@ -32,6 +32,7 @@ export class SettingsPage {
 	readonly autoUpdateSwitch: Locator;
 	readonly updateHour: Locator;
 	readonly githubRepo: Locator;
+	readonly docs: Locator;
 
 	constructor(private readonly page: Page) {
 		this.saveBar = page.getByTestId('settings-save-bar');
@@ -65,6 +66,7 @@ export class SettingsPage {
 		this.autoUpdateSwitch = page.getByTestId('auto-update-switch');
 		this.updateHour = page.getByTestId('update-hour');
 		this.githubRepo = page.getByTestId('github-repo');
+		this.docs = page.getByTestId('settings-docs');
 	}
 
 	sensorRow(id: string): Locator {

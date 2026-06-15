@@ -1,7 +1,15 @@
 <script lang="ts">
 	import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
-	import { ImageIcon, ChevronDownIcon, RefreshCwIcon } from '@lucide/svelte';
+	import {
+		ImageIcon,
+		ChevronDownIcon,
+		RefreshCwIcon,
+		CodeXmlIcon,
+		BookOpenIcon,
+		ExternalLinkIcon
+	} from '@lucide/svelte';
 	import { loadLicenses, checkForUpdate } from '$lib/updater';
+	import { REPO_URL, DOCS_URL } from '$lib/links';
 
 	let {
 		open,
@@ -88,6 +96,31 @@
 					<RefreshCwIcon class="size-4 {checking ? 'animate-spin' : ''}" />
 					{checking ? 'Checking…' : 'Check for updates'}
 				</button>
+
+				<div class="border-surface-300-700 flex flex-wrap gap-x-5 gap-y-2 border-t pt-3 text-sm">
+					<a
+						href={REPO_URL}
+						target="_blank"
+						rel="external noreferrer"
+						class="text-surface-600-300 hover:text-primary-500 inline-flex items-center gap-1.5"
+						data-testid="about-github"
+					>
+						<CodeXmlIcon class="size-4" />
+						GitHub
+						<ExternalLinkIcon class="size-3.5 opacity-60" />
+					</a>
+					<a
+						href={DOCS_URL}
+						target="_blank"
+						rel="external noreferrer"
+						class="text-surface-600-300 hover:text-primary-500 inline-flex items-center gap-1.5"
+						data-testid="about-docs"
+					>
+						<BookOpenIcon class="size-4" />
+						Documentation
+						<ExternalLinkIcon class="size-3.5 opacity-60" />
+					</a>
+				</div>
 
 				<div class="border-surface-300-700 border-t pt-3">
 					<button
