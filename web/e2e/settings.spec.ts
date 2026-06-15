@@ -120,6 +120,10 @@ test.describe('settings', () => {
 		await settings.save.click();
 		await expect(settings.saveBar).toBeHidden();
 
+		await expect(settings.restartDialog).toBeVisible();
+		await settings.restartCancel.click();
+		await expect(settings.restartDialog).toBeHidden();
+
 		await expect(settings.restartNow).toBeVisible();
 		await settings.restartNow.click();
 		await expect(settings.restartDialog).toBeVisible();
