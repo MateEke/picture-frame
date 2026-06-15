@@ -25,9 +25,13 @@ export async function scanNetworks(): Promise<WiFiNetwork[]> {
 	return data ?? [];
 }
 
-export async function connectWiFi(ssid: string, password: string): Promise<boolean> {
+export async function connectWiFi(
+	ssid: string,
+	password: string,
+	hidden = false
+): Promise<boolean> {
 	try {
-		const { error, response } = await apiWifiConnect({ body: { ssid, password } });
+		const { error, response } = await apiWifiConnect({ body: { ssid, password, hidden } });
 		if (!error) return true;
 		if (response?.status === 503) {
 			toaster.error({ title: 'WiFi busy', description: 'Another connection is in progress.' });

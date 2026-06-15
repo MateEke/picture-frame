@@ -62,6 +62,29 @@ func (f *fakeCommander) called(substr string) bool {
 	return false
 }
 
+// calledBefore reports whether a call containing first was recorded before any
+// call containing second.
+func (f *fakeCommander) calledBefore(first, second string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	firstIdx := -1
+	for i, c := range f.calls {
+		if strings.Contains(c, first) {
+			firstIdx = i
+			break
+		}
+	}
+	if firstIdx == -1 {
+		return false
+	}
+	for _, c := range f.calls[firstIdx+1:] {
+		if strings.Contains(c, second) {
+			return true
+		}
+	}
+	return false
+}
+
 // bootWait advances the fake clock past radioSettle so post-boot assertions don't race.
 func bootWait(t *testing.T) {
 	t.Helper()
@@ -275,6 +298,20 @@ func TestRunDormantNeverRaisesAP(t *testing.T) {
 	})
 }
 
+func TestOnDisconnectedRechecksQuicklyWhileWaiting(t *testing.T) {
+	// While disconnected and counting down to AP, re-poll on the fast cadence so an
+	// NM autoconnect is reflected within seconds, not a full poll interval.
+	f := newFake()
+	f.set("nmcli -t -f NAME,TYPE,STATE connection show --active", "", nil) // AP not active
+	m := newTestManager(defaultCfg(), f)
+	m.booted = true // past boot, so no fast-track scan
+
+	d := m.onDisconnected(context.Background(), WiFiState{})
+	if d != recoverPollInterval {
+		t.Errorf("disconnected recheck interval: got %v, want %v", d, recoverPollInterval)
+	}
+}
+
 func TestRunAPActivatesAfterTimeout(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		f := newFake()
@@ -310,13 +347,13 @@ func TestConnectEnqueuesAndReturnsBusy(t *testing.T) {
 	m := newTestManager(defaultCfg(), newFake())
 	// Fill command channel.
 	for range commandsBufferSize {
-		err := m.Connect(context.Background(), "net", "pass")
+		err := m.Connect(context.Background(), "net", "pass", false)
 		if err != nil && !errors.Is(err, ErrBusy) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	}
 	// Next call must return ErrBusy.
-	if err := m.Connect(context.Background(), "net", "pass"); !errors.Is(err, ErrBusy) {
+	if err := m.Connect(context.Background(), "net", "pass", false); !errors.Is(err, ErrBusy) {
 		t.Errorf("expected ErrBusy, got %v", err)
 	}
 }
@@ -487,6 +524,7 @@ func TestScanReturnsParsedNetworks(t *testing.T) {
 		// "hotspot" is a wifi profile too but is excluded from known networks.
 		f.set("nmcli -t -f NAME,TYPE connection show", "netplan-wlan0-HomeWiFi:802-11-wireless\nhotspot:802-11-wireless", nil)
 		f.set("nmcli -g 802-11-wireless.ssid connection show netplan-wlan0-HomeWiFi", "HomeWiFi", nil)
+		f.set("nmcli -g 802-11-wireless.hidden connection show netplan-wlan0-HomeWiFi", "no", nil)
 
 		m := newTestManager(defaultCfg(), f)
 		ctx, cancel := context.WithCancel(context.Background())
@@ -508,6 +546,81 @@ func TestScanReturnsParsedNetworks(t *testing.T) {
 		guest := nets[1]
 		if guest.SSID != "GuestNet" || guest.Security != "WPA3" || guest.Known {
 			t.Errorf("GuestNet: %+v", guest)
+		}
+	})
+}
+
+func TestScanMergesSavedHiddenNetworkNotInScan(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFake()
+		setupConnectedFake(f, "HomeWiFi")
+		f.set("nmcli device wifi rescan", "", nil)
+		f.set("nmcli -t -f SSID,BSSID,MODE,CHAN,RATE,SIGNAL,BARS,SECURITY device wifi list",
+			"HomeWiFi:AA\\:BB\\:CC\\:DD\\:EE\\:FF:Infra:6:130 Mbit/s:80:▂▄▆█:WPA2", nil)
+		f.set("nmcli -t -f NAME,TYPE connection show",
+			"netplan-wlan0-HomeWiFi:802-11-wireless\nSecretNet:802-11-wireless\nhotspot:802-11-wireless", nil)
+		f.set("nmcli -g 802-11-wireless.ssid connection show netplan-wlan0-HomeWiFi", "HomeWiFi", nil)
+		f.set("nmcli -g 802-11-wireless.ssid connection show SecretNet", "SecretNet", nil)
+		f.set("nmcli -g 802-11-wireless.hidden connection show netplan-wlan0-HomeWiFi", "no", nil)
+		f.set("nmcli -g 802-11-wireless.hidden connection show SecretNet", "yes", nil)
+
+		m := newTestManager(defaultCfg(), f)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go m.Run(ctx)
+		bootWait(t)
+
+		nets, err := m.Scan(ctx)
+		if err != nil {
+			t.Fatalf("Scan: %v", err)
+		}
+		var secret *WiFiNetwork
+		for i := range nets {
+			if nets[i].SSID == "SecretNet" {
+				secret = &nets[i]
+			}
+		}
+		if secret == nil {
+			t.Fatal("saved hidden network SecretNet should be merged into the list")
+		}
+		if !secret.Known || !secret.Hidden {
+			t.Errorf("SecretNet should be Known+Hidden, got %+v", *secret)
+		}
+	})
+}
+
+func TestScanDoesNotDuplicateHiddenNetworkAlreadyVisible(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFake()
+		setupConnectedFake(f, "HomeWiFi")
+		f.set("nmcli device wifi rescan", "", nil)
+		f.set("nmcli -t -f SSID,BSSID,MODE,CHAN,RATE,SIGNAL,BARS,SECURITY device wifi list",
+			"SecretNet:BE\\:EF\\:CA\\:FE\\:00\\:01:Infra:6:130 Mbit/s:60:▂▄▆_:WPA2", nil)
+		f.set("nmcli -t -f NAME,TYPE connection show", "SecretNet:802-11-wireless\nhotspot:802-11-wireless", nil)
+		f.set("nmcli -g 802-11-wireless.ssid connection show SecretNet", "SecretNet", nil)
+		f.set("nmcli -g 802-11-wireless.hidden connection show SecretNet", "yes", nil)
+
+		m := newTestManager(defaultCfg(), f)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go m.Run(ctx)
+		bootWait(t)
+
+		nets, err := m.Scan(ctx)
+		if err != nil {
+			t.Fatalf("Scan: %v", err)
+		}
+		count := 0
+		for _, n := range nets {
+			if n.SSID == "SecretNet" {
+				count++
+				if !n.Known {
+					t.Errorf("visible SecretNet should be Known, got %+v", n)
+				}
+			}
+		}
+		if count != 1 {
+			t.Errorf("SecretNet should appear exactly once, got %d rows", count)
 		}
 	})
 }
@@ -569,7 +682,7 @@ func TestDoConnectSuccessFromConnected(t *testing.T) {
 	// Seed a stale failure to prove a subsequent success clears it.
 	m.setState(WiFiState{Mode: ModeConnected, SSID: "HomeWiFi", APEnabled: true, LastConnectError: "stale", LastConnectSSID: "Old"})
 
-	m.doConnect(context.Background(), "NewNet", "secret")
+	m.doConnect(context.Background(), "NewNet", "secret", false)
 
 	// The previous network must be kept (forgetting is an explicit user action).
 	if f.called("connection delete HomeWiFi") {
@@ -602,7 +715,7 @@ func TestDoConnectFailureRevertsToPreviousNetwork(t *testing.T) {
 	m := newTestManager(defaultCfg(), f)
 	m.setState(WiFiState{Mode: ModeConnected, SSID: "HomeWiFi", IP: "192.168.1.5", APEnabled: true})
 
-	m.doConnect(context.Background(), "BadNet", "wrong")
+	m.doConnect(context.Background(), "BadNet", "wrong", false)
 
 	if !f.called("connection delete BadNet") {
 		t.Error("should delete leftover profile on failure")
@@ -640,7 +753,7 @@ func TestDoConnectFailurePreviousGoneStaysDisconnected(t *testing.T) {
 	m := newTestManager(defaultCfg(), f)
 	m.setState(WiFiState{Mode: ModeConnected, SSID: "HomeWiFi", IP: "192.168.1.5", APEnabled: true})
 
-	m.doConnect(context.Background(), "BadNet", "wrong")
+	m.doConnect(context.Background(), "BadNet", "wrong", false)
 
 	s := m.Status()
 	if s.Mode != ModeDisconnected {
@@ -668,7 +781,7 @@ func TestDoConnectFromAPMode(t *testing.T) {
 
 		done := make(chan struct{})
 		go func() {
-			m.doConnect(context.Background(), "HomeNet", "mypass")
+			m.doConnect(context.Background(), "HomeNet", "mypass", false)
 			close(done)
 		}()
 		// doConnect sleeps radioSettle after deactivating AP.
@@ -699,7 +812,7 @@ func TestDoConnectFromAPFailureReactivatesAP(t *testing.T) {
 
 		done := make(chan struct{})
 		go func() {
-			m.doConnect(context.Background(), "BadNet", "x")
+			m.doConnect(context.Background(), "BadNet", "x", false)
 			close(done)
 		}()
 		synctest.Wait()
@@ -847,6 +960,28 @@ func TestConnectToFirstKnownSkipsNonKnown(t *testing.T) {
 	}
 	if !f.called("connect HomeWiFi") {
 		t.Error("should connect to known network HomeWiFi")
+	}
+}
+
+func TestConnectToFirstKnownSkipsHidden(t *testing.T) {
+	// A merged out-of-range hidden network is Known; the reconnect path must skip it
+	// (a plain connect can't reach it and would delete the profile on failure).
+	f := newFake()
+
+	m := newTestManager(defaultCfg(), f)
+
+	nets := []WiFiNetwork{
+		{SSID: "SecretNet", Known: true, Hidden: true},
+	}
+	err := m.connectToFirstKnown(context.Background(), nets)
+	if err == nil {
+		t.Error("expected error: a hidden network is not reconnectable here")
+	}
+	if f.called("connect SecretNet") {
+		t.Error("must not attempt a plain connect to a hidden network")
+	}
+	if f.called("connection delete SecretNet") {
+		t.Error("must not delete the saved hidden profile")
 	}
 }
 
@@ -1144,6 +1279,181 @@ func TestConfigureReflectsAPEnabled(t *testing.T) {
 			t.Fatal("APEnabled still true after disable")
 		}
 	})
+}
+
+func TestDoConnectHiddenCreatesHiddenProfile(t *testing.T) {
+	f := newFake()
+	f.set("nmcli connection add type wifi con-name SecretNet", "", nil)
+	f.set("nmcli --wait 30 connection up SecretNet", "", nil)
+	f.set("nmcli -t -f ACTIVE,SSID,SIGNAL,SECURITY device wifi", "yes:SecretNet:70:WPA2", nil)
+	f.set("nmcli -t -f IP4.ADDRESS device show wlan0", "IP4.ADDRESS[1]:10.0.0.2/24", nil)
+
+	m := newTestManager(defaultCfg(), f)
+	m.setState(WiFiState{Mode: ModeConnected, SSID: "HomeWiFi"})
+
+	m.doConnect(context.Background(), "SecretNet", "secret", true)
+
+	// device wifi connect can't probe a non-broadcasting SSID; a hidden join must
+	// build a hidden=yes profile and bring it up instead.
+	if f.called("device wifi connect SecretNet") {
+		t.Error("hidden connect must not use `device wifi connect`")
+	}
+	if !f.called("connection add type wifi con-name SecretNet") {
+		t.Error("hidden connect must create a profile for the SSID")
+	}
+	if !f.called("802-11-wireless.hidden yes") {
+		t.Error("hidden profile must set 802-11-wireless.hidden yes")
+	}
+	if !f.called("wifi-sec.psk secret") {
+		t.Error("hidden profile must carry the passphrase")
+	}
+	if !f.called("connection up SecretNet") {
+		t.Error("hidden connect must bring the profile up")
+	}
+	if s := m.Status(); s.Mode != ModeConnected || s.SSID != "SecretNet" {
+		t.Errorf("state after hidden connect: %+v", s)
+	}
+}
+
+func TestDoConnectNonHiddenOmitsHiddenFlag(t *testing.T) {
+	f := newFake()
+	f.set("nmcli --wait 30 device wifi connect PlainNet password pw", "", nil)
+	f.set("nmcli -t -f ACTIVE,SSID,SIGNAL,SECURITY device wifi", "yes:PlainNet:70:WPA2", nil)
+	f.set("nmcli -t -f IP4.ADDRESS device show wlan0", "IP4.ADDRESS[1]:10.0.0.3/24", nil)
+
+	m := newTestManager(defaultCfg(), f)
+	m.setState(WiFiState{Mode: ModeConnected, SSID: "HomeWiFi"})
+
+	m.doConnect(context.Background(), "PlainNet", "pw", false)
+
+	if !f.called("device wifi connect PlainNet password pw") {
+		t.Error("non-hidden connect command not issued")
+	}
+	if f.called("hidden yes") {
+		t.Error("non-hidden connect must not append 'hidden yes'")
+	}
+}
+
+func TestDoConnectPasswordDeletesStaleProfileFirst(t *testing.T) {
+	// nmcli's `device wifi connect ... password` errors on a pre-existing profile
+	// for the SSID, so a password (re-)join must delete any stale one first.
+	f := newFake()
+	f.set("nmcli -t -f NAME,TYPE connection show", "PlainNet:802-11-wireless\nhotspot:802-11-wireless", nil)
+	f.set("nmcli -g 802-11-wireless.ssid connection show PlainNet", "PlainNet", nil)
+	f.set("nmcli -g 802-11-wireless.hidden connection show PlainNet", "no", nil)
+	f.set("nmcli connection delete PlainNet", "", nil)
+	f.set("nmcli --wait 30 device wifi connect PlainNet password pw", "", nil)
+	f.set("nmcli -t -f ACTIVE,SSID,SIGNAL,SECURITY device wifi", "yes:PlainNet:70:WPA2", nil)
+	f.set("nmcli -t -f IP4.ADDRESS device show wlan0", "IP4.ADDRESS[1]:10.0.0.4/24", nil)
+
+	m := newTestManager(defaultCfg(), f)
+	m.setState(WiFiState{Mode: ModeConnected, SSID: "HomeWiFi"})
+
+	m.doConnect(context.Background(), "PlainNet", "pw", false)
+
+	if !f.calledBefore("connection delete PlainNet", "device wifi connect PlainNet") {
+		t.Error("a password connect must delete any stale profile before connecting")
+	}
+}
+
+func TestDoConnectPasswordDeletesRenamedProfileBySSID(t *testing.T) {
+	// rpi-imager names the wifi profile "preconfigured", not the SSID. A password
+	// connect must resolve it by SSID and delete it, else the connect chokes on it.
+	f := newFake()
+	f.set("nmcli -t -f NAME,TYPE connection show", "preconfigured:802-11-wireless\nhotspot:802-11-wireless", nil)
+	f.set("nmcli -g 802-11-wireless.ssid connection show preconfigured", "Thor", nil)
+	f.set("nmcli -g 802-11-wireless.hidden connection show preconfigured", "no", nil)
+	f.set("nmcli connection delete preconfigured", "", nil)
+	f.set("nmcli --wait 30 device wifi connect Thor password pw", "", nil)
+	f.set("nmcli -t -f ACTIVE,SSID,SIGNAL,SECURITY device wifi", "yes:Thor:70:WPA2", nil)
+	f.set("nmcli -t -f IP4.ADDRESS device show wlan0", "IP4.ADDRESS[1]:10.0.0.7/24", nil)
+
+	m := newTestManager(defaultCfg(), f)
+	m.setState(WiFiState{Mode: ModeDisconnected})
+
+	m.doConnect(context.Background(), "Thor", "pw", false)
+
+	if !f.called("connection delete preconfigured") {
+		t.Error("must delete the rpi-imager 'preconfigured' profile resolved by SSID")
+	}
+	if f.called("connection delete Thor") {
+		t.Error("must not blind-delete a profile literally named after the SSID")
+	}
+}
+
+func TestDoConnectNoPasswordKeepsStaleProfile(t *testing.T) {
+	// A one-click reconnect (no password) reuses the saved profile and its key, so it
+	// must not delete it.
+	f := newFake()
+	f.set("nmcli --wait 30 device wifi connect HomeWiFi", "", nil)
+	f.set("nmcli -t -f ACTIVE,SSID,SIGNAL,SECURITY device wifi", "yes:HomeWiFi:70:WPA2", nil)
+	f.set("nmcli -t -f IP4.ADDRESS device show wlan0", "IP4.ADDRESS[1]:10.0.0.6/24", nil)
+
+	m := newTestManager(defaultCfg(), f)
+	m.setState(WiFiState{Mode: ModeDisconnected})
+
+	m.doConnect(context.Background(), "HomeWiFi", "", false)
+
+	if f.called("connection delete HomeWiFi") {
+		t.Error("a no-password reconnect must not delete the saved profile")
+	}
+}
+
+func TestDoConnectHiddenReconnectUsesSavedProfile(t *testing.T) {
+	// Reconnecting a saved hidden network (no password) must bring the existing
+	// profile up by its resolved NM name, not delete-and-recreate it without the key.
+	f := newFake()
+	// Saved profile named by a provisioning tool, not the SSID.
+	f.set("nmcli -t -f NAME,TYPE connection show", "netplan-wlan0-SecretNet:802-11-wireless\nhotspot:802-11-wireless", nil)
+	f.set("nmcli -g 802-11-wireless.ssid connection show netplan-wlan0-SecretNet", "SecretNet", nil)
+	f.set("nmcli -g 802-11-wireless.hidden connection show netplan-wlan0-SecretNet", "yes", nil)
+	f.set("nmcli --wait 30 connection up netplan-wlan0-SecretNet", "", nil)
+	f.set("nmcli -t -f ACTIVE,SSID,SIGNAL,SECURITY device wifi", "yes:SecretNet:70:WPA2", nil)
+	f.set("nmcli -t -f IP4.ADDRESS device show wlan0", "IP4.ADDRESS[1]:10.0.0.5/24", nil)
+
+	m := newTestManager(defaultCfg(), f)
+	m.setState(WiFiState{Mode: ModeDisconnected})
+
+	m.doConnect(context.Background(), "SecretNet", "", true)
+
+	if !f.called("connection up netplan-wlan0-SecretNet") {
+		t.Error("hidden reconnect must bring the saved profile up by its resolved name")
+	}
+	if f.called("connection add") {
+		t.Error("hidden reconnect must not recreate the profile")
+	}
+	if f.called("connection delete") {
+		t.Error("hidden reconnect must not delete the saved profile")
+	}
+}
+
+func TestDoConnectOpenHiddenJoinCreatesProfile(t *testing.T) {
+	// Joining an open hidden network (hidden, empty password, no saved profile) must
+	// build an open hidden=yes profile and bring it up.
+	f := newFake()
+	f.set("nmcli -t -f NAME,TYPE connection show", "hotspot:802-11-wireless", nil) // no profile for the SSID
+	f.set("nmcli connection add type wifi con-name OpenHidden", "", nil)
+	f.set("nmcli --wait 30 connection up OpenHidden", "", nil)
+	f.set("nmcli -t -f ACTIVE,SSID,SIGNAL,SECURITY device wifi", "yes:OpenHidden:70:", nil)
+	f.set("nmcli -t -f IP4.ADDRESS device show wlan0", "IP4.ADDRESS[1]:10.0.0.8/24", nil)
+
+	m := newTestManager(defaultCfg(), f)
+	m.setState(WiFiState{Mode: ModeDisconnected})
+
+	m.doConnect(context.Background(), "OpenHidden", "", true)
+
+	if !f.called("connection add type wifi con-name OpenHidden") {
+		t.Error("open hidden join must create a profile")
+	}
+	if !f.called("802-11-wireless.hidden yes") {
+		t.Error("open hidden join profile must set hidden yes")
+	}
+	if f.called("wifi-sec") {
+		t.Error("open hidden join must not set any security")
+	}
+	if !f.called("connection up OpenHidden") {
+		t.Error("open hidden join must bring the new profile up")
+	}
 }
 
 // Disabling the AP while it is the active link must tear the hotspot down.

@@ -16,20 +16,24 @@ import (
 )
 
 type fakeWiFiMgr struct {
-	wifiState  wifi.WiFiState
-	networks   []wifi.WiFiNetwork
-	scanErr    error
-	connectErr error
-	forgetErr  error
-	configErr  error
-	forgotSSID string // records the ssid passed to Forget
+	wifiState     wifi.WiFiState
+	networks      []wifi.WiFiNetwork
+	scanErr       error
+	connectErr    error
+	forgetErr     error
+	configErr     error
+	forgotSSID    string // records the ssid passed to Forget
+	connectHidden bool   // records the hidden flag passed to Connect
 }
 
 func (f *fakeWiFiMgr) Status() wifi.WiFiState { return f.wifiState }
 func (f *fakeWiFiMgr) Scan(_ context.Context) ([]wifi.WiFiNetwork, error) {
 	return f.networks, f.scanErr
 }
-func (f *fakeWiFiMgr) Connect(_ context.Context, _, _ string) error { return f.connectErr }
+func (f *fakeWiFiMgr) Connect(_ context.Context, _, _ string, hidden bool) error {
+	f.connectHidden = hidden
+	return f.connectErr
+}
 func (f *fakeWiFiMgr) Forget(_ context.Context, ssid string) error {
 	f.forgotSSID = ssid
 	return f.forgetErr
@@ -147,6 +151,22 @@ func TestWiFiConnectMissingSSID(t *testing.T) {
 	srv.ServeHTTP(w, r)
 	if w.Code != http.StatusUnprocessableEntity {
 		t.Errorf("got %d, want 422", w.Code)
+	}
+}
+
+func TestWiFiConnectForwardsHidden(t *testing.T) {
+	mgr := &fakeWiFiMgr{}
+	srv := makeWiFiServer(mgr)
+	body := `{"ssid":"SecretNet","password":"x","hidden":true}`
+	r := httptest.NewRequest(http.MethodPost, "/api/wifi/connect", strings.NewReader(body))
+	r.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, r)
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("got %d, want 202", w.Code)
+	}
+	if !mgr.connectHidden {
+		t.Error("hidden flag was not forwarded to the manager")
 	}
 }
 

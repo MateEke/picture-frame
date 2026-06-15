@@ -43,6 +43,7 @@ func NewDefault(hostname string) *Manager {
 			{SSID: "Neighbour_2.4", Signal: 38, Security: "WPA2", Known: false},
 			{SSID: "Coffee Shop", Signal: 25, Security: "", Known: false},
 			{SSID: "OldRouter", Signal: 12, Security: "WPA2", Known: true},
+			{SSID: "Hidden-Office", Security: "WPA2", Known: true, Hidden: true},
 			{SSID: "SecureCorp", Signal: 55, Security: "WPA3", Known: false},
 		},
 	)
@@ -61,7 +62,7 @@ func (m *Manager) Scan(context.Context) ([]wifi.WiFiNetwork, error) {
 }
 
 // Connect simulates a successful association, adopting the target's signal/security.
-func (m *Manager) Connect(_ context.Context, ssid, _ string) error {
+func (m *Manager) Connect(_ context.Context, ssid, _ string, _ bool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.state.Mode = wifi.ModeConnected

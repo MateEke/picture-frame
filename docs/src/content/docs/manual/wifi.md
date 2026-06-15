@@ -24,6 +24,10 @@ A banner follows the attempt, from connecting through to success or the error th
 When the frame moves to a different network its address can change, so you reach it again at its
 hostname, such as `http://pictureframe-XXXX.local`.
 
+A hidden network does not show up in a scan. Use **Join hidden** above the network list, type its
+exact name and password, and the same banner follows the attempt. Leave the password empty for an
+open network.
+
 :::note[WPA3 networks]
 A WPA3-only network shows as **Unsupported** and cannot be joined: the onboard Wi-Fi on the
 supported Pis does not handle WPA3 reliably ([raspberrypi/linux #4718](https://github.com/raspberrypi/linux/issues/4718)).
@@ -36,6 +40,9 @@ that network to WPA2.
 Forgetting a saved network stops the frame from using it. If you forget the network it is
 currently on, the frame fast-tracks to another saved network in range, or raises its hotspot if
 there is none. The confirmation spells out which will happen before you commit.
+
+A hidden network you have joined still appears in the **Saved** list, tagged **Hidden**, even
+though it never shows up in a scan, so you forget it the same way.
 
 ## The hotspot fallback
 

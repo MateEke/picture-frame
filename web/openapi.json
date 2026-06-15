@@ -1338,6 +1338,10 @@
             "readOnly": true,
             "type": "string"
           },
+          "hidden": {
+            "description": "Whether the network is hidden (non-broadcasting)",
+            "type": "boolean"
+          },
           "password": {
             "description": "Network password",
             "type": "string"
@@ -1356,6 +1360,9 @@
       "WiFiNetwork": {
         "additionalProperties": false,
         "properties": {
+          "hidden": {
+            "type": "boolean"
+          },
           "known": {
             "type": "boolean"
           },
@@ -1374,7 +1381,8 @@
           "ssid",
           "signal",
           "security",
-          "known"
+          "known",
+          "hidden"
         ],
         "type": "object"
       },

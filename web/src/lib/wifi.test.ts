@@ -159,8 +159,24 @@ describe('wifi', () => {
 			await connectWiFi('HomeNet', 'secret');
 
 			expect(mockWifiConnect).toHaveBeenCalledWith(
-				expect.objectContaining({ body: { ssid: 'HomeNet', password: 'secret' } })
+				expect.objectContaining({ body: { ssid: 'HomeNet', password: 'secret', hidden: false } })
 			);
+		});
+
+		it('sends the hidden flag when joining a hidden network', async () => {
+			mockWifiConnect.mockResolvedValue({ error: undefined, response: { status: 202 } });
+			await connectWiFi('SecretNet', 'pw', true);
+			expect(mockWifiConnect).toHaveBeenCalledWith({
+				body: { ssid: 'SecretNet', password: 'pw', hidden: true }
+			});
+		});
+
+		it('defaults hidden to false for a normal connect', async () => {
+			mockWifiConnect.mockResolvedValue({ error: undefined, response: { status: 202 } });
+			await connectWiFi('PlainNet', 'pw');
+			expect(mockWifiConnect).toHaveBeenCalledWith({
+				body: { ssid: 'PlainNet', password: 'pw', hidden: false }
+			});
 		});
 
 		it('toasts and returns false on 503 busy', async () => {
@@ -395,7 +411,8 @@ describe('wifi', () => {
 			ssid,
 			signal,
 			security: 'WPA2',
-			known
+			known,
+			hidden: false
 		});
 
 		it('splits into saved (known) and available (unknown)', () => {
