@@ -40,10 +40,10 @@ A few things I might get to, with no promises on timing:
   that on the kiosk is probably too much for the Pi, so I'd first need to generate the backdrop
   earlier, at upload or sync time.
 - **Wired GPIO sensors.** A way to read motion, temperature, and humidity straight off the Pi's
-  GPIO, over something like I2C, so a unit can be fully self-contained with no broker or smart-home
-  setup. Bluetooth lets me put the motion sensor anywhere in the room, which helps a frame set back
-  on a shelf, but it is more to build, needs a battery in the end, and is less reliable. Wired
-  sensors trade that placement freedom for a simpler, sturdier build. People who visit keep asking
-  where to get a frame like this, and while it doesn't make sense as a product (a good screen isn't
-  cheap, framing costs more, and salvaged panels aren't a reliable supply), I'd like to build a few
-  simple units for less technical friends and family.
+  GPIO over I2C, so a unit is fully self-contained with no broker or smart-home setup. Bluetooth
+  lets the sensor pack sit anywhere in the room, which suits a frame set back on a shelf, but it is
+  more to build, needs a battery, and is less reliable. Wired sensors trade that placement freedom
+  for a simpler, sturdier build. Visitors keep asking where to get a frame like this. It would not
+  make sense as a product (a good screen isn't cheap, framing costs more, and salvaged panels aren't
+  a reliable supply), but I would happily build a few simple units for less technical friends and
+  family.

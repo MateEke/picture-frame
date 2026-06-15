@@ -30,6 +30,8 @@ export class DashboardPage {
 	readonly aboutLicensesToggle: Locator;
 	readonly aboutLicenses: Locator;
 	readonly aboutClose: Locator;
+	readonly aboutGithub: Locator;
+	readonly aboutDocs: Locator;
 
 	constructor(private readonly page: Page) {
 		this.heading = page.getByTestId('dashboard-heading');
@@ -61,6 +63,8 @@ export class DashboardPage {
 		this.aboutLicensesToggle = page.getByTestId('about-licenses-toggle');
 		this.aboutLicenses = page.getByTestId('about-licenses');
 		this.aboutClose = page.getByTestId('about-close');
+		this.aboutGithub = page.getByTestId('about-github');
+		this.aboutDocs = page.getByTestId('about-docs');
 	}
 
 	async goto(): Promise<void> {

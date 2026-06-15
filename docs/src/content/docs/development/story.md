@@ -4,7 +4,8 @@ description: Where this came from, and a few engineering problems worth writing 
 ---
 
 I built the first version in 2017. The Pi Zero W had just come out, and getting the whole thing to
-run on something that small was the appeal, more a challenge I set myself than a hardware choice.
+run on something that small and low-powered was the appeal. It was a challenge I enjoyed, and the
+low power and small size matter for something left running on a shelf.
 
 Back then it was three programs: a PyQt5 and QML kiosk on the Pi, a .NET Core server for uploads
 and sensors, and an Angular web app for the interface. Room sensors over Bluetooth, motion
@@ -17,16 +18,18 @@ That is the frame as it sits today. The panel is a salvaged laptop screen, and t
 next to it is 3D-printed, holding the sensors: an SHT21 for temperature and humidity, a cheap PIR
 module for motion, and an nRF51822 to handle Bluetooth. Because it is wireless, that sensor pack
 can sit anywhere in the room. In our last place it lived at the far end. Here it sits right next to
-the frame, as in the photo. It is dated hardware, and I will keep it running until it stops. After that I will probably read my other sensors through Home Assistant
-over MQTT instead. If I build a few more of these for family, I will likely swap the Bluetooth
-board for an I2C sensor adapter.
+the frame, as in the photo. It is old hardware, and I will keep using it until it gives out. When it
+does, I will most likely read my room sensors through Home Assistant over MQTT instead, which the
+frame already supports. And if I build a few of these for family, I would swap the Bluetooth board
+for a wired I2C sensor for a simpler build.
 
 ## Why rewrite it
 
-What pushed me to rebuild was the maintenance, not the features. The Pi client needed Qt
-cross-compiled with the eglfs backend to run without a desktop, a fragile day-long build that was
-very hard to reproduce after an SD card died. I kept image backups just to stay safe. I wanted
-something I could rebuild from scratch without ceremony.
+What pushed me to rebuild was mostly the maintenance, though I also wanted a few new features and a
+more modern stack. The Pi client needed Qt cross-compiled with the eglfs backend to run without a
+desktop, a fragile day-long build that was very hard to reproduce after an SD card died. I kept
+image backups just to stay safe. I wanted something I could tear down and rebuild from scratch
+quickly and predictably.
 
 So this version is one program: a single Go binary with the admin interface, a SvelteKit app on
 Svelte 5, built into it. No separate server, no Angular app, no database. The filesystem holds the
@@ -35,18 +38,19 @@ parts that took real work, and why they ended up looking the way they do.
 
 ## The crossfade
 
-Qt with eglfs handled the photo crossfade easily. Moving it to a browser on this hardware did not.
+Qt with eglfs had handled the photo crossfade easily. In a browser on this hardware, it turned into
+one of the hardest parts to get right.
 
 A plain Svelte transition was the obvious starting point, and it was far too heavy for the Zero W.
 Next I tried two image layers, swapping the hidden one and animating the opacity of both as they
 loaded. It stuttered, but it was closer. Then I kept the two layers but animated opacity only on
-the incoming image. In a proof of concept that ran well, so I built the rest on top of it.
+the incoming image. In a proof of concept it ran well, so I built the rest on top of it.
 
 It came apart once the overlay and the SSE listeners were in place. The fade-in stayed smooth, but
 the fade-out had become a sudden blip. The fix was to never animate a fade-out at all. The fader
 only ever fades the incoming image in over the current one. When that finishes, it copies the
 now-visible image down to the base layer and snaps the top layer back to invisible without
-animating. Every transition is a single fade-in, which is the one thing the Pi does smoothly.
+animating. Every transition is now a single fade-in, which the Pi Zero can render smoothly.
 
 ## Turning the screen off
 
@@ -86,9 +90,8 @@ installer rather than changing a setting.
 
 There was no single fix for memory. It was a constant concern through the whole build, showing up
 as small decisions everywhere: how photos are sized and served, how events move through the app,
-what the kiosk loads versus what only the admin interface needs. None of it is dramatic on its
-own. Together it is what keeps the whole stack, operating system included, inside 512 MB with room
-left for the browser.
+what the kiosk loads versus what only the admin interface needs. Added up, those small decisions are
+what keep the whole stack, operating system included, inside 512 MB with room left for the browser.
 
 ## Recovering on its own
 
@@ -108,7 +111,7 @@ only ever acts during an update in progress. An ordinary crash-loop never trigge
 that failed is recorded, skipped by future automatic updates, and surfaced once in the admin
 interface so you know what happened.
 
-Wi-Fi recovery is the simpler cousin of the same idea: lose the known network and the frame raises
+Wi-Fi recovery works on the same principle: lose the known network and the frame raises
 its own hotspot with a captive portal, so you can point it at a new one from your phone. See
 [Wi-Fi](/manual/wifi/) and [Software updates](/manual/updates/) for how both look in use.
 

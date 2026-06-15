@@ -18,6 +18,10 @@ test.describe('settings', () => {
 		await expect(settings.labelOutside).toHaveValue('E2E Changed');
 	});
 
+	test('links to the manual', async ({ settings }) => {
+		await expect(settings.docs).toHaveAttribute('href', /pages\.dev\/manual/);
+	});
+
 	test('blocks save on invalid input', async ({ settings }) => {
 		await settings.openSection('weather');
 		await settings.weatherLat.fill('999');

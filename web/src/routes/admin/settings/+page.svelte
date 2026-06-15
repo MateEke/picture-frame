@@ -16,8 +16,11 @@
 		TerminalIcon,
 		DownloadIcon,
 		ShieldCheckIcon,
-		ShieldOffIcon
+		ShieldOffIcon,
+		BookOpenIcon,
+		ExternalLinkIcon
 	} from '@lucide/svelte';
+	import { MANUAL_URL } from '$lib/links';
 	import { saveConfig } from '$lib/config';
 	import { createEmptyConfig, createEmptyMeta, configPayload, eq } from './utils';
 	import { validate, sectionFromDetail } from './validate';
@@ -215,9 +218,22 @@
 {/snippet}
 
 <div class="mx-auto max-w-3xl space-y-6 {dirty ? 'pb-20' : ''}">
-	<header class="space-y-1">
-		<h1 class="h2">Settings</h1>
-		<p class="text-surface-500-400 text-sm">Tune how your frame looks and behaves.</p>
+	<header class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+		<div class="space-y-1">
+			<h1 class="h2">Settings</h1>
+			<p class="text-surface-500-400 text-sm">Tune how your frame looks and behaves.</p>
+		</div>
+		<a
+			href={MANUAL_URL}
+			target="_blank"
+			rel="external noreferrer"
+			class="btn btn-sm preset-tonal-surface hover:preset-tonal-primary w-fit shrink-0 gap-1.5"
+			data-testid="settings-docs"
+		>
+			<BookOpenIcon class="size-4" />
+			Manual
+			<ExternalLinkIcon class="size-3.5 opacity-60" />
+		</a>
 	</header>
 
 	{#if data.config === null}

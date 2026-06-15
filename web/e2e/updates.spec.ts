@@ -13,6 +13,8 @@ test.describe('updates', () => {
 			await dashboard.openAbout();
 			await expect(dashboard.aboutVersion).toBeVisible();
 			await expect(dashboard.aboutCheck).toBeVisible();
+			await expect(dashboard.aboutGithub).toHaveAttribute('href', /github\.com/);
+			await expect(dashboard.aboutDocs).toHaveAttribute('href', /pages\.dev/);
 		});
 
 		test('installs from the dashboard, then the panel clears', async ({ dashboard }) => {
