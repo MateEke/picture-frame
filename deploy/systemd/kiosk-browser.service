@@ -30,5 +30,6 @@ RestartSec=10
 
 SupplementaryGroups=video render
 
+# WantedBy the backend so its start pulls the browser back (BindsTo/PartOf only propagate stop).
 [Install]
-WantedBy=multi-user.target
+WantedBy=multi-user.target kiosk-backend.service
