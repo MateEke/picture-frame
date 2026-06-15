@@ -194,6 +194,12 @@ describe('helpers', () => {
 			expect(isSensorStale(ts, 3000)).toBe(true);
 			expect(isSensorStale(ts, 10_000)).toBe(false);
 		});
+
+		it('measures staleness against an injected now (so a ticking clock fades it)', () => {
+			const ts = new Date(1_000_000).toISOString();
+			expect(isSensorStale(ts, SENSOR_STALE_MS, 1_000_000 + SENSOR_STALE_MS - 1)).toBe(false);
+			expect(isSensorStale(ts, SENSOR_STALE_MS, 1_000_000 + SENSOR_STALE_MS + 1)).toBe(true);
+		});
 	});
 
 	describe('resolveOutsideTemp', () => {

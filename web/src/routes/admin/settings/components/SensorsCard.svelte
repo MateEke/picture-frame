@@ -72,7 +72,7 @@
 			<p class="text-surface-500-400 py-2 text-sm">No sensors yet.</p>
 		{/if}
 		{#each sensors ?? [] as sensor (sensor.id)}
-			{const sensorError = errors?.[sensor.id]}
+			{const sensorError = $derived(errors?.[sensor.id])}
 			<div
 				data-testid="sensor-row-{sensor.id}"
 				class="rounded-lg border px-3 py-2 {sensorError

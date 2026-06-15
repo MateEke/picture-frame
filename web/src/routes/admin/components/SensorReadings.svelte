@@ -37,7 +37,7 @@
 <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-2">
 	{#each rows as { key, sensor } (key)}
 		{const Icon = kindIcon(sensor.kind)}
-		{const stale = isSensorStale(sensor.timestamp)}
+		{const stale = $derived(isSensorStale(sensor.timestamp, undefined, now))}
 		<div
 			data-testid="sensor-reading"
 			class="card bg-surface-100-900 reveal flex flex-col gap-1 p-3 {stale ? 'opacity-60' : ''}"
