@@ -16,7 +16,8 @@ It doesn't have a clever name. It's a picture frame.
   and low power, and the Zero 2 W is the one to get. A Pi 3 works too and is tested. The Pi 4
   and 5 are untested, and overkill for what this does. The installer detects the CPU (armv6,
   armv7, or arm64) on its own.
-- **A screen on HDMI.** A salvaged laptop panel on a driver board is very much the point.
+- **A screen on HDMI.** A salvaged laptop panel on a driver board is very much the point. See
+  [Hardware](/getting-started/hardware/) for how to drive one.
 - **Raspberry Pi OS Trixie, the _Lite_ image** (no desktop). The frame runs its own kiosk stack,
   and the desktop image ships a display manager that fights it for the screen. Use 32-bit (armhf)
   on the Zero and Zero 2 W. 64-bit is fine on the Pi 3.

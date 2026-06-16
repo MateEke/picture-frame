@@ -14,7 +14,7 @@ Assistant link came later and made most of the .NET server redundant.
 
 ![The frame on a shelf beside a plant, showing a photo with the time, date, and indoor and outdoor readings](../../../assets/screenshots/frame-real.jpg)
 
-That is the frame as it sits today. The panel is a salvaged laptop screen, and the ribbed planter
+That is the frame as it sits today. The panel is a [salvaged laptop screen](/getting-started/hardware/), and the ribbed planter
 next to it is 3D-printed, holding the sensors: an SHT21 for temperature and humidity, a cheap PIR
 module for motion, and an nRF51822 to handle Bluetooth. Because it is wireless, that sensor pack
 can sit anywhere in the room. In our last place it lived at the far end. Here it sits right next to

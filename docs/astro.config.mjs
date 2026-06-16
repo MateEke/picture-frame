@@ -56,6 +56,7 @@ export default defineConfig({
 					label: 'Getting Started',
 					items: [
 						{ label: 'Overview', slug: 'getting-started/overview' },
+						{ label: 'Hardware', slug: 'getting-started/hardware' },
 						{ label: 'Install', slug: 'getting-started/install' },
 						{ label: 'Configuration basics', slug: 'getting-started/configuration' }
 					]
