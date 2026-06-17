@@ -1,8 +1,18 @@
 import path from 'node:path';
+import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { seedImagesDir } from './helpers';
+import { jpegSize, seedImagesDir } from './helpers';
+import type { PhotosPage } from './pages/photos.page';
 
 const UPLOAD = path.join(seedImagesDir(), 'red.jpg');
+
+// Size of the stored image that appeared since `before`.
+async function uploadedSize(page: Page, photos: PhotosPage, before: string[]) {
+	const added = (await photos.thumbSrcs()).find((s) => !before.includes(s));
+	if (!added) throw new Error('no new image appeared after upload');
+	const res = await page.request.get(added);
+	return jpegSize(await res.body());
+}
 
 test.describe('photos', () => {
 	test.beforeEach(async ({ photos }) => {
@@ -18,10 +28,35 @@ test.describe('photos', () => {
 		await expect(photos.onScreen).toBeVisible();
 	});
 
-	test('uploads a photo through the cropper', async ({ photos }) => {
+	test('crops the upload to the chosen ratio', async ({ photos, page }) => {
 		await photos.uploadInput.setInputFiles(UPLOAD);
-		await photos.cropperUpload.click();
+		const before = await photos.thumbSrcs();
+		await photos.cropperUpload.click(); // default 16:9
 		await expect(photos.thumbs).toHaveCount(4);
+		const { width, height } = await uploadedSize(page, photos, before);
+		expect(width / height).toBeCloseTo(16 / 9, 1);
+	});
+
+	test('uploads without cropping at the original aspect ratio', async ({ photos, page }) => {
+		await photos.uploadInput.setInputFiles(UPLOAD);
+		const before = await photos.thumbSrcs();
+		await photos.cropperUploadOriginal.click();
+		await expect(photos.thumbs).toHaveCount(4);
+		// Uncropped: the square seed stays square.
+		const { width, height } = await uploadedSize(page, photos, before);
+		expect(width).toBe(height);
+	});
+
+	test('remembers the chosen crop ratio across reloads', async ({ photos, page }) => {
+		await photos.uploadInput.setInputFiles(UPLOAD);
+		await photos.ratioChip('4:3').click();
+		await expect(photos.ratioChip('4:3')).toHaveAttribute('aria-pressed', 'true');
+
+		await page.reload();
+		await expect(photos.thumbs.first()).toBeVisible();
+		await photos.uploadInput.setInputFiles(UPLOAD);
+		await expect(photos.ratioChip('4:3')).toHaveAttribute('aria-pressed', 'true');
+		await expect(photos.ratioChip('16:9')).toHaveAttribute('aria-pressed', 'false');
 	});
 
 	test('opens and closes the lightbox', async ({ photos }) => {

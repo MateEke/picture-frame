@@ -3,6 +3,7 @@ import type { Locator, Page } from '@playwright/test';
 export class PhotosPage {
 	readonly uploadInput: Locator;
 	readonly cropperUpload: Locator;
+	readonly cropperUploadOriginal: Locator;
 	readonly thumbs: Locator;
 	readonly onScreen: Locator;
 	readonly selectButton: Locator;
@@ -18,6 +19,7 @@ export class PhotosPage {
 	constructor(private readonly page: Page) {
 		this.uploadInput = page.getByTestId('photo-upload-input');
 		this.cropperUpload = page.getByTestId('cropper-upload');
+		this.cropperUploadOriginal = page.getByTestId('cropper-upload-original');
 		this.thumbs = page.getByTestId('photo-thumb');
 		this.onScreen = page.getByTestId('photo-onscreen');
 		this.selectButton = page.getByTestId('photos-select');
@@ -33,6 +35,15 @@ export class PhotosPage {
 
 	card(name: string): Locator {
 		return this.page.getByTestId(`photo-card-${name}`);
+	}
+
+	ratioChip(id: string): Locator {
+		return this.page.getByTestId(`crop-ratio-${id}`);
+	}
+
+	/** Thumbnail srcs, to diff an upload. */
+	thumbSrcs(): Promise<string[]> {
+		return this.thumbs.evaluateAll((els) => els.map((e) => e.getAttribute('src') ?? ''));
 	}
 
 	deleteButton(name: string): Locator {

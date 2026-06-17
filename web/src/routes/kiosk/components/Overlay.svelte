@@ -54,12 +54,12 @@
 </script>
 
 <div
-	class="fixed inset-x-0 bottom-0 flex h-92 items-end justify-between bg-linear-to-b from-transparent to-black/30 px-15 pb-12 text-kiosk-fg text-shadow-lg/30"
+	class="fixed inset-x-0 bottom-0 flex items-end justify-between bg-linear-to-b from-transparent to-black/30 px-15 pt-33 pb-12 text-kiosk-fg text-shadow-lg/30 portrait:flex-col portrait:items-start portrait:gap-12"
 >
 	<div>
 		<div
 			data-testid="kiosk-clock"
-			class="flex items-baseline text-[112px] leading-none font-medium tabular-nums"
+			class="flex items-baseline text-[7rem] leading-none font-medium tabular-nums"
 		>
 			<span>{clock.hours}</span>
 			<span class="-mx-1 normal-nums">{clock.separator}</span>
@@ -84,10 +84,12 @@
 	</div>
 
 	{#if showOutside || showInsideTemp || showHumidity}
-		<div class="flex gap-9 text-right">
+		<div class="flex gap-9 text-right portrait:text-left">
 			{#if showOutside}
-				<div class="min-w-60">
-					<div class="flex items-baseline justify-end gap-4 text-5xl font-normal">
+				<div class="min-w-60 portrait:min-w-0">
+					<div
+						class="flex items-baseline justify-end gap-4 text-5xl font-normal portrait:justify-start"
+					>
 						{#if weatherEnabled}
 							<img
 								src={weatherIcon}
@@ -99,14 +101,18 @@
 						<span data-testid="kiosk-temp-outside">{outsideTemp}°</span>
 					</div>
 					{#if labels.outside}
-						<div data-testid="kiosk-label-outside" class="cluster-label">
+						<!-- Portrait: offset past the icon (w-22 + gap-4) so the label sits under the temp. -->
+						<div
+							data-testid="kiosk-label-outside"
+							class="cluster-label {weatherEnabled ? 'portrait:ml-26' : ''}"
+						>
 							{labels.outside}
 						</div>
 					{/if}
 				</div>
 			{/if}
 			{#if showInsideTemp}
-				<div class="min-w-32">
+				<div class="min-w-32 portrait:min-w-0">
 					<div data-testid="kiosk-temp-inside" class="text-5xl font-normal">{insideTemp}°</div>
 					{#if labels.inside}
 						<div data-testid="kiosk-label-inside" class="cluster-label">
@@ -116,7 +122,7 @@
 				</div>
 			{/if}
 			{#if showHumidity}
-				<div class="min-w-30">
+				<div class="min-w-30 portrait:min-w-0">
 					<div class="text-5xl font-normal">{humidity}%</div>
 					{#if labels.humidity}
 						<div data-testid="kiosk-label-humidity" class="cluster-label">

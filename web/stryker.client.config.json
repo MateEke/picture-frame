@@ -3,7 +3,7 @@
 	"testRunner": "vitest",
 	"vitest": { "configFile": "vitest.stryker.client.config.ts" },
 	"coverageAnalysis": "perTest",
-	"mutate": ["src/lib/sse.svelte.ts"],
+	"mutate": ["src/lib/sse.svelte.ts", "src/lib/uploadPrefs.ts", "src/lib/imageProcessing.ts"],
 	"reporters": ["clear-text"],
 	"clearTextReporter": { "reportMutants": false, "skipFull": true },
 	"incrementalFile": "reports/mutation/incremental-client.json",

@@ -15,13 +15,16 @@ With the default **local files** backend, you upload and manage photos here dire
 
 ### Uploading
 
-Drag image files onto the upload area, or click it to pick them. Each one opens a quick
-cropper so you can frame it for the screen.
+Drag image files onto the upload area, or click it to pick them. Each one opens a quick cropper.
 
-![The cropper, framing a photo before upload](../../../assets/screenshots/cropper.png)
+![The cropper: aspect-ratio choices, a framed photo, and the upload options below](../../../assets/screenshots/cropper.png)
 
-Drag to position and zoom to frame the photo, then confirm. The frame stores the cropped
-result, so large camera files are trimmed to what the screen actually shows.
+Choose an aspect ratio for the screen (16:9 by default, or 9:16, 4:3, and 1:1), then drag and
+zoom to frame the shot. The cropper remembers your last ratio. **Upload** stores the cropped
+result, so large camera files shrink to what the screen shows.
+
+To keep the whole photo, choose **Upload without cropping**: it saves the image uncropped,
+scaled down to fit. Either way the frame stores a JPEG.
 
 ### Managing the grid
 

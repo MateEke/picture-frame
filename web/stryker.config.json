@@ -13,6 +13,8 @@
 		"!src/lib/sse.svelte.ts",
 		"!src/lib/toaster.ts",
 		"!src/lib/sessionGuard.ts",
+		"!src/lib/uploadPrefs.ts",
+		"!src/lib/imageProcessing.ts",
 		"!src/routes/+page.ts",
 		"!src/routes/+layout.ts",
 		"!src/routes/admin/settings/+page.ts",
