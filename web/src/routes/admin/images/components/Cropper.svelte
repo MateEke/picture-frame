@@ -6,6 +6,8 @@
 
 	import { uploadImage } from '$lib/images';
 	import { toaster } from '$lib/toaster';
+	import { CROP_RATIOS, getCropRatio, setCropRatio, type CropRatio } from '$lib/uploadPrefs';
+	import { fileToJpegBlob } from '$lib/imageProcessing';
 
 	interface Props {
 		file: File;
@@ -16,40 +18,58 @@
 
 	let { file, onUploaded, onCancel, class: className = '' }: Props = $props();
 
-	let cropt: Cropt | null = null;
-	let boundFile: File | null = null;
-	let uploading = $state(false);
+	// Fixed boundary box; the crop viewport sits inside it per ratio.
+	const BOUND_W = 460;
+	const BOUND_H = 340;
+	const FILL = 0.9; // viewport margin inside the boundary
 
-	// Tracks the rendered boundary size so the CSS custom property stays in sync.
-	let cropW = $state(0);
-	let cropH = $derived(Math.floor((cropW * 9) / 16));
+	let cropt: Cropt | null = null;
+	let uploading = $state(false);
+	let ratio = $state(getCropRatio());
+
+	let availW = $state(0);
+	let boundaryW = $derived(Math.min(availW, BOUND_W));
+	// Largest ratio-rect that fits the boundary.
+	let viewport = $derived.by(() => {
+		const w = Math.round(Math.min(boundaryW, (BOUND_H * ratio.w) / ratio.h) * FILL);
+		return { width: w, height: Math.round((w * ratio.h) / ratio.w) };
+	});
 
 	const cropperAttachment: Attachment = (element) => {
 		if (!(element instanceof HTMLElement)) return;
 
-		let debounce: ReturnType<typeof setTimeout>;
-		let first = true;
-
-		const rebuild = (w: number) => {
-			cropW = w;
-			const viewport = { width: w, height: Math.floor((w * 9) / 16) };
+		const build = () => {
+			if (boundaryW === 0) return;
 			cropt?.destroy();
-			boundFile = null;
 			cropt = new Cropt(element, { viewport, mouseWheelZoom: 'ctrl' });
-			bindFile(file);
+			const url = URL.createObjectURL(file);
+			cropt
+				.bind(url)
+				.catch((err) => {
+					console.error('cropt bind failed', err);
+					toaster.error({
+						title: 'Could not load image',
+						description: 'The file may be corrupt or in an unsupported format.'
+					});
+				})
+				.finally(() => URL.revokeObjectURL(url));
 		};
 
+		let debounce: ReturnType<typeof setTimeout>;
+		let first = true;
 		let lastW = 0;
 		const ro = new ResizeObserver(([entry]) => {
 			const w = Math.floor(entry.contentRect.width);
 			if (w === 0 || w === lastW) return;
 			lastW = w;
+			availW = w;
+			// Width change rebuilds the boundary; ratio change uses setOptions.
 			if (first) {
 				first = false;
-				rebuild(w); // no debounce on first observation, element just became visible
+				build();
 			} else {
 				clearTimeout(debounce);
-				debounce = setTimeout(() => rebuild(w), 100);
+				debounce = setTimeout(build, 100);
 			}
 		});
 		if (element.parentElement) ro.observe(element.parentElement);
@@ -62,31 +82,17 @@
 		};
 	};
 
-	function bindFile(f: File) {
-		if (!cropt || boundFile === f) return;
-		boundFile = f;
-		const url = URL.createObjectURL(f);
-		cropt
-			.bind(url)
-			.catch((err) => {
-				console.error('cropt bind failed', err);
-				toaster.error({
-					title: 'Could not load image',
-					description: 'The file may be corrupt or in an unsupported format.'
-				});
-			})
-			.finally(() => URL.revokeObjectURL(url));
+	function selectRatio(r: CropRatio) {
+		if (r.id === ratio.id) return;
+		ratio = r;
+		setCropRatio(r);
+		cropt?.setOptions({ viewport });
 	}
 
-	$effect(() => {
-		if (cropt) bindFile(file);
-	});
-
-	async function upload() {
-		if (!cropt) return;
+	async function finishUpload(makeBlob: () => Promise<Blob>) {
 		uploading = true;
 		try {
-			const blob = await cropt.toBlob(1920, 'image/jpeg', 0.85);
+			const blob = await makeBlob();
 			if (await uploadImage(blob)) {
 				toaster.success({ title: 'Image uploaded' });
 				onUploaded();
@@ -97,19 +103,46 @@
 			uploading = false;
 		}
 	}
+
+	async function upload() {
+		if (!cropt) return;
+		const c = cropt;
+		// toBlob scales the longest side to 1920.
+		await finishUpload(() => c.toBlob(1920, 'image/jpeg', 0.85));
+	}
+
+	async function uploadOriginal() {
+		await finishUpload(() => fileToJpegBlob(file));
+	}
 </script>
 
 <div class={`w-full space-y-3 ${className}`}>
-	<!-- Custom properties cascade into cropt's .cr-boundary to size it from the measured width. -->
-	<div class="relative" style="height: {cropH + 54}px;">
-		<div
-			style="--cropt-w: {cropW}px; --cropt-h: {cropH}px"
-			{@attach cropperAttachment}
-			class="absolute w-full"
-		></div>
+	<div class="flex flex-wrap justify-center gap-2" role="group" aria-label="Crop ratio">
+		{#each CROP_RATIOS as r (r.id)}
+			<button
+				type="button"
+				class={[
+					'btn btn-sm',
+					r.id === ratio.id ? 'preset-filled-primary-500' : 'preset-tonal-surface'
+				]}
+				data-testid="crop-ratio-{r.id}"
+				aria-pressed={r.id === ratio.id}
+				onclick={() => selectRatio(r)}
+				disabled={uploading}
+			>
+				{r.id}
+			</button>
+		{/each}
 	</div>
 
-	<div class="flex gap-2">
+	<!-- Full-width so cropt centres its boundary; min-height reserves space while it builds. -->
+	<div
+		{@attach cropperAttachment}
+		style="--bound-w: {boundaryW}px; --bound-h: {BOUND_H}px; min-height: {BOUND_H + 50}px"
+		class="w-full"
+	></div>
+
+	<div class="flex flex-wrap justify-center gap-2">
 		<button
 			class="btn preset-filled-primary-500"
 			data-testid="cropper-upload"
@@ -118,6 +151,14 @@
 		>
 			{uploading ? 'Uploading…' : 'Upload'}
 		</button>
+		<button
+			class="btn preset-outlined-primary-500"
+			data-testid="cropper-upload-original"
+			onclick={uploadOriginal}
+			disabled={uploading}
+		>
+			Upload without cropping
+		</button>
 		<button class="btn preset-tonal-surface" onclick={onCancel} disabled={uploading}>
 			Cancel
 		</button>
@@ -125,8 +166,12 @@
 </div>
 
 <style>
+	/* cropt hardcodes 320px; size the box and match the slider. */
+	:global(.cropt-container .cr-boundary),
+	:global(.cropt-container .cr-slider-wrap) {
+		width: var(--bound-w);
+	}
 	:global(.cropt-container .cr-boundary) {
-		width: var(--cropt-w);
-		height: var(--cropt-h);
+		height: var(--bound-h);
 	}
 </style>

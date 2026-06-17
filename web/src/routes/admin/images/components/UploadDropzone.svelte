@@ -25,6 +25,6 @@
 			<span class="sm:hidden">Add a photo</span>
 			<span class="hidden sm:inline">Drop a photo here, or click to choose</span>
 		</p>
-		<p class="text-surface-500-400 text-sm">You'll crop it to the frame before it's added.</p>
+		<p class="text-surface-500-400 text-sm">Choose a crop ratio next, or upload it as-is.</p>
 	</FileUpload.Dropzone>
 </FileUpload>

@@ -6,3 +6,16 @@
 	/* overlay foreground; the meteocons vite plugin bakes it into the icons too */
 	--color-kiosk-fg: #fff8f0;
 }
+
+/* Scale rem sizes with resolution; 16:9 @ 1366x768 = 16px. Landscape binds on the
+   tighter of width (1366/16 = 85.375) or height (768/48). */
+:root {
+	font-size: min(calc(100vw / 85.375), calc(100vh / 48));
+}
+
+/* Portrait: width (short side) governs; 768 -> 16px. */
+@media (orientation: portrait) {
+	:root {
+		font-size: calc(100vw / 48);
+	}
+}
