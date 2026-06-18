@@ -27,9 +27,18 @@ type Syncer struct {
 	interval time.Duration
 	advance  Advancer
 	trigger  chan struct{}
+	aspect   *AspectStore // optional: caches per-image dimensions
 
 	mu     sync.Mutex
 	status Status
+}
+
+// SyncerOption configures optional Syncer collaborators.
+type SyncerOption func(*Syncer)
+
+// WithAspectStore records downloaded dimensions and clears them on removal.
+func WithAspectStore(a *AspectStore) SyncerOption {
+	return func(s *Syncer) { s.aspect = a }
 }
 
 // Status reports the latest sync outcome for the admin UI.
@@ -52,9 +61,13 @@ type Advancer interface {
 	Next()
 }
 
-func NewSyncer(log *slog.Logger, remote RemoteAlbum, lib *Library, root *os.Root, interval time.Duration, advance Advancer) *Syncer {
+func NewSyncer(log *slog.Logger, remote RemoteAlbum, lib *Library, root *os.Root, interval time.Duration, advance Advancer, opts ...SyncerOption) *Syncer {
 	// Buffered so Trigger never blocks.
-	return &Syncer{log: log, remote: remote, lib: lib, root: root, interval: interval, advance: advance, trigger: make(chan struct{}, 1)}
+	s := &Syncer{log: log, remote: remote, lib: lib, root: root, interval: interval, advance: advance, trigger: make(chan struct{}, 1)}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 // Run syncs immediately then on each interval (or on Trigger) until ctx is cancelled.
@@ -130,7 +143,8 @@ func (s *Syncer) syncOnce(ctx context.Context) {
 	s.cleanTmp()
 
 	wasEmpty := s.lib.Len() == 0
-	for _, file := range local.staleAgainst(remote) {
+	stale := local.staleAgainst(remote)
+	for _, file := range stale {
 		s.removeFile(file)
 	}
 	added, failed := 0, 0
@@ -141,6 +155,11 @@ func (s *Syncer) syncOnce(ctx context.Context) {
 			continue
 		}
 		added++
+	}
+	if (added > 0 || len(stale) > 0) && s.aspect != nil {
+		if err := s.aspect.Flush(); err != nil {
+			s.log.Warn("library: flush aspect index failed", "err", err)
+		}
 	}
 	if wasEmpty && added > 0 && s.advance != nil {
 		s.advance.Next()
@@ -254,6 +273,9 @@ func (s *Syncer) removeFile(f localFile) {
 		return
 	}
 	s.lib.Remove(f.name)
+	if s.aspect != nil {
+		s.aspect.Delete(f.name)
+	}
 }
 
 func (s *Syncer) download(ctx context.Context, a Asset) error {
@@ -264,6 +286,13 @@ func (s *Syncer) download(ctx context.Context, a Asset) error {
 		return err
 	}
 	s.lib.Add(name)
+	if s.aspect != nil {
+		// Decode the preview, not remote EXIF: the preview has orientation baked in,
+		// so its dimensions are the displayed aspect (EXIF reports raw, pre-rotation).
+		if w, h := ImageDimensions(s.root, name); w > 0 && h > 0 {
+			s.aspect.Set(name, w, h)
+		}
+	}
 	return nil
 }
 

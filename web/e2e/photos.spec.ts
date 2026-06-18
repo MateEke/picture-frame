@@ -4,7 +4,10 @@ import { expect, test } from './fixtures';
 import { jpegSize, seedImagesDir } from './helpers';
 import type { PhotosPage } from './pages/photos.page';
 
-const UPLOAD = path.join(seedImagesDir(), 'red.jpg');
+// A square source (seeds are landscape) so the no-crop test can assert it stays square.
+const UPLOAD = path.join(seedImagesDir(), '..', 'square.jpg');
+// Landscape pixels with an EXIF rotate-90 tag (displayed portrait).
+const ROTATED = path.join(seedImagesDir(), '..', 'rotated.jpg');
 
 // Size of the stored image that appeared since `before`.
 async function uploadedSize(page: Page, photos: PhotosPage, before: string[]) {
@@ -45,6 +48,17 @@ test.describe('photos', () => {
 		// Uncropped: the square seed stays square.
 		const { width, height } = await uploadedSize(page, photos, before);
 		expect(width).toBe(height);
+	});
+
+	test('bakes EXIF orientation on no-crop upload', async ({ photos, page }) => {
+		// rotated.jpg is landscape pixels with an EXIF rotate-90 tag; the no-crop path
+		// must bake it upright, else split-screen mis-reads it as landscape and crops it.
+		await photos.uploadInput.setInputFiles(ROTATED);
+		const before = await photos.thumbSrcs();
+		await photos.cropperUploadOriginal.click();
+		await expect(photos.thumbs).toHaveCount(4);
+		const { width, height } = await uploadedSize(page, photos, before);
+		expect(height).toBeGreaterThan(width);
 	});
 
 	test('remembers the chosen crop ratio across reloads', async ({ photos, page }) => {

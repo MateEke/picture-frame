@@ -95,9 +95,10 @@ func labelsToState(c config.KioskLabelsConfig) state.KioskLabels {
 
 // SlideshowDTO maps config.SlideshowConfig.
 type SlideshowDTO struct {
-	Interval  string `json:"interval" doc:"Image advance interval, e.g. \"2m\""`
-	Randomize bool   `json:"randomize"`
-	ImagesDir string `json:"images_dir"`
+	Interval    string `json:"interval" doc:"Image advance interval, e.g. \"2m\""`
+	Randomize   bool   `json:"randomize"`
+	SplitScreen bool   `json:"split_screen" doc:"Pair mismatched-orientation photos side-by-side"`
+	ImagesDir   string `json:"images_dir"`
 }
 
 // LibraryDTO maps config.LibraryConfig.
@@ -192,9 +193,10 @@ func toDTO(cfg config.Config) ConfigDTO {
 			Labels:     labelsToDTO(cfg.Display.Labels),
 		},
 		Slideshow: SlideshowDTO{
-			Interval:  durString(cfg.Slideshow.Interval.Duration),
-			Randomize: cfg.Slideshow.Randomize,
-			ImagesDir: cfg.Slideshow.ImagesDir,
+			Interval:    durString(cfg.Slideshow.Interval.Duration),
+			Randomize:   cfg.Slideshow.Randomize,
+			SplitScreen: cfg.Slideshow.SplitScreen,
+			ImagesDir:   cfg.Slideshow.ImagesDir,
 		},
 		Library: LibraryDTO{
 			Backend: cfg.Library.Backend,
@@ -329,6 +331,12 @@ func applySlideshowDTO(dst *config.SlideshowConfig, dto SlideshowDTO) error {
 	}
 	dst.Interval = interval
 	dst.Randomize = dto.Randomize
+	dst.SplitScreen = dto.SplitScreen
+	// The toggle-only DTO omits pair_threshold; coerce an invalid running value so
+	// enabling split-screen can't produce a config that fails Validate (>1 required).
+	if dst.SplitScreen && dst.PairThreshold <= 1 {
+		dst.PairThreshold = config.DefaultPairThreshold
+	}
 	dst.ImagesDir = dto.ImagesDir
 	return nil
 }

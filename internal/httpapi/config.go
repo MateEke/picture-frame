@@ -18,22 +18,28 @@ type LiveConfig interface {
 	ApplyLive(cfg config.Config)
 }
 
+// copyTier1 overwrites dst's Tier-1 fields with src's: the single definition of
+// which config fields apply live (no restart). Both needsRestart and
+// applyTier1ToRunning derive from it; keep it in sync with ApplyLive, which does
+// the actual live application. Auth.PasswordHash is excluded (mutated via
+// /api/auth/password, handled separately in needsRestart).
+func copyTier1(dst *config.Config, src config.Config) {
+	dst.LogLevel = src.LogLevel // applied live via the slog LevelVar
+	dst.Display.BlankAfter = src.Display.BlankAfter
+	dst.Display.Locale = src.Display.Locale // re-published on the kiosk SSE event
+	dst.Display.Labels = src.Display.Labels
+	dst.Slideshow.Interval = src.Slideshow.Interval
+	dst.Slideshow.Randomize = src.Slideshow.Randomize
+	dst.Slideshow.SplitScreen = src.Slideshow.SplitScreen // slideshow.SetSplitConfig
+	dst.Slideshow.PairThreshold = src.Slideshow.PairThreshold
+	dst.Weather.PollInterval = src.Weather.PollInterval
+	dst.Weather.RetryInterval = src.Weather.RetryInterval
+}
+
 // needsRestart reports whether any non-Tier-1 field differs between the running
-// and saved configs. Tier-1 fields (live-applied on PUT) are zeroed before the
-// comparison. Nil and empty slices are normalised so a freshly-loaded config
-// (nil Sensors) compares equal to a round-tripped one (empty Sensors).
+// and saved configs. Nil and empty slices are normalised so a freshly-loaded
+// config (nil Sensors) compares equal to a round-tripped one (empty Sensors).
 func needsRestart(running, saved config.Config) bool {
-	zeroTier1 := func(c *config.Config) {
-		c.LogLevel = "" // applied live via the slog LevelVar
-		c.Display.BlankAfter = config.Duration{}
-		c.Display.Locale = ""                         // applied live by re-publishing the kiosk SSE event
-		c.Display.Labels = config.KioskLabelsConfig{} // applied live the same way
-		c.Slideshow.Interval = config.Duration{}
-		c.Slideshow.Randomize = false
-		c.Weather.PollInterval = config.Duration{}
-		c.Weather.RetryInterval = config.Duration{}
-		c.Auth.PasswordHash = "" // mutated live via /api/auth/password, never needs a restart
-	}
 	normalizeSlices := func(c *config.Config) {
 		if c.Sensors == nil {
 			c.Sensors = []config.SensorConfig{}
@@ -48,25 +54,19 @@ func needsRestart(running, saved config.Config) bool {
 		}
 	}
 	r := running
-	zeroTier1(&r)
-	normalizeSlices(&r)
+	copyTier1(&r, saved)     // ignore Tier-1 differences
+	r.Auth.PasswordHash = "" // mutated via /api/auth/password, never a restart
 	s := saved
-	zeroTier1(&s)
+	s.Auth.PasswordHash = ""
+	normalizeSlices(&r)
 	normalizeSlices(&s)
 	return !reflect.DeepEqual(r, s)
 }
 
-// applyTier1ToRunning copies only the Tier-1 fields from saved into running so
-// the in-process state matches what was just applied live.
+// applyTier1ToRunning syncs the in-process running config to what was just
+// applied live, so the next needsRestart comparison is correct.
 func applyTier1ToRunning(running *config.Config, saved config.Config) {
-	running.LogLevel = saved.LogLevel
-	running.Display.BlankAfter = saved.Display.BlankAfter
-	running.Display.Locale = saved.Display.Locale
-	running.Display.Labels = saved.Display.Labels
-	running.Slideshow.Interval = saved.Slideshow.Interval
-	running.Slideshow.Randomize = saved.Slideshow.Randomize
-	running.Weather.PollInterval = saved.Weather.PollInterval
-	running.Weather.RetryInterval = saved.Weather.RetryInterval
+	copyTier1(running, saved)
 }
 
 type getConfigOutput struct {

@@ -64,6 +64,12 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Slideshow.Interval.Duration != 120*time.Second {
 		t.Errorf("slideshow interval: got %v, want 2m", cfg.Slideshow.Interval)
 	}
+	if !cfg.Slideshow.SplitScreen {
+		t.Error("slideshow split_screen should default to true")
+	}
+	if cfg.Slideshow.PairThreshold != 1.5 {
+		t.Errorf("slideshow pair_threshold: got %v, want 1.5", cfg.Slideshow.PairThreshold)
+	}
 	if cfg.Library.Immich.SyncInterval.Duration != 15*time.Minute {
 		t.Errorf("immich sync_interval: got %v, want 15m", cfg.Library.Immich.SyncInterval)
 	}
@@ -248,6 +254,32 @@ func TestValidateWeatherUnits(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := &config.Config{Weather: config.WeatherConfig{Units: tc.units}}
+			err := cfg.Validate()
+			if tc.wantErr && err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestValidateSlideshow(t *testing.T) {
+	cases := []struct {
+		name    string
+		split   bool
+		thr     float64
+		wantErr bool
+	}{
+		{"disabled ignores threshold", false, 0, false},
+		{"enabled needs threshold above 1", true, 1.0, true},
+		{"enabled threshold below 1", true, 0.5, true},
+		{"enabled valid threshold", true, 1.5, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &config.Config{Slideshow: config.SlideshowConfig{SplitScreen: tc.split, PairThreshold: tc.thr}}
 			err := cfg.Validate()
 			if tc.wantErr && err == nil {
 				t.Fatal("expected error, got nil")

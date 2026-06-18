@@ -24,12 +24,12 @@ type Image struct {
 	Name string // filename only, e.g. "1716038400000.jpg"
 }
 
-// Library maintains an ordered list of images and a current playback position.
-// It is safe for concurrent use.
+// Library maintains an ordered, reshufflable list of images. Playback position
+// lives in the slide planner; Library is the ordering source of truth. Safe for
+// concurrent use.
 type Library struct {
 	mu        sync.Mutex
 	images    []Image
-	idx       int
 	randomize bool
 	rng       *rand.Rand // nil shuffles via the global PRNG; tests inject a seeded one
 }
@@ -78,42 +78,6 @@ func (l *Library) List() []Image {
 	return out
 }
 
-// Current returns the image at the current position, or nil if empty.
-func (l *Library) Current() *Image {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if len(l.images) == 0 {
-		return nil
-	}
-	img := l.images[l.idx]
-	return &img
-}
-
-// Next advances to the next image (wrapping) and returns it, or nil if empty.
-func (l *Library) Next() *Image {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if len(l.images) == 0 {
-		return nil
-	}
-
-	prev := l.images[l.idx]
-	l.idx++
-
-	if l.idx >= len(l.images) {
-		l.idx = 0
-		if l.randomize {
-			l.shuffle()
-			// Avoid repeating the last image of the previous cycle.
-			if len(l.images) > 1 && l.images[0].Name == prev.Name {
-				l.images[0], l.images[1] = l.images[1], l.images[0]
-			}
-		}
-	}
-	img := l.images[l.idx]
-	return &img
-}
-
 // Has reports whether an image with the given name is present.
 func (l *Library) Has(name string) bool {
 	l.mu.Lock()
@@ -143,24 +107,13 @@ func (l *Library) Remove(name string) bool {
 			continue
 		}
 		l.images = slices.Delete(l.images, i, i+1)
-		// Removed an image strictly before the current one: shift idx down so
-		// Current() still returns the same image.
-		if i < l.idx {
-			l.idx--
-		}
-		// Clamp in case we removed the current (or only) image at the tail.
-		if len(l.images) > 0 && l.idx >= len(l.images) {
-			l.idx = len(l.images) - 1
-		}
 		return true
 	}
 	return false
 }
 
-// SetRandomize enables or disables random ordering. The slideshow restarts
-// from the beginning on the next advance: disabling sorts images alphabetically
-// first, enabling leaves the shuffle to the natural wrap in Next(). idx is
-// reset to the last position so the next Next() call wraps cleanly to 0.
+// SetRandomize enables or disables random ordering. Disabling sorts images
+// alphabetically; enabling leaves the shuffle to the next Reshuffle (cycle wrap).
 func (l *Library) SetRandomize(enabled bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -168,15 +121,28 @@ func (l *Library) SetRandomize(enabled bool) {
 		return
 	}
 	l.randomize = enabled
-	if len(l.images) <= 1 {
-		return
-	}
-	if !enabled {
+	if !enabled && len(l.images) > 1 {
 		slices.SortFunc(l.images, func(a, b Image) int {
 			return cmp.Compare(a.Name, b.Name)
 		})
 	}
-	l.idx = len(l.images) - 1
+}
+
+// Reshuffle starts a new cycle and returns a copy of its order. When randomized
+// it reshuffles, avoiding an immediate repeat of the previous cycle's last image.
+func (l *Library) Reshuffle() []Image {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.randomize && len(l.images) > 1 {
+		prev := l.images[len(l.images)-1]
+		l.shuffle()
+		if l.images[0].Name == prev.Name {
+			l.images[0], l.images[1] = l.images[1], l.images[0]
+		}
+	}
+	out := make([]Image, len(l.images))
+	copy(out, l.images)
+	return out
 }
 
 // Assumes the caller already holds the mutex.

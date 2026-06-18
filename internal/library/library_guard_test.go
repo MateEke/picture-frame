@@ -6,22 +6,22 @@ import (
 	"github.com/MateEke/picture-frame/internal/library"
 )
 
-func TestNextSingleRandomizedImageWrapsWithoutPanic(t *testing.T) {
+func TestReshuffleSingleRandomizedImageNoPanic(t *testing.T) {
 	l := library.New(imgs("only.jpg"), true)
 	for i := range 3 {
-		if got := l.Next(); got == nil || got.Name != "only.jpg" {
-			t.Fatalf("call %d: got %v, want only.jpg", i, got)
+		if got := l.Reshuffle(); len(got) != 1 || got[0].Name != "only.jpg" {
+			t.Fatalf("call %d: got %v, want [only.jpg]", i, got)
 		}
 	}
 }
 
-func TestRemoveLastThenAddKeepsValidIndex(t *testing.T) {
+func TestRemoveLastThenAdd(t *testing.T) {
 	l := library.New(imgs("a.jpg"), false)
 	if !l.Remove("a.jpg") {
 		t.Fatal("remove should report found")
 	}
 	l.Add("b.jpg")
-	if got := l.Current(); got == nil || got.Name != "b.jpg" {
-		t.Fatalf("got %v, want b.jpg", got)
+	if l.Len() != 1 || !l.Has("b.jpg") {
+		t.Fatalf("after remove+add: len=%d has(b)=%v", l.Len(), l.Has("b.jpg"))
 	}
 }

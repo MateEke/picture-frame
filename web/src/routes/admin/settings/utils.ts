@@ -25,7 +25,7 @@ export function createEmptyConfig(): ConfigResponseBody {
 			locale: 'en-US',
 			labels: { outside: '', inside: '', humidity: '' }
 		},
-		slideshow: { interval: '2m', randomize: false, images_dir: 'images' },
+		slideshow: { interval: '2m', randomize: false, split_screen: true, images_dir: 'images' },
 		library: {
 			backend: 'fs',
 			immich: { share_url: '', share_password: '', share_password_set: false, sync_interval: '15m' }

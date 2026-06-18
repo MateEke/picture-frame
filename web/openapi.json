@@ -544,12 +544,18 @@
       "ImagePayload": {
         "additionalProperties": false,
         "properties": {
-          "name": {
-            "type": "string"
+          "names": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
           }
         },
         "required": [
-          "name"
+          "names"
         ],
         "type": "object"
       },
@@ -856,6 +862,19 @@
         "additionalProperties": false,
         "type": "object"
       },
+      "ScreenAspectPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "aspect": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "aspect"
+        ],
+        "type": "object"
+      },
       "ScreenPayload": {
         "additionalProperties": false,
         "properties": {
@@ -1068,11 +1087,16 @@
           },
           "randomize": {
             "type": "boolean"
+          },
+          "split_screen": {
+            "description": "Pair mismatched-orientation photos side-by-side",
+            "type": "boolean"
           }
         },
         "required": [
           "interval",
           "randomize",
+          "split_screen",
           "images_dir"
         ],
         "type": "object"
@@ -1696,6 +1720,29 @@
             "explode": false,
             "in": "query",
             "name": "version",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "aspect",
+            "schema": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Forwarded-For",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Real-IP",
             "schema": {
               "type": "string"
             }
@@ -2449,6 +2496,32 @@
                           "event"
                         ],
                         "title": "Event screen",
+                        "type": "object"
+                      },
+                      {
+                        "properties": {
+                          "data": {
+                            "$ref": "#/components/schemas/ScreenAspectPayload"
+                          },
+                          "event": {
+                            "const": "screen_aspect",
+                            "description": "The event name.",
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "The event ID.",
+                            "type": "integer"
+                          },
+                          "retry": {
+                            "description": "The retry time in milliseconds.",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "event"
+                        ],
+                        "title": "Event screen_aspect",
                         "type": "object"
                       },
                       {

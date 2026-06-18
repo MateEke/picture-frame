@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
+
+	"github.com/MateEke/picture-frame/internal/state"
 )
 
 // --- Screen ---
@@ -68,7 +70,15 @@ func (s *server) registerScreenRoutes(api huma.API) {
 type heartbeatInput struct {
 	// Reporting frontend's build; the update commit gate fires only when the new build beats.
 	Version string `query:"version"`
+	// Screen aspect (width/height) for split-screen pairing; see authoritativeKiosk.
+	Aspect        float64 `query:"aspect"`
+	XForwardedFor string  `header:"X-Forwarded-For"`
+	XRealIP       string  `header:"X-Real-IP"`
 }
+
+type ctxKey int
+
+const loopbackKey ctxKey = iota
 
 func (s *server) registerHeartbeatRoutes(api huma.API) {
 	s.kioskExempt("/api/heartbeat")
@@ -78,10 +88,35 @@ func (s *server) registerHeartbeatRoutes(api huma.API) {
 		Path:          "/api/heartbeat",
 		Summary:       "Record kiosk heartbeat",
 		DefaultStatus: http.StatusNoContent,
-	}, func(_ context.Context, input *heartbeatInput) (*struct{}, error) {
+		Middlewares: huma.Middlewares{
+			func(ctx huma.Context, next func(huma.Context)) {
+				next(huma.WithValue(ctx, loopbackKey, isLoopback(ctx.RemoteAddr())))
+			},
+		},
+	}, func(ctx context.Context, input *heartbeatInput) (*struct{}, error) {
+		if s.planner != nil && input.Aspect > 0 && input.Aspect < 100 && authoritativeKiosk(ctx, input) {
+			if s.planner.SetScreenAspect(input.Aspect) {
+				s.bus.Publish(state.Event{
+					Kind:    state.KindScreenAspect,
+					Payload: state.ScreenAspectPayload{Aspect: input.Aspect},
+				})
+				// Re-plan now (e.g. on rotation) instead of waiting out the dwell.
+				if s.slideshow != nil {
+					s.slideshow.Next()
+				}
+			}
+		}
 		s.kioskBeater.Beat(input.Version)
 		return nil, nil
 	})
+}
+
+// authoritativeKiosk is the on-device kiosk: a loopback peer with no forwarding
+// header. A phone reaching the frame through a reverse proxy is loopback too but
+// carries X-Forwarded-For, so it stays passive and can't hijack pairing.
+func authoritativeKiosk(ctx context.Context, input *heartbeatInput) bool {
+	loopback, _ := ctx.Value(loopbackKey).(bool)
+	return loopback && input.XForwardedFor == "" && input.XRealIP == ""
 }
 
 // --- Library ---

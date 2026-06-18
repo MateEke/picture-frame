@@ -237,6 +237,26 @@ func TestApplyDTOPreservesAddr(t *testing.T) {
 	}
 }
 
+func TestApplyDTOCoercesInvalidPairThresholdOnEnable(t *testing.T) {
+	current := fullTestConfig()
+	current.Slideshow.SplitScreen = false
+	current.Slideshow.PairThreshold = 0.5 // invalid for split, but allowed while disabled
+
+	dto := toDTO(current)
+	dto.Slideshow.SplitScreen = true // the toggle-only DTO carries no pair_threshold
+
+	out, err := applyDTO(dto, current)
+	if err != nil {
+		t.Fatalf("applyDTO: %v", err)
+	}
+	if out.Slideshow.PairThreshold != config.DefaultPairThreshold {
+		t.Errorf("PairThreshold = %v, want coerced to %v", out.Slideshow.PairThreshold, config.DefaultPairThreshold)
+	}
+	if err := out.Validate(); err != nil {
+		t.Errorf("coerced config must validate, got %v", err)
+	}
+}
+
 func TestApplyDTOPreservesBlankSecret(t *testing.T) {
 	current := fullTestConfig()
 	// current has "wkey", "mqttpass", "secret-immich"

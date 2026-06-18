@@ -89,8 +89,8 @@ func TestSnapshotEmpty(t *testing.T) {
 
 func TestSnapshotRetainsLastPerKind(t *testing.T) {
 	b := state.NewBus()
-	b.Publish(state.Event{Kind: state.KindImage, Payload: state.ImagePayload{Name: "a.jpg"}})
-	b.Publish(state.Event{Kind: state.KindImage, Payload: state.ImagePayload{Name: "b.jpg"}})
+	b.Publish(state.Event{Kind: state.KindImage, Payload: state.ImagePayload{Names: []string{"a.jpg"}}})
+	b.Publish(state.Event{Kind: state.KindImage, Payload: state.ImagePayload{Names: []string{"b.jpg"}}})
 	b.Publish(state.Event{Kind: state.KindWeather, Payload: state.WeatherPayload{Temp: 20}})
 
 	snap := b.Snapshot()
@@ -105,7 +105,7 @@ func TestSnapshotRetainsLastPerKind(t *testing.T) {
 	if !ok {
 		t.Fatal("expected image event in snapshot")
 	}
-	if img.Payload.(state.ImagePayload).Name != "b.jpg" {
+	if img.Payload.(state.ImagePayload).Names[0] != "b.jpg" {
 		t.Errorf("expected last image b.jpg, got %v", img.Payload)
 	}
 }
@@ -113,7 +113,7 @@ func TestSnapshotRetainsLastPerKind(t *testing.T) {
 func TestSnapshotOrderedByPublishID(t *testing.T) {
 	b := state.NewBus()
 	b.Publish(state.Event{Kind: state.KindWeather, Payload: state.WeatherPayload{Temp: 20}})
-	b.Publish(state.Event{Kind: state.KindImage, Payload: state.ImagePayload{Name: "a.jpg"}})
+	b.Publish(state.Event{Kind: state.KindImage, Payload: state.ImagePayload{Names: []string{"a.jpg"}}})
 	b.Publish(state.Event{Kind: state.KindScreen, Payload: state.ScreenPayload{On: true}})
 
 	snap := b.Snapshot()
@@ -129,7 +129,7 @@ func TestSnapshotOrderedByPublishID(t *testing.T) {
 
 func TestSnapshotDoesNotBlockNewSubscribers(t *testing.T) {
 	b := state.NewBus()
-	b.Publish(state.Event{Kind: state.KindImage, Payload: state.ImagePayload{Name: "x.jpg"}})
+	b.Publish(state.Event{Kind: state.KindImage, Payload: state.ImagePayload{Names: []string{"x.jpg"}}})
 
 	// Subscriber created after publish should not receive past events via channel,
 	// but Snapshot should return the last image.

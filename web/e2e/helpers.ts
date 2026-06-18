@@ -21,6 +21,11 @@ export function seedImagesDir(): string {
 	return path.join(here, 'fixtures', 'images');
 }
 
+// Ordered [solo, portrait, portrait] by filename; exercises a solo→pair crossfade.
+export function splitImagesDir(): string {
+	return path.join(here, 'fixtures', 'split-images');
+}
+
 // JPEG pixel size, read from the SOF marker.
 export function jpegSize(buf: Buffer): { width: number; height: number } {
 	let i = buf.indexOf(Buffer.from([0xff, 0xd8]));

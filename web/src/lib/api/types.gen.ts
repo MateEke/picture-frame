@@ -205,7 +205,7 @@ export type ImageItem = {
 };
 
 export type ImagePayload = {
-    name: string;
+    names: Array<string> | null;
 };
 
 export type ImmichLibraryDto = {
@@ -338,6 +338,10 @@ export type ReadyEvent = {
     [key: string]: never;
 };
 
+export type ScreenAspectPayload = {
+    aspect: number;
+};
+
 export type ScreenPayload = {
     auto: boolean;
     on: boolean;
@@ -415,6 +419,10 @@ export type SlideshowDto = {
      */
     interval: string;
     randomize: boolean;
+    /**
+     * Pair mismatched-orientation photos side-by-side
+     */
+    split_screen: boolean;
 };
 
 export type SystemDevicesBody = {
@@ -1028,9 +1036,14 @@ export type GetConfigMetaResponse = GetConfigMetaResponses[keyof GetConfigMetaRe
 
 export type HeartbeatData = {
     body?: never;
+    headers?: {
+        'X-Forwarded-For'?: string;
+        'X-Real-IP'?: string;
+    };
     path?: never;
     query?: {
         version?: string;
+        aspect?: number;
     };
     url: '/api/heartbeat';
 };
@@ -1639,6 +1652,20 @@ export type EventsResponses = {
          * The event name.
          */
         event: 'screen';
+        /**
+         * The event ID.
+         */
+        id?: number;
+        /**
+         * The retry time in milliseconds.
+         */
+        retry?: number;
+    } | {
+        data: ScreenAspectPayload;
+        /**
+         * The event name.
+         */
+        event: 'screen_aspect';
         /**
          * The event ID.
          */

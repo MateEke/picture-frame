@@ -52,6 +52,17 @@ func (c *Config) Validate() error {
 	if err := c.Updater.validate(); err != nil {
 		return fmt.Errorf("updater: %w", err)
 	}
+	if err := c.Slideshow.validate(); err != nil {
+		return fmt.Errorf("slideshow: %w", err)
+	}
+	return nil
+}
+
+func (s SlideshowConfig) validate() error {
+	// A factor <= 1 would classify every image as an outlier, pairing everything.
+	if s.SplitScreen && s.PairThreshold <= 1.0 {
+		return fmt.Errorf("pair_threshold must be > 1 when split_screen is enabled, got %v", s.PairThreshold)
+	}
 	return nil
 }
 

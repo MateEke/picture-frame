@@ -34,13 +34,14 @@ func (s *server) registerSSERoutes(api huma.API) {
 			},
 		},
 	}, map[string]any{
-		"sensor":  state.SensorPayload{},
-		"weather": state.WeatherPayload{},
-		"image":   state.ImagePayload{},
-		"screen":  state.ScreenPayload{},
-		"kiosk":   state.KioskPayload{},
-		"ready":   ReadyEvent{},
-		"ping":    PingEvent{},
+		"sensor":        state.SensorPayload{},
+		"weather":       state.WeatherPayload{},
+		"image":         state.ImagePayload{},
+		"screen":        state.ScreenPayload{},
+		"screen_aspect": state.ScreenAspectPayload{},
+		"kiosk":         state.KioskPayload{},
+		"ready":         ReadyEvent{},
+		"ping":          PingEvent{},
 	}, func(ctx context.Context, _ *struct{}, send sse.Sender) {
 		s.streamEvents(ctx, send)
 	})

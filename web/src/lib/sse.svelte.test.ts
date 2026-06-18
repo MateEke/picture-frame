@@ -14,6 +14,7 @@ type SSEEvent =
 	| { event: 'weather'; data: WeatherPayload }
 	| { event: 'image'; data: ImagePayload }
 	| { event: 'screen'; data: ScreenPayload }
+	| { event: 'screen_aspect'; data: { aspect: number } }
 	| { event: 'kiosk'; data: KioskPayload }
 	| { event: 'ready'; data: Record<string, never> }
 	| { event: 'ping'; data: Record<string, never> };
@@ -23,6 +24,7 @@ type Snapshot = {
 	weather: WeatherPayload | null;
 	image: ImagePayload | null;
 	screen: ScreenPayload | null;
+	screenAspect: number | null;
 	kiosk: KioskPayload | null;
 	ready: boolean;
 };
@@ -92,6 +94,7 @@ describe('SSESubscriber', () => {
 			weather: null,
 			image: null,
 			screen: null,
+			screenAspect: null,
 			kiosk: null,
 			ready: false
 		});
@@ -102,6 +105,7 @@ describe('SSESubscriber', () => {
 				snapshot.weather = subscriber.weather;
 				snapshot.image = subscriber.image;
 				snapshot.screen = subscriber.screen;
+				snapshot.screenAspect = subscriber.screenAspect;
 				snapshot.kiosk = subscriber.kiosk;
 				snapshot.ready = subscriber.ready;
 			});
@@ -128,7 +132,7 @@ describe('SSESubscriber', () => {
 			vi.useFakeTimers();
 			try {
 				const { subscriber, stop: stopFirst } = await watchFreshSubscriber();
-				emitEvent({ event: 'image', data: { name: 'a.jpg' } });
+				emitEvent({ event: 'image', data: { names: ['a.jpg'] } });
 				await tick();
 				expect(connectCount).toBe(1);
 
@@ -141,7 +145,7 @@ describe('SSESubscriber', () => {
 				await tick();
 
 				expect(connectCount).toBe(1);
-				expect(second.snapshot.image).toEqual({ name: 'a.jpg' });
+				expect(second.snapshot.image).toEqual({ names: ['a.jpg'] });
 			} finally {
 				vi.useRealTimers();
 			}
@@ -152,7 +156,7 @@ describe('SSESubscriber', () => {
 			try {
 				const { subscriber, stop: stopFirst } = await watchFreshSubscriber();
 
-				emitEvent({ event: 'image', data: { name: 'a.jpg' } });
+				emitEvent({ event: 'image', data: { names: ['a.jpg'] } });
 				await tick();
 				emitEvent({ event: 'ready', data: {} as Record<string, never> });
 				await tick();
@@ -191,9 +195,9 @@ describe('SSESubscriber', () => {
 			expect(snapshot.ready).toBe(false);
 			expect(connectCount).toBe(2);
 
-			emitEvent({ event: 'image', data: { name: 'reconnected.jpg' } });
+			emitEvent({ event: 'image', data: { names: ['reconnected.jpg'] } });
 			await tick();
-			expect(snapshot.image).toEqual({ name: 'reconnected.jpg' });
+			expect(snapshot.image).toEqual({ names: ['reconnected.jpg'] });
 		});
 	});
 
@@ -275,20 +279,20 @@ describe('SSESubscriber', () => {
 		it('stores the payload when name is non-empty', async () => {
 			const { snapshot } = await watchFreshSubscriber();
 
-			emitEvent({ event: 'image', data: { name: 'a.jpg' } });
+			emitEvent({ event: 'image', data: { names: ['a.jpg'] } });
 			await tick();
 
-			expect(snapshot.image).toEqual({ name: 'a.jpg' });
+			expect(snapshot.image).toEqual({ names: ['a.jpg'] });
 		});
 
 		it('clears the image when name is empty', async () => {
 			const { snapshot } = await watchFreshSubscriber();
 
-			emitEvent({ event: 'image', data: { name: 'a.jpg' } });
+			emitEvent({ event: 'image', data: { names: ['a.jpg'] } });
 			await tick();
 			expect(snapshot.image).not.toBeNull();
 
-			emitEvent({ event: 'image', data: { name: '' } });
+			emitEvent({ event: 'image', data: { names: [] } });
 			await tick();
 			expect(snapshot.image).toBeNull();
 		});
@@ -308,6 +312,17 @@ describe('SSESubscriber', () => {
 			emitEvent({ event: 'screen', data: { on: true, auto: true } });
 			await tick();
 			expect(snapshot.screen).toEqual({ on: true, auto: true });
+		});
+	});
+
+	describe('screen aspect events', () => {
+		it('exposes the reported frame aspect ratio', async () => {
+			const { snapshot } = await watchFreshSubscriber();
+			expect(snapshot.screenAspect).toBeNull();
+
+			emitEvent({ event: 'screen_aspect', data: { aspect: 1.7778 } });
+			await tick();
+			expect(snapshot.screenAspect).toBe(1.7778);
 		});
 	});
 

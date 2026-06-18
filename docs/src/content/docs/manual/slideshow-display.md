@@ -4,8 +4,8 @@ description: Set how photos advance, when the screen sleeps, the language on the
 ---
 
 The slideshow and the screen's behavior are set on the **Settings** page, in two groups.
-**Essentials** holds the photo rotation, the idle screen-off, the language, and the reading
-labels. These apply the moment you save. **Display** holds the screen output and which
+**Essentials** holds the photo rotation and pairing, the idle screen-off, the language, and the
+reading labels. These apply the moment you save. **Display** holds the screen output and which
 screen-power backend the frame uses. See [Configuration basics](/getting-started/configuration/)
 for how saving and restarts work.
 
@@ -18,6 +18,25 @@ default is two minutes (`slideshow.interval`).
 
 **Shuffle photos** controls the order. With it off, photos cycle in order. With it on, the order is
 reshuffled each full pass (`slideshow.randomize`, off by default).
+
+## Split-screen pairing
+
+A portrait photo on a landscape screen, or a landscape photo on a portrait screen, cannot fill
+the frame without cropping away most of it. **Split-screen pairing** avoids that. When a photo's
+shape is too far from the screen's to fit cleanly, the frame shows it beside another photo of the
+same orientation, side by side with a thin gap, instead of cropping it. Photos that already fit
+the screen show one at a time, full-frame.
+
+![Two portrait photos shown side by side on a landscape frame, instead of one cropped photo](../../../assets/screenshots/split-screen.png)
+
+The toggle is on by default (`slideshow.split_screen`). Turn it off to crop every photo to fill
+the screen. A lone photo of its orientation, with no partner in the current pass, shows on its
+own, cropped.
+
+Pairing follows the screen, not a fixed setting: the frame reports its own dimensions, so turning
+a frame to portrait pairs landscape photos instead. How far a photo's shape must differ before it
+pairs is `slideshow.pair_threshold` in the [configuration reference](/reference/configuration/),
+and the default suits most screens.
 
 ## Turning the screen off when idle
 

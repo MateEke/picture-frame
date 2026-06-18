@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures';
+import { splitImagesDir } from './helpers';
 
 test.describe('kiosk', () => {
 	test.beforeEach(async ({ kiosk }) => {
@@ -36,5 +37,43 @@ test.describe('kiosk', () => {
 	test('shows the weather icon (mock active in dev)', async ({ kiosk }) => {
 		await expect(kiosk.weatherIcon).toBeVisible();
 		await expect(kiosk.weatherIcon).toHaveAttribute('src', /.+/);
+	});
+});
+
+test.describe('kiosk split-screen', () => {
+	// A portrait viewport makes the landscape seed photos outliers, so they pair.
+	test.use({ viewport: { width: 640, height: 1000 } });
+
+	test('pairs mismatched-orientation photos, stacked on a portrait screen', async ({
+		kiosk,
+		page
+	}) => {
+		await kiosk.goto();
+		await kiosk.waitForImage();
+		const panes = page.getByTestId('kiosk-slide-bottom').locator('> img');
+		await expect.poll(() => panes.count(), { timeout: 15_000 }).toBe(2);
+
+		const a = await panes.nth(0).boundingBox();
+		const b = await panes.nth(1).boundingBox();
+		// Stacked, not side-by-side: same column, second below the first, each filling width.
+		expect(a && b && b.y > a.y + a.height - 2).toBeTruthy();
+		expect(a && b && Math.abs(a.x - b.x) < 2).toBeTruthy();
+		expect(a && a.width > 600).toBeTruthy();
+	});
+});
+
+test.describe('kiosk split-screen crossfade', () => {
+	// Landscape screen + a [solo, portrait, portrait] seed, so the pair is reached via a
+	// solo→pair transition (unlike the portrait test, where the pair is the first slide).
+	test.use({
+		viewport: { width: 1000, height: 600 },
+		serverOptions: { seedDir: splitImagesDir() }
+	});
+
+	test('completes a solo→pair crossfade so the pair becomes visible', async ({ kiosk, page }) => {
+		await kiosk.goto();
+		await kiosk.waitForImage();
+		const panes = page.getByTestId('kiosk-slide-bottom').locator('> img');
+		await expect.poll(() => panes.count(), { timeout: 15_000 }).toBe(2);
 	});
 });

@@ -18,6 +18,24 @@ test.describe('settings', () => {
 		await expect(settings.labelOutside).toHaveValue('E2E Changed');
 	});
 
+	test('toggles split-screen pairing and persists across reload', async ({ page, settings }) => {
+		const input = settings.splitScreenSwitch.locator('input[type="checkbox"]');
+		const before = await input.isChecked();
+		await settings.splitScreenSwitch.click();
+		await expect(input).toBeChecked({ checked: !before });
+		await expect(settings.save).toBeEnabled();
+
+		await settings.save.click();
+		await expect(settings.saveBar).toBeHidden();
+		// It applies live, so saving must not prompt for a restart.
+		await expect(settings.restartDialog).toBeHidden();
+
+		await page.reload();
+		await expect(settings.splitScreenSwitch.locator('input[type="checkbox"]')).toBeChecked({
+			checked: !before
+		});
+	});
+
 	test('links to the manual', async ({ settings }) => {
 		await expect(settings.docs).toHaveAttribute('href', /pages\.dev\/manual/);
 	});

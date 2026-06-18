@@ -1,51 +1,51 @@
 <script lang="ts">
 	import { getSSEContext } from '$lib/sse.svelte';
 	import { Fader } from '$lib/fader.svelte';
+	import Slide from '$lib/Slide.svelte';
 	import { onDestroy, untrack } from 'svelte';
 
 	const sse = getSSEContext();
 	const fader = new Fader();
 
-	const sseImageName = $derived(sse.ready && sse.image ? sse.image.name : null);
+	// The Fader keys on a single opaque src; join the slide's names into one
+	// ('|' is safe in filenames) and splitKey reverses it.
+	const names = $derived(sse.ready && sse.image?.names?.length ? sse.image.names : null);
 
 	$effect(() => {
-		if (!sseImageName) return;
-		untrack(() => fader.show(`/img/${sseImageName}`));
+		if (!names) return;
+		untrack(() => fader.show(names.join('|')));
 	});
+
+	function splitKey(key: string): string[] {
+		return key ? key.split('|') : [];
+	}
+
+	const bottomNames = $derived(splitKey(fader.bottomSrc));
+	const topNames = $derived(splitKey(fader.topSrc));
 
 	onDestroy(() => fader.stop());
 </script>
 
 <!-- Manual crossfade, not transition:fade: the Pi Zero animates it too choppily. -->
-<img
-	src={fader.bottomSrc}
-	alt=""
-	data-testid="kiosk-img-bottom"
-	decoding="async"
-	class="will-change-transform"
-	onload={() => fader.onBottomLoad()}
-	onerror={() => fader.onBottomError()}
+<Slide
+	class="fixed top-0 left-0 transform-gpu"
+	data-testid="kiosk-slide-bottom"
+	images={bottomNames}
+	testId="kiosk-img-bottom"
+	onAllLoad={() => fader.onBottomLoad()}
+	onError={() => fader.onBottomError()}
 />
 
-<img
-	src={fader.topSrc}
-	alt=""
-	decoding="async"
+<Slide
 	class={[
-		'will-change-[opacity]',
+		'fixed top-0 left-0 transform-gpu will-change-[opacity]',
 		fader.transitioning ? 'transition-opacity duration-3000 ease-in-out' : ''
 	]}
-	style:opacity={fader.topOp}
-	onload={() => fader.onTopLoad()}
-	onerror={() => fader.onTopError()}
+	style="opacity: {fader.topOp}"
 	ontransitionend={(e) => {
 		if (e.propertyName === 'opacity') fader.onTransitionEnd();
 	}}
+	images={topNames}
+	onAllLoad={() => fader.onTopLoad()}
+	onError={() => fader.onTopError()}
 />
-
-<style lang="postcss">
-	@reference "tailwindcss";
-	img {
-		@apply fixed top-0 left-0 h-full w-full transform-gpu object-cover;
-	}
-</style>

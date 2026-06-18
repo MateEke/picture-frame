@@ -5,26 +5,44 @@ import (
 	"time"
 
 	"github.com/MateEke/picture-frame/internal/library"
+	"github.com/MateEke/picture-frame/internal/slideplan"
 	"github.com/MateEke/picture-frame/internal/slideshow"
 	"github.com/MateEke/picture-frame/internal/state"
 	"github.com/MateEke/picture-frame/internal/testutil"
 )
 
+// unknownRatios keeps every image solo (the single-name tests below).
+func unknownRatios(string) (float64, bool) { return 0, false }
+
+func newPlannerFor(lib *library.Library, ratioOf func(string) (float64, bool)) *slideplan.Planner {
+	src := slideshow.NewLibrarySource(lib)
+	return slideplan.NewPlanner(src, ratioOf, slideplan.Threshold{Factor: 1.5}, true)
+}
+
 func newSlideshow(lib *library.Library) (*slideshow.Slideshow, *state.Bus) {
 	bus := state.NewBus()
-	ss := slideshow.New(testutil.NopLogger(), lib, bus, 20*time.Millisecond)
+	ss := slideshow.New(testutil.NopLogger(), lib, newPlannerFor(lib, unknownRatios), bus, 20*time.Millisecond)
 	return ss, bus
+}
+
+func receiveNames(t *testing.T, ch <-chan state.Event, timeout time.Duration) []string {
+	t.Helper()
+	select {
+	case e := <-ch:
+		return e.Payload.(state.ImagePayload).Names
+	case <-time.After(timeout):
+		t.Fatal("timeout waiting for image event")
+		return nil
+	}
 }
 
 func receiveImage(t *testing.T, ch <-chan state.Event, timeout time.Duration) string {
 	t.Helper()
-	select {
-	case e := <-ch:
-		return e.Payload.(state.ImagePayload).Name
-	case <-time.After(timeout):
-		t.Fatal("timeout waiting for image event")
+	names := receiveNames(t, ch, timeout)
+	if len(names) == 0 {
 		return ""
 	}
+	return names[0]
 }
 
 func TestRunPublishesCurrentImmediately(t *testing.T) {
@@ -117,7 +135,7 @@ func TestSetIntervalTriggersImmediateAdvance(t *testing.T) {
 	lib := library.New([]library.Image{{Name: "a.jpg"}, {Name: "b.jpg"}, {Name: "c.jpg"}}, false)
 	// Start with a very long interval so no tick fires naturally during the test.
 	bus := state.NewBus()
-	ss := slideshow.New(testutil.NopLogger(), lib, bus, 10*time.Second)
+	ss := slideshow.New(testutil.NopLogger(), lib, newPlannerFor(lib, unknownRatios), bus, 10*time.Second)
 
 	ch, unsub := bus.Subscribe()
 	defer unsub()
@@ -140,6 +158,71 @@ func TestSetRandomizeDoesNotPanic(_ *testing.T) {
 	ss, _ := newSlideshow(lib)
 	ss.SetRandomize(true)
 	ss.SetRandomize(false)
+}
+
+func TestRunSkipsDeletedImage(t *testing.T) {
+	lib := library.New([]library.Image{{Name: "a.jpg"}, {Name: "b.jpg"}, {Name: "c.jpg"}}, false)
+	ss, bus := newSlideshow(lib)
+
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	go ss.Run(t.Context())
+
+	receiveImage(t, ch, time.Second) // initial "a.jpg"
+	lib.Remove("b.jpg")              // delete the next image out from under the cached plan
+	ss.Next()
+	name := receiveImage(t, ch, time.Second)
+	if name != "c.jpg" {
+		t.Errorf("expected b.jpg to be skipped server-side, got %s", name)
+	}
+}
+
+func TestRunSkipsManyDeletedImages(t *testing.T) {
+	lib := library.New([]library.Image{
+		{Name: "a.jpg"}, {Name: "b.jpg"}, {Name: "c.jpg"}, {Name: "d.jpg"}, {Name: "e.jpg"},
+	}, false)
+	ss, bus := newSlideshow(lib)
+
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	go ss.Run(t.Context())
+
+	receiveImage(t, ch, time.Second) // initial "a.jpg"
+	for _, name := range []string{"b.jpg", "c.jpg", "d.jpg", "e.jpg"} {
+		lib.Remove(name)
+	}
+	ss.Next()
+	name := receiveImage(t, ch, time.Second)
+	if name != "a.jpg" {
+		t.Errorf("expected only the surviving a.jpg, got a deleted image: %s", name)
+	}
+}
+
+func TestPublishesPairedSlide(t *testing.T) {
+	lib := library.New([]library.Image{{Name: "p1.jpg"}, {Name: "p2.jpg"}}, false)
+	bus := state.NewBus()
+	portrait := func(string) (float64, bool) { return 0.66, true }
+	planner := newPlannerFor(lib, portrait)
+	planner.SetScreenAspect(16.0 / 9.0)
+	ss := slideshow.New(testutil.NopLogger(), lib, planner, bus, 20*time.Millisecond)
+
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	go ss.Run(t.Context())
+
+	names := receiveNames(t, ch, time.Second)
+	if len(names) != 2 || names[0] != "p1.jpg" || names[1] != "p2.jpg" {
+		t.Errorf("expected paired slide [p1.jpg p2.jpg], got %v", names)
+	}
+}
+
+func TestSetSplitConfigDoesNotPanic(_ *testing.T) {
+	lib := library.New([]library.Image{{Name: "a.jpg"}, {Name: "b.jpg"}}, false)
+	ss, _ := newSlideshow(lib)
+	ss.SetSplitConfig(false, slideplan.Threshold{Factor: 2.0})
 }
 
 // Library starts empty; an image is added later. The slideshow should resume
