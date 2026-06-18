@@ -73,6 +73,82 @@ func newImageServerWithBackend(t *testing.T, backend string) *imageHarness {
 	return &imageHarness{handler: h, lib: lib, bus: bus, root: root, slideshow: ss}
 }
 
+func newImageServerWithAspect(t *testing.T) (*imageHarness, *library.AspectStore) {
+	t.Helper()
+	dir := t.TempDir()
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		t.Fatalf("OpenRoot: %v", err)
+	}
+	t.Cleanup(func() { _ = root.Close() })
+	lib := library.New(nil, false)
+	bus := state.NewBus()
+	ss := &fakeSlideshow{}
+	aspect, err := library.LoadAspectStore(testutil.NopLogger(), root)
+	if err != nil {
+		t.Fatalf("LoadAspectStore: %v", err)
+	}
+	h := httpapi.NewServer(httpapi.Config{
+		Log: testutil.NopLogger(), Bus: bus, Library: lib, ImagesRoot: root,
+		Slideshow: ss, KioskBeater: &fakeBeater{}, Aspect: aspect,
+	})
+	return &imageHarness{handler: h, lib: lib, bus: bus, root: root, slideshow: ss}, aspect
+}
+
+func uploadedName(t *testing.T, rec *httptest.ResponseRecorder) string {
+	t.Helper()
+	var item struct{ Name string }
+	if err := json.NewDecoder(rec.Body).Decode(&item); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	return item.Name
+}
+
+func TestUploadStoresAspectJPEG(t *testing.T) {
+	h, aspect := newImageServerWithAspect(t)
+	rec := httptest.NewRecorder()
+	h.handler.ServeHTTP(rec, uploadRequest(t, "image", "x.jpg", makeJPEG(t)))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status %d, body %s", rec.Code, rec.Body)
+	}
+	ratio, ok := aspect.Ratio(uploadedName(t, rec))
+	if !ok || ratio != 1.0 {
+		t.Errorf("aspect = %v ok=%v, want 1.0 (8x8)", ratio, ok)
+	}
+}
+
+func TestUploadStoresAspectPNG(t *testing.T) {
+	h, aspect := newImageServerWithAspect(t)
+	rec := httptest.NewRecorder()
+	h.handler.ServeHTTP(rec, uploadRequest(t, "image", "x.png", makePNG(t)))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status %d, body %s", rec.Code, rec.Body)
+	}
+	ratio, ok := aspect.Ratio(uploadedName(t, rec))
+	if !ok || ratio != 1.0 {
+		t.Errorf("aspect = %v ok=%v, want 1.0 (8x8)", ratio, ok)
+	}
+}
+
+func TestDeleteRemovesAspect(t *testing.T) {
+	h, aspect := newImageServerWithAspect(t)
+	rec := httptest.NewRecorder()
+	h.handler.ServeHTTP(rec, uploadRequest(t, "image", "x.jpg", makeJPEG(t)))
+	name := uploadedName(t, rec)
+	if _, ok := aspect.Ratio(name); !ok {
+		t.Fatal("expected aspect stored after upload")
+	}
+
+	rec2 := httptest.NewRecorder()
+	h.handler.ServeHTTP(rec2, httptest.NewRequest(http.MethodDelete, "/api/images/"+name, nil))
+	if rec2.Code != http.StatusNoContent {
+		t.Fatalf("delete status %d", rec2.Code)
+	}
+	if _, ok := aspect.Ratio(name); ok {
+		t.Error("aspect should be removed after delete")
+	}
+}
+
 func makeJPEG(t *testing.T) []byte {
 	t.Helper()
 	img := image.NewRGBA(image.Rect(0, 0, 8, 8))

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"image"
+	"image/jpeg"
 	"io"
 	"os"
 	"path/filepath"
@@ -159,6 +161,58 @@ func TestSyncDownloadsNewAssets(t *testing.T) {
 	}
 	if adv.n != 1 {
 		t.Errorf("advancer called %d times, want 1 (empty → non-empty)", adv.n)
+	}
+}
+
+// jpegBody returns a w×h JPEG, the kind the syncer decodes for an asset's aspect.
+func jpegBody(t *testing.T, w, h int) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, image.NewRGBA(image.Rect(0, 0, w, h)), nil); err != nil {
+		t.Fatalf("encode jpeg: %v", err)
+	}
+	return buf.Bytes()
+}
+
+func TestSyncStoresDecodedAspectAndPersists(t *testing.T) {
+	root, lib := setup(t)
+	r := &fakeRemote{}
+	a := asset(idA, 1)
+	r.set(a)
+	r.bodies[a.ID] = jpegBody(t, 4, 2)
+
+	store, _ := library.LoadAspectStore(testutil.NopLogger(), root)
+	s := library.NewSyncer(testutil.NopLogger(), r, lib, root, time.Hour, &fakeAdvancer{}, library.WithAspectStore(store))
+	runOnce(t, s)
+
+	name := library.SyncedFilename(a)
+	if ratio, ok := store.Ratio(name); !ok || ratio != 2.0 {
+		t.Errorf("decoded aspect = %v ok=%v, want 2.0", ratio, ok)
+	}
+	reloaded, _ := library.LoadAspectStore(testutil.NopLogger(), root)
+	if _, ok := reloaded.Ratio(name); !ok {
+		t.Error("sync did not persist the aspect index")
+	}
+}
+
+func TestSyncDeletesAspectForStaleFile(t *testing.T) {
+	root, lib := setup(t)
+	r := &fakeRemote{}
+	a := asset(idA, 1)
+	r.set(a)
+	r.bodies[a.ID] = jpegBody(t, 4, 3)
+	store, _ := library.LoadAspectStore(testutil.NopLogger(), root)
+	s := library.NewSyncer(testutil.NopLogger(), r, lib, root, time.Hour, &fakeAdvancer{}, library.WithAspectStore(store))
+	runOnce(t, s)
+	name := library.SyncedFilename(a)
+	if _, ok := store.Ratio(name); !ok {
+		t.Fatal("expected aspect stored after download")
+	}
+
+	r.set() // remote drops the asset
+	runOnce(t, s)
+	if _, ok := store.Ratio(name); ok {
+		t.Error("aspect should be deleted when the file is removed")
 	}
 }
 

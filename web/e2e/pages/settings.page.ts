@@ -6,6 +6,7 @@ export class SettingsPage {
 	readonly discard: Locator;
 	readonly issues: Locator;
 	readonly labelOutside: Locator;
+	readonly splitScreenSwitch: Locator;
 	readonly weatherLat: Locator;
 	readonly sensorAdd: Locator;
 	readonly dialogId: Locator;
@@ -40,6 +41,7 @@ export class SettingsPage {
 		this.discard = page.getByTestId('settings-discard');
 		this.issues = page.getByTestId('settings-issues');
 		this.labelOutside = page.getByTestId('setting-label-outside');
+		this.splitScreenSwitch = page.getByTestId('split-screen-switch');
 		this.weatherLat = page.getByTestId('setting-weather-lat');
 		this.sensorAdd = page.getByTestId('sensor-add');
 		this.dialogId = page.getByTestId('sensor-dialog-id');

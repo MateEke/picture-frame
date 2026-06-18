@@ -117,6 +117,7 @@
 	<div class="grid gap-3 md:grid-cols-2">
 		<NowPlaying
 			image={sse.image}
+			aspect={sse.screenAspect}
 			interval={data.config?.slideshow.interval ?? ''}
 			shuffle={data.config?.slideshow.randomize ?? false}
 		/>

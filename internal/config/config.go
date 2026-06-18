@@ -92,10 +92,18 @@ type MqttBridgeConfig struct {
 	StaleAfter Duration `toml:"stale_after"`
 }
 
+// DefaultPairThreshold is the split-screen aspect-deviation factor used when none
+// is configured. A value <= 1 would classify every image as an outlier.
+const DefaultPairThreshold = 1.5
+
 type SlideshowConfig struct {
 	Interval  Duration `toml:"interval"`
 	Randomize bool     `toml:"randomize"`
 	ImagesDir string   `toml:"images_dir"`
+	// SplitScreen pairs same-orientation outliers instead of cropping; PairThreshold
+	// is the aspect deviation factor (>1) at which a photo counts as an outlier.
+	SplitScreen   bool    `toml:"split_screen"`
+	PairThreshold float64 `toml:"pair_threshold"`
 }
 
 // Known display backend names.
@@ -202,9 +210,11 @@ func defaults() Config {
 			Locale:     "en-US",
 		},
 		Slideshow: SlideshowConfig{
-			Interval:  Duration{120 * time.Second},
-			ImagesDir: "images",
-			Randomize: false,
+			Interval:      Duration{120 * time.Second},
+			ImagesDir:     "images",
+			Randomize:     false,
+			SplitScreen:   true,
+			PairThreshold: DefaultPairThreshold,
 		},
 		Library: LibraryConfig{
 			Backend: BackendFS,

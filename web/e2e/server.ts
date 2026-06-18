@@ -18,6 +18,8 @@ export type ServerOptions = {
 	updateOutcome?: string;
 	/** Updater mock: simulate an unreachable release source. */
 	updateOffline?: boolean;
+	/** Seed image directory to copy in; defaults to the shared fixtures/images. */
+	seedDir?: string;
 };
 
 export type PfServer = {
@@ -46,7 +48,7 @@ async function spawnOnce(opts: ServerOptions): Promise<PfServer> {
 	const port = await freePort();
 	const dir = await mkdtemp(path.join(os.tmpdir(), 'pf-e2e-run-'));
 	const imagesDir = path.join(dir, 'images');
-	await cp(seedImagesDir(), imagesDir, { recursive: true });
+	await cp(opts.seedDir ?? seedImagesDir(), imagesDir, { recursive: true });
 	await writeFile(
 		path.join(dir, 'config.toml'),
 		renderConfig({ port, imagesDir, passwordHash: opts.passwordHash, immich: opts.immich })

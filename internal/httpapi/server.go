@@ -46,6 +46,13 @@ type KioskBeater interface {
 	Beat(version string)
 }
 
+// SlidePlanner receives the kiosk's reported screen aspect (which rebuilds the
+// slide plan); SetScreenAspect reports whether the value changed. Implemented by
+// *slideplan.Planner.
+type SlidePlanner interface {
+	SetScreenAspect(aspect float64) bool
+}
+
 // SyncerStatus reports the current state of a remote library backend and lets
 // the admin request an out-of-band sync. Aliased to the library-owned interface
 // so producers (e.g. startup) can return it without importing this package.
@@ -60,6 +67,11 @@ type Config struct {
 	Slideshow   SlideshowController
 	ImagesRoot  *os.Root
 	KioskBeater KioskBeater // required
+	// Aspect caches per-image dimensions; nil disables split-screen metadata.
+	Aspect *library.AspectStore
+	// Planner rebuilds slide plans and receives the kiosk's screen aspect; nil in
+	// tests/dev that don't exercise split-screen.
+	Planner SlidePlanner
 	// Backend is the active library backend, e.g. "fs" or "immich".
 	Backend string
 	// Syncer is non-nil for remote backends; exposes sync status to the UI.
@@ -91,6 +103,8 @@ type server struct {
 	slideshow     SlideshowController
 	imagesRoot    *os.Root
 	kioskBeater   KioskBeater
+	aspect        *library.AspectStore
+	planner       SlidePlanner
 	backend       string
 	syncer        SyncerStatus
 	updater       UpdaterStatus
@@ -130,6 +144,8 @@ func NewServer(cfg Config) http.Handler {
 		slideshow:     cfg.Slideshow,
 		imagesRoot:    cfg.ImagesRoot,
 		kioskBeater:   cfg.KioskBeater,
+		aspect:        cfg.Aspect,
+		planner:       cfg.Planner,
 		backend:       backend,
 		syncer:        cfg.Syncer,
 		updater:       cfg.Updater,

@@ -230,6 +230,90 @@ func TestHeartbeatEndpoint(t *testing.T) {
 	}
 }
 
+// assertAspectEvent checks the bus published a screen_aspect event exactly when
+// an authoritative change occurred (for the admin preview).
+func assertAspectEvent(t *testing.T, ch <-chan state.Event, want bool, val float64) {
+	t.Helper()
+	select {
+	case e := <-ch:
+		p, ok := e.Payload.(state.ScreenAspectPayload)
+		if !want {
+			t.Errorf("did not expect a bus event, got %v", e.Payload)
+		} else if !ok || p.Aspect != val {
+			t.Errorf("aspect event = %v, want %v", e.Payload, val)
+		}
+	default:
+		if want {
+			t.Error("expected a screen_aspect bus event")
+		}
+	}
+}
+
+// fakeAspectPlanner records SetScreenAspect/Invalidate for handler tests.
+type fakeAspectPlanner struct {
+	setCalls   int
+	lastAspect float64
+}
+
+func (f *fakeAspectPlanner) SetScreenAspect(a float64) bool {
+	changed := a != f.lastAspect
+	f.setCalls++
+	f.lastAspect = a
+	return changed
+}
+
+func TestHeartbeatAspectAuthoritative(t *testing.T) {
+	cases := []struct {
+		name, remoteAddr, xff, xrip, aspect string
+		wantSet                             bool
+		wantVal                             float64
+	}{
+		{"loopback no proxy sets aspect", "127.0.0.1:5000", "", "", "1.7778", true, 1.7778},
+		{"non-loopback ignored", "10.0.0.5:5000", "", "", "1.7778", false, 0},
+		{"loopback with X-Forwarded-For ignored", "127.0.0.1:5000", "9.9.9.9", "", "1.7778", false, 0},
+		{"loopback with X-Real-IP ignored", "127.0.0.1:5000", "", "9.9.9.9", "1.7778", false, 0},
+		{"invalid aspect ignored", "127.0.0.1:5000", "", "", "0", false, 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			planner := &fakeAspectPlanner{}
+			beater := &fakeBeater{}
+			bus := state.NewBus()
+			srv := httpapi.NewServer(httpapi.Config{
+				Log: testutil.NopLogger(), Screen: &mockScreen{}, Bus: bus,
+				KioskBeater: beater, Planner: planner,
+			})
+			ch, unsub := bus.Subscribe()
+			defer unsub()
+
+			req := httptest.NewRequest(http.MethodPost, "/api/heartbeat?version=v1&aspect="+tc.aspect, nil)
+			req.RemoteAddr = tc.remoteAddr
+			if tc.xff != "" {
+				req.Header.Set("X-Forwarded-For", tc.xff)
+			}
+			if tc.xrip != "" {
+				req.Header.Set("X-Real-IP", tc.xrip)
+			}
+			rec := httptest.NewRecorder()
+			srv.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusNoContent {
+				t.Fatalf("status %d, body %s", rec.Code, rec.Body)
+			}
+			if (planner.setCalls > 0) != tc.wantSet {
+				t.Errorf("SetScreenAspect called=%v, want %v", planner.setCalls > 0, tc.wantSet)
+			}
+			if tc.wantSet && planner.lastAspect != tc.wantVal {
+				t.Errorf("aspect = %v, want %v", planner.lastAspect, tc.wantVal)
+			}
+			if beater.calls.Load() != 1 {
+				t.Errorf("Beat should always be called once, got %d", beater.calls.Load())
+			}
+			assertAspectEvent(t, ch, tc.wantSet, tc.wantVal)
+		})
+	}
+}
+
 type fakeSyncer struct {
 	st       library.Status
 	triggers int

@@ -80,7 +80,7 @@ func TestLoadIgnoresUnsupportedExtensions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if lib.Len() != 1 || lib.Current().Name != "photo.jpg" {
+	if lib.Len() != 1 || lib.List()[0].Name != "photo.jpg" {
 		t.Errorf("expected only photo.jpg, got %v", lib.List())
 	}
 }
@@ -98,7 +98,7 @@ func TestLoadSkipsUnservableNames(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if lib.Len() != 1 || lib.Current().Name != "ok.jpg" {
+	if lib.Len() != 1 || lib.List()[0].Name != "ok.jpg" {
 		t.Errorf("expected only ok.jpg, got %v", lib.List())
 	}
 }

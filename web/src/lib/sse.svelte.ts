@@ -35,6 +35,7 @@ export class SSESubscriber {
 	private _sensors = $state<Record<string, SensorPayload>>({});
 	private _weather = $state<WeatherPayload | null>(null);
 	private _screen = $state<ScreenPayload | null>(null);
+	private _screenAspect = $state<number | null>(null);
 	private _kiosk = $state<KioskPayload | null>(null);
 
 	constructor() {
@@ -61,6 +62,7 @@ export class SSESubscriber {
 		this._sensors = {};
 		this._weather = null;
 		this._screen = null;
+		this._screenAspect = null;
 		this._kiosk = null;
 
 		const controller = new AbortController();
@@ -116,10 +118,13 @@ export class SSESubscriber {
 				this._weather = event.data.icon_code ? event.data : null;
 				break;
 			case 'image':
-				this._image = event.data.name ? event.data : null;
+				this._image = event.data.names?.length ? event.data : null;
 				break;
 			case 'screen':
 				this._screen = event.data;
+				break;
+			case 'screen_aspect':
+				this._screenAspect = event.data.aspect || null;
 				break;
 			case 'kiosk':
 				this._kiosk = event.data;
@@ -152,6 +157,10 @@ export class SSESubscriber {
 	get screen() {
 		this.subscribe();
 		return this._screen;
+	}
+	get screenAspect() {
+		this.subscribe();
+		return this._screenAspect;
 	}
 	get kiosk() {
 		this.subscribe();

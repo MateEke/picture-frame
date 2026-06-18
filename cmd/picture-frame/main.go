@@ -19,9 +19,11 @@ import (
 	displaypkg "github.com/MateEke/picture-frame/internal/display"
 	"github.com/MateEke/picture-frame/internal/httpapi"
 	"github.com/MateEke/picture-frame/internal/kioskwatch"
+	"github.com/MateEke/picture-frame/internal/library"
 	libadapter "github.com/MateEke/picture-frame/internal/library/adapter"
 	"github.com/MateEke/picture-frame/internal/mqtt"
 	"github.com/MateEke/picture-frame/internal/sensors"
+	"github.com/MateEke/picture-frame/internal/slideplan"
 	"github.com/MateEke/picture-frame/internal/slideshow"
 	"github.com/MateEke/picture-frame/internal/startup"
 	"github.com/MateEke/picture-frame/internal/state"
@@ -130,10 +132,29 @@ func run() error {
 	}
 	defer imagesRoot.Close()
 
-	slides := slideshow.New(log, lib, bus, cfg.Slideshow.Interval.Duration)
+	aspectStore, err := library.LoadAspectStore(log, imagesRoot)
+	if err != nil {
+		return fmt.Errorf("load aspect index: %w", err)
+	}
+	planner := slideplan.NewPlanner(
+		slideshow.NewLibrarySource(lib),
+		aspectStore.Ratio,
+		slideplan.Threshold{Factor: cfg.Slideshow.PairThreshold},
+		cfg.Slideshow.SplitScreen,
+	)
+	slides := slideshow.New(log, lib, planner, bus, cfg.Slideshow.Interval.Duration)
 	go slides.Run(ctx)
 
-	librarySyncer, err := startLibrarySyncer(ctx, log, cfg, lib, imagesRoot, slides)
+	// Decode aspect ratios for the existing library, then re-plan: the first plan
+	// is built before any ratio is known, so pairing would otherwise wait for a wrap.
+	go func() {
+		if aspectStore.BackfillMissing(ctx, lib) {
+			planner.Invalidate()
+			slides.Next()
+		}
+	}()
+
+	librarySyncer, err := startLibrarySyncer(ctx, log, cfg, lib, imagesRoot, slides, aspectStore)
 	if err != nil {
 		return fmt.Errorf("start library syncer: %w", err)
 	}
@@ -199,6 +220,8 @@ func run() error {
 			Library:       lib,
 			Slideshow:     slides,
 			ImagesRoot:    imagesRoot,
+			Aspect:        aspectStore,
+			Planner:       planner,
 			KioskBeater:   kioskWatch,
 			Backend:       libraryBackend(cfg),
 			Syncer:        startup.SyncerStatus(librarySyncer),

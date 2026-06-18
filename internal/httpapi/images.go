@@ -20,6 +20,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 
 	"github.com/MateEke/picture-frame/internal/config"
+	"github.com/MateEke/picture-frame/internal/library"
 	"github.com/MateEke/picture-frame/internal/state"
 )
 
@@ -103,6 +104,12 @@ func (s *server) registerImageRoutes(api huma.API) {
 			return nil, huma.Error500InternalServerError("failed to delete image")
 		}
 		s.lib.Remove(input.Name)
+		if s.aspect != nil {
+			// In-memory only: the sidecar is a cache, a stale entry for a removed file is
+			// never read (the planner queries live names only), and the next upload/sync
+			// flush prunes it. Avoids a full-index rewrite per item during bulk delete.
+			s.aspect.Delete(input.Name)
+		}
 		if s.lib.Len() == 0 {
 			s.bus.Publish(state.Event{
 				Kind:    state.KindImage,
@@ -201,6 +208,7 @@ func (s *server) handleUploadImage(_ context.Context, input *UploadImageInput) (
 	}
 
 	var writeErr error
+	var w, h int
 	if format == "jpeg" {
 		_, writeErr = io.Copy(f, br)
 	} else {
@@ -208,6 +216,8 @@ func (s *server) handleUploadImage(_ context.Context, input *UploadImageInput) (
 		if decodeErr != nil {
 			writeErr = decodeErr
 		} else {
+			b := img.Bounds()
+			w, h = b.Dx(), b.Dy() // captured free; re-encoded JPEG keeps these dims
 			writeErr = stdjpeg.Encode(f, img, &stdjpeg.Options{Quality: 85})
 		}
 	}
@@ -218,6 +228,12 @@ func (s *server) handleUploadImage(_ context.Context, input *UploadImageInput) (
 		return nil, huma.Error500InternalServerError("failed to save image")
 	}
 
+	if format == "jpeg" {
+		// JPEG was streamed, not decoded; read its header now.
+		w, h = library.ImageDimensions(s.imagesRoot, name)
+	}
+	s.recordAspect(name, w, h)
+
 	wasEmpty := s.lib.Len() == 0
 	s.lib.Add(name)
 	if wasEmpty && s.slideshow != nil {
@@ -225,6 +241,16 @@ func (s *server) handleUploadImage(_ context.Context, input *UploadImageInput) (
 	}
 
 	return &UploadImageOutput{Body: ImageItem{Name: name}}, nil
+}
+
+func (s *server) recordAspect(name string, w, h int) {
+	if s.aspect == nil || w <= 0 || h <= 0 {
+		return
+	}
+	s.aspect.Set(name, w, h)
+	if err := s.aspect.Flush(); err != nil {
+		s.log.Warn("failed to persist aspect index", "err", err)
+	}
 }
 
 // sniffImageFormat maps net/http content sniffing to a stdlib image format name.

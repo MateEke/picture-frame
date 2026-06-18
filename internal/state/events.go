@@ -36,11 +36,21 @@ type WeatherPayload struct {
 
 func (WeatherPayload) busPayload() {}
 
+// ImagePayload carries the current slide's image names (one solo, two for a
+// split pair). Empty signals no image.
 type ImagePayload struct {
-	Name string `json:"name"`
+	Names []string `json:"names"`
 }
 
 func (ImagePayload) busPayload() {}
+
+// ScreenAspectPayload carries the kiosk's reported aspect (width/height) so the
+// admin dashboard can size its preview to match the frame.
+type ScreenAspectPayload struct {
+	Aspect float64 `json:"aspect"`
+}
+
+func (ScreenAspectPayload) busPayload() {}
 
 // KioskPayload carries the kiosk overlay's render inputs.
 type KioskPayload struct {

@@ -51,7 +51,11 @@ these matter more than they would on a wired desk:
 - **Put it behind a reverse proxy with TLS.** Run a proxy such as Caddy, nginx, or Traefik in
   front of the frame so you reach the admin interface over HTTPS. That encrypts the password and
   the session cookie in transit. A proxy on your own network can use a certificate from a domain
-  you own or from an internal certificate authority.
+  you own or from an internal certificate authority. The frame's own kiosk reaches the backend
+  over loopback and bypasses the proxy, so this does not affect the on-screen display. Only a
+  proxy that the on-device kiosk itself routes through, without an `X-Forwarded-For` header, could
+  briefly confuse the screen-shape detection used for split-screen pairing; it self-corrects on
+  the next heartbeat.
 - **Segment the Wi-Fi.** Keep the frame on a separate or guest network, and turn on your access
   point's client isolation so other devices on the Wi-Fi cannot reach it at all. Isolation is
   what closes the sniffing gap that plain HTTP leaves open.

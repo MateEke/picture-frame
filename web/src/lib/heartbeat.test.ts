@@ -34,6 +34,17 @@ describe('Heartbeat', () => {
 		hb.stop();
 	});
 
+	it('reports the screen aspect ratio (width/height)', () => {
+		vi.stubGlobal('window', { innerWidth: 1600, innerHeight: 900 });
+		const hb = new Heartbeat();
+		hb.start();
+		expect(mockHeartbeat).toHaveBeenCalledWith(
+			expect.objectContaining({ query: expect.objectContaining({ aspect: 1600 / 900 }) })
+		);
+		hb.stop();
+		vi.unstubAllGlobals();
+	});
+
 	it('continues on network errors', async () => {
 		mockHeartbeat.mockRejectedValueOnce(new Error('network down'));
 		const hb = new Heartbeat();

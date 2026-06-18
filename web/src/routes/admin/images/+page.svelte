@@ -27,8 +27,8 @@
 	let syncing = $state(false);
 
 	const isFs = $derived(data.library?.backend === 'fs');
-	// The photo currently on the frame, to badge its thumbnail.
-	const onScreen = $derived(sse.image?.name ?? null);
+	// On-screen photos to badge (a split slide shows two).
+	const onScreen = $derived(new Set(sse.image?.names ?? []));
 	const images = $derived(data.images ?? []);
 
 	function subtitle(): string {
@@ -116,7 +116,7 @@
 			name
 		)
 			? 'ring-primary-500 ring-2'
-			: ''} {onScreen === name ? 'ring-success-500 ring-2' : ''}"
+			: ''} {onScreen.has(name) ? 'ring-success-500 ring-2' : ''}"
 	>
 		<button
 			type="button"
@@ -135,7 +135,7 @@
 			/>
 		</button>
 
-		{#if onScreen === name}
+		{#if onScreen.has(name)}
 			<span
 				data-testid="photo-onscreen"
 				class="preset-filled-success-500 pointer-events-none absolute top-1.5 left-1.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium shadow"

@@ -1,12 +1,12 @@
 <script lang="ts">
 	import type { SlideshowDto, DisplayDto, SensorDto } from '$lib/api/types.gen';
-	import { Switch } from '@skeletonlabs/skeleton-svelte';
-	import { Undo2Icon, SlidersHorizontalIcon } from '@lucide/svelte';
+	import { SlidersHorizontalIcon } from '@lucide/svelte';
 	import { DURATION_STOPS } from '$lib/duration';
 	import { eq, hasMotionSensor } from '../utils';
 	import DurationSlider from './DurationSlider.svelte';
 	import LocaleCombobox from './LocaleCombobox.svelte';
 	import Field from './Field.svelte';
+	import ToggleRow from './ToggleRow.svelte';
 
 	let {
 		slideshow = $bindable(),
@@ -24,6 +24,7 @@
 
 	const motion = $derived(hasMotionSensor(sensors));
 	const randomizeChanged = $derived(slideshow.randomize !== savedSlideshow.randomize);
+	const splitChanged = $derived(slideshow.split_screen !== savedSlideshow.split_screen);
 	// structural compare so a new label field is covered without touching this
 	const labelsChanged = $derived(!eq(display.labels, savedDisplay.labels));
 </script>
@@ -41,32 +42,22 @@
 		onrevert={() => (slideshow.interval = savedSlideshow.interval)}
 	/>
 
-	<div class="flex items-center justify-between">
-		<span class="label-text flex items-center gap-1.5">
-			Shuffle photos
-			{#if randomizeChanged}<span class="bg-primary-500 size-1.5 rounded-full" title="Changed"
-				></span>{/if}
-		</span>
-		<div class="flex items-center gap-2">
-			{#if randomizeChanged}
-				<button
-					type="button"
-					class="text-surface-500 hover:text-primary-500"
-					onclick={() => (slideshow.randomize = savedSlideshow.randomize)}
-					aria-label="Revert shuffle photos"
-				>
-					<Undo2Icon class="size-3.5" />
-				</button>
-			{/if}
-			<Switch
-				checked={slideshow.randomize}
-				onCheckedChange={({ checked }) => (slideshow.randomize = checked)}
-			>
-				<Switch.HiddenInput />
-				<Switch.Control><Switch.Thumb /></Switch.Control>
-			</Switch>
-		</div>
-	</div>
+	<ToggleRow
+		label="Shuffle photos"
+		checked={slideshow.randomize}
+		changed={randomizeChanged}
+		onchange={(v) => (slideshow.randomize = v)}
+		onrevert={() => (slideshow.randomize = savedSlideshow.randomize)}
+	/>
+
+	<ToggleRow
+		label="Split-screen pairing"
+		checked={slideshow.split_screen}
+		changed={splitChanged}
+		onchange={(v) => (slideshow.split_screen = v)}
+		onrevert={() => (slideshow.split_screen = savedSlideshow.split_screen)}
+		testId="split-screen-switch"
+	/>
 
 	<DurationSlider
 		label="Turn screen off when idle"

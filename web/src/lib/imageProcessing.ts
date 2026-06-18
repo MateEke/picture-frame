@@ -19,7 +19,9 @@ export async function fileToJpegBlob(
 	maxEdge = MAX_EDGE,
 	quality = JPEG_QUALITY
 ): Promise<Blob> {
-	const bitmap = await createImageBitmap(file);
+	// from-image: bake EXIF orientation into the pixels so the stored JPEG is upright
+	// and its dimensions reflect the displayed aspect (the default 'none' keeps it raw).
+	const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
 	try {
 		const { width, height } = fitWithin(bitmap.width, bitmap.height, maxEdge);
 		const canvas = document.createElement('canvas');

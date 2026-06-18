@@ -60,8 +60,9 @@ func defaultSaved() config.Config {
 			Output:     "HDMI-A-1",
 		},
 		Slideshow: config.SlideshowConfig{
-			Interval:  config.Duration{Duration: 2 * time.Minute},
-			ImagesDir: "images",
+			Interval:      config.Duration{Duration: 2 * time.Minute},
+			ImagesDir:     "images",
+			PairThreshold: 1.5,
 		},
 		Library: config.LibraryConfig{Backend: config.BackendFS},
 		Weather: config.WeatherConfig{
@@ -145,6 +146,33 @@ func TestPutConfigAppliesLiveForTier1(t *testing.T) {
 	}
 	if resp["restart_pending"] != false {
 		t.Errorf("Tier-1 only change: restart_pending must be false, got %v", resp["restart_pending"])
+	}
+}
+
+func TestPutConfigSplitScreenIsLive(t *testing.T) {
+	saved := defaultSaved()
+	srv, lc, restartCalls := makeConfigServer(t, saved)
+
+	// Toggling split-screen re-plans live (ApplyLive → SetSplitConfig); never a restart.
+	body := putBody(t, saved, func(dto *map[string]any) {
+		(*dto)["slideshow"].(map[string]any)["split_screen"] = true
+	})
+	rec := doJSONPut(srv, "/api/config", body)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d; body: %s", rec.Code, rec.Body)
+	}
+	if lc.calls.Load() != 1 {
+		t.Errorf("ApplyLive: called %d times, want 1", lc.calls.Load())
+	}
+	if restartCalls.Load() != 0 {
+		t.Error("Restart must not be called on PUT")
+	}
+	var resp map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp["restart_pending"] != false {
+		t.Errorf("split_screen change: restart_pending must be false, got %v", resp["restart_pending"])
 	}
 }
 

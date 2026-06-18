@@ -7,24 +7,28 @@ import (
 	"time"
 
 	"github.com/MateEke/picture-frame/internal/library"
+	"github.com/MateEke/picture-frame/internal/slideplan"
 	"github.com/MateEke/picture-frame/internal/state"
 )
 
-// Slideshow publishes image events to the bus on a configurable interval.
-// Call Next to advance immediately and reset the timer.
+// Slideshow publishes slide events to the bus on a configurable interval. Slides
+// come from the planner (a solo image, or a split-screen pair). Call Next to
+// advance immediately and reset the timer.
 type Slideshow struct {
 	log      *slog.Logger
 	lib      *library.Library
+	planner  *slideplan.Planner
 	bus      *state.Bus
 	mu       sync.Mutex
 	interval time.Duration
 	advance  chan struct{}
 }
 
-func New(log *slog.Logger, lib *library.Library, bus *state.Bus, interval time.Duration) *Slideshow {
+func New(log *slog.Logger, lib *library.Library, planner *slideplan.Planner, bus *state.Bus, interval time.Duration) *Slideshow {
 	return &Slideshow{
 		log:      log,
 		lib:      lib,
+		planner:  planner,
 		bus:      bus,
 		interval: interval,
 		advance:  make(chan struct{}, 1),
@@ -43,10 +47,21 @@ func (s *Slideshow) SetInterval(d time.Duration) {
 	}
 }
 
-// SetRandomize enables or disables random ordering. Restarts the slideshow
-// from the beginning of the new order immediately.
+// SetRandomize toggles random ordering and re-plans in place. Disable sorts now;
+// enable shuffles at the next cycle wrap. The cursor is preserved, not reset.
 func (s *Slideshow) SetRandomize(enabled bool) {
 	s.lib.SetRandomize(enabled)
+	s.planner.Invalidate()
+	select {
+	case s.advance <- struct{}{}:
+	default:
+	}
+}
+
+// SetSplitConfig updates split-screen pairing (enable + threshold) and rebuilds
+// the slide plan. Used for live config reload.
+func (s *Slideshow) SetSplitConfig(enabled bool, thr slideplan.Threshold) {
+	s.planner.SetConfig(enabled, thr)
 	select {
 	case s.advance <- struct{}{}:
 	default:
@@ -61,12 +76,12 @@ func (s *Slideshow) Next() {
 	}
 }
 
-// Run publishes the current image immediately (so SSE clients don't wait for
+// Run publishes the current slide immediately (so SSE clients don't wait for
 // the first tick), then advances on the interval. The ticker is paused while
 // the library is empty and resumed via the advance channel.
 func (s *Slideshow) Run(ctx context.Context) {
-	if img := s.lib.Current(); img != nil {
-		s.publish(img)
+	if slide := s.servable(s.planner.Current()); slide != nil {
+		s.publish(slide)
 	}
 
 	s.mu.Lock()
@@ -89,8 +104,8 @@ func (s *Slideshow) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-tickerC:
-			if img := s.lib.Next(); img != nil {
-				s.publish(img)
+			if slide := s.servable(s.planner.Next()); slide != nil {
+				s.publish(slide)
 				continue
 			}
 			// Library went empty between ticks; pause until next advance.
@@ -102,17 +117,36 @@ func (s *Slideshow) Run(ctx context.Context) {
 			s.mu.Unlock()
 			ticker.Reset(interval)
 			tickerC = ticker.C
-			if img := s.lib.Next(); img != nil {
-				s.publish(img)
+			if slide := s.servable(s.planner.Next()); slide != nil {
+				s.publish(slide)
 			}
 		}
 	}
 }
 
-func (s *Slideshow) publish(img *library.Image) {
+// servable skips slides referencing an image deleted since the plan was built so
+// the kiosk never 404s; skipping a whole plan forces a wrap, which rebuilds from
+// the current library. Empty library yields nil to pause.
+func (s *Slideshow) servable(slide *slideplan.Slide) *slideplan.Slide {
+	for i, limit := 0, s.planner.SlideCount()+1; slide != nil && i < limit && !s.allPresent(slide); i++ {
+		slide = s.planner.Next()
+	}
+	return slide
+}
+
+func (s *Slideshow) allPresent(slide *slideplan.Slide) bool {
+	for _, name := range slide.Names {
+		if !s.lib.Has(name) {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *Slideshow) publish(slide *slideplan.Slide) {
 	s.bus.Publish(state.Event{
 		Kind:    state.KindImage,
-		Payload: state.ImagePayload{Name: img.Name},
+		Payload: state.ImagePayload{Names: slide.Names},
 	})
-	s.log.Debug("slideshow: displaying image", "name", img.Name)
+	s.log.Debug("slideshow: displaying slide", "names", slide.Names)
 }

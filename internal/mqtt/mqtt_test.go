@@ -314,7 +314,7 @@ func TestHandleEventIgnoresOtherKinds(t *testing.T) {
 	client := &fakeClient{}
 	p := newTestPublisher(client, &fakeScreen{})
 	stale := make(chan string, 1)
-	p.handleEvent(context.Background(), state.Event{Kind: state.KindImage, Payload: state.ImagePayload{Name: "x.jpg"}}, stale)
+	p.handleEvent(context.Background(), state.Event{Kind: state.KindImage, Payload: state.ImagePayload{Names: []string{"x.jpg"}}}, stale)
 	if len(client.pubs) != 0 {
 		t.Errorf("non sensor/screen events must not publish, got %v", client.pubs)
 	}

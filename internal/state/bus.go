@@ -10,11 +10,12 @@ import (
 type Kind string
 
 const (
-	KindSensor  Kind = "sensor"
-	KindScreen  Kind = "screen"
-	KindWeather Kind = "weather"
-	KindImage   Kind = "image"
-	KindKiosk   Kind = "kiosk"
+	KindSensor       Kind = "sensor"
+	KindScreen       Kind = "screen"
+	KindWeather      Kind = "weather"
+	KindImage        Kind = "image"
+	KindKiosk        Kind = "kiosk"
+	KindScreenAspect Kind = "screen_aspect"
 )
 
 // Event carries a single state change notification from a producer to subscribers.

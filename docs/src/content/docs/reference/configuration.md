@@ -45,11 +45,13 @@ Captions under the readings on the frame. An empty value hides that caption. **(
 
 ## `[slideshow]`
 
-| Key          | Type     | Default  | Description                                            |
-| ------------ | -------- | -------- | ------------------------------------------------------ |
-| `interval`   | duration | `120s`   | How long each photo shows before advancing. **(live)** |
-| `randomize`  | boolean  | `false`  | Shuffle the order on each full cycle. **(live)**       |
-| `images_dir` | string   | `images` | Root folder for image storage.                         |
+| Key              | Type     | Default  | Description                                                                                           |
+| ---------------- | -------- | -------- | ----------------------------------------------------------------------------------------------------- |
+| `interval`       | duration | `120s`   | How long each photo shows before advancing. **(live)**                                                |
+| `randomize`      | boolean  | `false`  | Shuffle the order on each full cycle. **(live)**                                                      |
+| `split_screen`   | boolean  | `true`   | Pair mismatched-orientation photos side by side instead of cropping. **(live)**                       |
+| `pair_threshold` | float    | `1.5`    | How far a photo's aspect must differ from the screen's to pair, as a factor (must be > 1). **(live)** |
+| `images_dir`     | string   | `images` | Root folder for image storage.                                                                        |
 
 ## `[library]`
 
