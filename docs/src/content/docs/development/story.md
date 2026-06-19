@@ -52,6 +52,16 @@ only ever fades the incoming image in over the current one. When that finishes, 
 now-visible image down to the base layer and snaps the top layer back to invisible without
 animating. Every transition is now a single fade-in, which the Pi Zero can render smoothly.
 
+That handled single photos. The flaw surfaced later, while I was adding
+[side-by-side pairing](https://github.com/MateEke/picture-frame/pull/12) for portrait shots: the
+second pane stayed a black box until about mid-fade. Decoding a multi-megapixel JPEG is not instant
+on this hardware, and an image being loaded is not the same as being ready to paint. Calling
+`decode()` on each pane and starting the fade only once they all resolve moves that work off the
+critical path, so the bitmaps are paint-ready before the animation begins. It made the single-photo
+fade smoother too.
+
+<video src="/frame-demo.mp4" autoplay loop muted playsinline controls style="width: 100%; height: auto; border-radius: 0.5rem;" aria-label="The frame cross-fading between photos, including a side-by-side pair"></video>
+
 ## Turning the screen off
 
 The old app powered the screen with `vcgencmd` and it was reliable, so the rewrite started there
