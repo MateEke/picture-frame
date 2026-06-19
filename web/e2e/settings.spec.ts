@@ -37,7 +37,7 @@ test.describe('settings', () => {
 	});
 
 	test('links to the manual', async ({ settings }) => {
-		await expect(settings.docs).toHaveAttribute('href', /pages\.dev\/manual/);
+		await expect(settings.docs).toHaveAttribute('href', /pictureframe\.ekemate\.hu\/manual/);
 	});
 
 	test('blocks save on invalid input', async ({ settings }) => {

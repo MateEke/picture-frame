@@ -7,7 +7,7 @@
 Your photos beside the time, the weather, and the real temperature in your rooms. Motion-aware,
 private, and plugged into Home Assistant.
 
-[![Documentation](https://img.shields.io/badge/Documentation-4F46E5?style=for-the-badge)](https://picture-frame-2kf.pages.dev)
+[![Documentation](https://img.shields.io/badge/Documentation-4F46E5?style=for-the-badge)](https://pictureframe.ekemate.hu)
 &nbsp;
 [![Install](https://img.shields.io/badge/Install-334155?style=for-the-badge)](#install)
 &nbsp;
@@ -49,7 +49,7 @@ W driving an HD screen, and written in Go and Svelte.
 
 ## Documentation
 
-The full documentation lives at **<https://picture-frame-2kf.pages.dev>**. It covers installation,
+The full documentation lives at **<https://pictureframe.ekemate.hu>**. It covers installation,
 a guided tour of the admin interface, every configuration option, and the engineering notes behind
 the project.
 
@@ -61,7 +61,7 @@ On a fresh Raspberry Pi OS Trixie Lite, reachable over SSH:
 curl -fsSL https://github.com/MateEke/picture-frame/releases/latest/download/install.sh | sudo bash
 ```
 
-See the [Install guide](https://picture-frame-2kf.pages.dev/getting-started/install/) for the
+See the [Install guide](https://pictureframe.ekemate.hu/getting-started/install/) for the
 requirements, options, and first setup.
 
 ## Development

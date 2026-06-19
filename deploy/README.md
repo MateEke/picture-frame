@@ -1,7 +1,7 @@
 # Deployment internals (Raspberry Pi)
 
 End-user installation, requirements, options, and first setup live in the documentation:
-<https://picture-frame-2kf.pages.dev/getting-started/install/>. The installer (`install.sh`) handles all
+<https://pictureframe.ekemate.hu/getting-started/install/>. The installer (`install.sh`) handles all
 of it, and `install.sh --help` lists every flag.
 
 This file covers the system-level details behind that install: how the kiosk stack is wired, and the

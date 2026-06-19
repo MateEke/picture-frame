@@ -36,6 +36,6 @@ that. A few behaviors are intentional, documented design rather than vulnerabili
 - **First-come admin password.** Until an admin password is set, anyone who can reach the
   interface can set it. Set one promptly; the installer prompts for it.
 
-These are covered in the [Security guide](https://picture-frame-2kf.pages.dev/manual/security/).
+These are covered in the [Security guide](https://pictureframe.ekemate.hu/manual/security/).
 Reports that only restate them are out of scope. In scope: bypassing a configured password, the
 update signature check, or the Wi-Fi credential handling.
