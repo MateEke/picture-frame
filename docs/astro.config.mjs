@@ -7,10 +7,10 @@ import rehypeExternalLinks from 'rehype-external-links';
 import starlightLinksValidator from 'starlight-links-validator';
 
 // GitHub owner/repo (edit + social links) and the deployed docs URL.
-// SITE_URL is the Cloudflare Pages URL; update it if the docs move to a custom domain.
+// SITE_URL is the custom domain; canonical URLs and the sitemap are built from it.
 const GITHUB_OWNER = 'MateEke';
 const REPO_NAME = 'picture-frame';
-const SITE_URL = 'https://picture-frame-2kf.pages.dev';
+const SITE_URL = 'https://pictureframe.ekemate.hu';
 
 // https://astro.build/config
 export default defineConfig({

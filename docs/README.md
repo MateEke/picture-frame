@@ -4,7 +4,7 @@
 
 The documentation site for Picture Frame, built with [Astro](https://astro.build) and
 [Starlight](https://starlight.astro.build). It deploys to Cloudflare Pages at
-<https://picture-frame-2kf.pages.dev>. `.github/workflows/docs.yml` builds the site and validates
+<https://pictureframe.ekemate.hu>. `.github/workflows/docs.yml` builds the site and validates
 its links on every change; Cloudflare builds and deploys the site itself.
 
 This project is self-contained: it has its own `package.json` and does not share tooling
