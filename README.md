@@ -16,7 +16,7 @@ private, and plugged into Home Assistant.
 <br>
 
 [![CI](https://github.com/MateEke/picture-frame/actions/workflows/ci.yml/badge.svg)](https://github.com/MateEke/picture-frame/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/MateEke/picture-frame)](https://github.com/MateEke/picture-frame/releases/latest)
+[![Release](https://img.shields.io/github/v/release/MateEke/picture-frame?refresh=1)](https://github.com/MateEke/picture-frame/releases/latest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/MateEke/picture-frame)](https://goreportcard.com/report/github.com/MateEke/picture-frame)
 [![License](https://img.shields.io/github/license/MateEke/picture-frame)](LICENSE)
 
@@ -47,11 +47,15 @@ W driving an HD screen, and written in Go and Svelte.
   offline, even air-gapped.
 - **Highly customizable:** every option is set from the admin interface and saved to a TOML file.
 
+## See it in action
+
+https://github.com/user-attachments/assets/cee342a3-6438-43ce-9a11-cfcd60533817
+
 ## Documentation
 
 The full documentation lives at **<https://pictureframe.ekemate.hu>**. It covers installation,
-a guided tour of the admin interface, every configuration option, and the engineering notes behind
-the project.
+a guided tour of the admin interface, and every configuration option. For the engineering notes, see
+[The story & the hard parts](https://pictureframe.ekemate.hu/development/story/).
 
 ## Install
 

@@ -10,6 +10,8 @@ on the device, with no cloud account and no telemetry.
 
 It doesn't have a clever name. It's a picture frame.
 
+<video src="/frame-demo.mp4" autoplay loop muted playsinline controls style="width: 100%; height: auto; border-radius: 0.5rem;" aria-label="The frame cross-fading between photos, with the time, weather, and room readings overlaid"></video>
+
 ## What you'll need
 
 - **A Raspberry Pi.** The Zero W and Zero 2 W are the main targets, picked for their small size
