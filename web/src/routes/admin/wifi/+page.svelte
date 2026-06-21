@@ -130,8 +130,10 @@
 				message: 'Could not start the connection. Please try again.',
 				startedAt: Date.now()
 			});
+			return;
 		}
-		// On success (202) the banner stays 'connecting' until polling resolves it.
+		// On success (202) the banner stays 'connecting' until a poll resolves it.
+		if (polling) void pollStatus();
 	}
 
 	function askForget(net: WiFiNetwork) {
