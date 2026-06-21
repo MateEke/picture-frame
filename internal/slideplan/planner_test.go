@@ -81,6 +81,21 @@ func TestPlannerNextAdvances(t *testing.T) {
 	}
 }
 
+func TestPlannerRestartCycleStartsFreshFromTop(t *testing.T) {
+	src := &fakeSource{order: []string{"L1", "L2"}, cycles: [][]string{{"P1", "P2"}}}
+	p := newPlanner(src)
+	p.SetScreenAspect(landscape)
+
+	p.Current()
+	p.Next()
+	p.RestartCycle()
+
+	got := p.Current()
+	if got == nil || len(got.Names) != 2 || got.Names[0] != "P1" || got.Names[1] != "P2" {
+		t.Fatalf("after RestartCycle Current = %v, want paired [P1 P2] from the top", got)
+	}
+}
+
 func TestPlannerNextWrapsToNewCycle(t *testing.T) {
 	src := &fakeSource{order: []string{"P1", "P2"}, cycles: [][]string{{"L1"}}}
 	p := newPlanner(src)

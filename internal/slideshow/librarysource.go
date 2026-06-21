@@ -15,7 +15,7 @@ func NewLibrarySource(lib *library.Library) slideplan.Source {
 }
 
 func (s librarySource) Order() []string {
-	return imageNames(s.lib.List())
+	return imageNames(s.lib.Cycle())
 }
 
 func (s librarySource) NextCycle() []string {

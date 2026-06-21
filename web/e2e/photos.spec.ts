@@ -102,6 +102,45 @@ test.describe('photos', () => {
 		await photos.selectCancel.click();
 		await expect(photos.selectButton).toBeVisible();
 	});
+
+	test('arrange mode shows move controls and hides per-tile delete', async ({ photos }) => {
+		await photos.arrangeButton.click();
+		// Move buttons appear on the first seeded card.
+		await expect(photos.moveDown('red.jpg')).toBeVisible();
+		// Delete buttons are not rendered in arrange mode.
+		await expect(photos.deleteButton('red.jpg')).toHaveCount(0);
+		await photos.arrangeDone.click();
+		await expect(photos.arrangeButton).toBeVisible();
+	});
+
+	test('reorders photos and persists across reload', async ({ photos, page }) => {
+		await photos.arrangeButton.click();
+		const before = await photos.cardOrder();
+		await photos.moveDown(before[0]).click();
+		await expect.poll(() => photos.cardOrder()).not.toEqual(before);
+		const after = await photos.cardOrder();
+		// Done flushes the pending save before we reload.
+		await photos.arrangeDone.click();
+		await page.reload();
+		await expect(photos.thumbs.first()).toBeVisible();
+		await expect.poll(() => photos.cardOrder()).toEqual(after);
+	});
+
+	test('Done commits the order to the server', async ({ photos, page }) => {
+		const commits: string[] = [];
+		page.on('request', (r) => {
+			if (r.method() === 'PUT' && r.url().endsWith('/api/images/order')) {
+				commits.push(r.postData() ?? '');
+			}
+		});
+		await photos.arrangeButton.click();
+		const before = await photos.cardOrder();
+		await photos.moveDown(before[0]).click();
+		await expect.poll(() => photos.cardOrder()).not.toEqual(before);
+		await photos.arrangeDone.click();
+		await expect(photos.arrangeButton).toBeVisible();
+		expect(commits.some((b) => b.includes('"commit":true'))).toBe(true);
+	});
 });
 
 // Separate group: the immich grid is empty, so the fs beforeEach doesn't apply.

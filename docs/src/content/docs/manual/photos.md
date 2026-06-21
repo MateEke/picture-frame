@@ -36,6 +36,23 @@ in one step. Both single and bulk deletes ask for confirmation first.
 
 ![Select mode: several photos ticked, with a Delete button for the whole batch](../../../assets/screenshots/bulk-delete.png)
 
+### Arranging the order
+
+**Arrange** sets the order photos play in. Click it, then reorder the grid: drag a photo to a new
+spot, or use the buttons on each one to move it up, down, to the start, or to the end. **Done**
+saves the arrangement.
+
+![Arrange mode: each photo carries move buttons, with Done in the corner](../../../assets/screenshots/photos-arrange.png)
+
+The order you set is what plays when **Shuffle photos** is off (see
+[Slideshow & display](/manual/slideshow-display/#the-photo-rotation)), and **Done** restarts the
+frame on it right away. With shuffle on, a banner notes the order won't affect playback until you
+turn shuffle off. New uploads join the end. Arranging is for local photos; an Immich album keeps
+its own order.
+
+To choose which two photos appear side by side under
+[split-screen pairing](/manual/slideshow-display/#split-screen-pairing), put them next to each other.
+
 ## Using Immich instead
 
 To pull photos from [Immich](https://immich.app) rather than uploading them, switch the backend

@@ -16,8 +16,10 @@ for how saving and restarts work.
 **Advance photo every** sets how long each photo stays on screen before the next one. The
 default is two minutes (`slideshow.interval`).
 
-**Shuffle photos** controls the order. With it off, photos cycle in order. With it on, the order is
-reshuffled each full pass (`slideshow.randomize`, off by default).
+**Shuffle photos** controls the order. With it off, photos cycle in the order you set on the
+[Photos page](/manual/photos/#arranging-the-order). With it on, the order is reshuffled each full
+pass (`slideshow.randomize`, off by default). Toggling it starts a fresh cycle at once, rather than
+waiting for the current pass to finish.
 
 ## Split-screen pairing
 

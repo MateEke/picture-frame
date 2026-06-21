@@ -386,6 +386,21 @@ export type SensorPayload = {
     value: number;
 };
 
+export type SetImageOrderInputBody = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    /**
+     * Apply the order to the running slideshow now (sent on Done)
+     */
+    commit?: boolean;
+    /**
+     * Full ordered list of image filenames
+     */
+    names: Array<string> | null;
+};
+
 export type SetPasswordRequest = {
     /**
      * A URL to the JSON Schema for this object.
@@ -733,6 +748,17 @@ export type ScreenStateResponseWritable = {
      * Current screen power state
      */
     state: 'on' | 'off';
+};
+
+export type SetImageOrderInputBodyWritable = {
+    /**
+     * Apply the order to the running slideshow now (sent on Done)
+     */
+    commit?: boolean;
+    /**
+     * Full ordered list of image filenames
+     */
+    names: Array<string> | null;
 };
 
 export type SetPasswordRequestWritable = {
@@ -1117,6 +1143,31 @@ export type UploadImageResponses = {
 };
 
 export type UploadImageResponse = UploadImageResponses[keyof UploadImageResponses];
+
+export type SetImageOrderData = {
+    body: SetImageOrderInputBodyWritable;
+    path?: never;
+    query?: never;
+    url: '/api/images/order';
+};
+
+export type SetImageOrderErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type SetImageOrderError = SetImageOrderErrors[keyof SetImageOrderErrors];
+
+export type SetImageOrderResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type SetImageOrderResponse = SetImageOrderResponses[keyof SetImageOrderResponses];
 
 export type DeleteImageData = {
     body?: never;

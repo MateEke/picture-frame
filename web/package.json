@@ -64,6 +64,7 @@
 		"@fontsource/google-sans": "^5.2.1",
 		"@lucide/svelte": "^1.21.0",
 		"@meteocons/svg-static": "^0.1.0",
-		"cropt": "^1.2.2"
+		"cropt": "^1.2.2",
+		"svelte-dnd-action": "^0.9.70"
 	}
 }

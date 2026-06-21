@@ -160,6 +160,60 @@ func TestSetRandomizeDoesNotPanic(_ *testing.T) {
 	ss.SetRandomize(false)
 }
 
+// idleSlideshow uses an interval long enough that no natural tick fires during a
+// test, so only explicit Next/RestartCycle/SetRandomize drive events.
+func idleSlideshow(lib *library.Library) (*slideshow.Slideshow, *state.Bus) {
+	bus := state.NewBus()
+	ss := slideshow.New(testutil.NopLogger(), lib, newPlannerFor(lib, unknownRatios), bus, 10*time.Second)
+	return ss, bus
+}
+
+func TestRestartCycleRestartsFromTop(t *testing.T) {
+	lib := library.New([]library.Image{{Name: "a.jpg"}, {Name: "b.jpg"}, {Name: "c.jpg"}}, false)
+	ss, bus := idleSlideshow(lib)
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+	go ss.Run(t.Context())
+
+	receiveImage(t, ch, time.Second) // initial a.jpg
+	ss.Next()
+	receiveImage(t, ch, time.Second) // b.jpg
+	ss.RestartCycle()
+	if name := receiveImage(t, ch, time.Second); name != "a.jpg" {
+		t.Errorf("RestartCycle should restart from the top, got %s", name)
+	}
+}
+
+func TestSetRandomizeNoChangeDoesNotRestart(t *testing.T) {
+	lib := library.New([]library.Image{{Name: "a.jpg"}, {Name: "b.jpg"}}, false)
+	ss, bus := idleSlideshow(lib)
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+	go ss.Run(t.Context())
+
+	receiveImage(t, ch, time.Second) // initial a.jpg
+	ss.SetRandomize(false)           // already off → no restart
+	select {
+	case e := <-ch:
+		t.Fatalf("no-change SetRandomize should not publish, got %v", e)
+	case <-time.After(50 * time.Millisecond):
+	}
+}
+
+func TestSetRandomizeChangeRestarts(t *testing.T) {
+	lib := library.New([]library.Image{{Name: "a.jpg"}, {Name: "b.jpg"}}, false)
+	ss, bus := idleSlideshow(lib)
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+	go ss.Run(t.Context())
+
+	receiveImage(t, ch, time.Second) // initial a.jpg
+	ss.SetRandomize(true)            // change → restart → publishes a fresh cycle's first slide
+	if name := receiveImage(t, ch, time.Second); name == "" {
+		t.Error("SetRandomize change should restart and publish a slide")
+	}
+}
+
 func TestRunSkipsDeletedImage(t *testing.T) {
 	lib := library.New([]library.Image{{Name: "a.jpg"}, {Name: "b.jpg"}, {Name: "c.jpg"}}, false)
 	ss, bus := newSlideshow(lib)

@@ -24,6 +24,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -34,9 +35,13 @@ import (
 	"github.com/MateEke/picture-frame/internal/testutil"
 )
 
-type fakeSlideshow struct{ calls atomic.Int32 }
+type fakeSlideshow struct {
+	calls    atomic.Int32
+	restarts atomic.Int32
+}
 
-func (f *fakeSlideshow) Next() { f.calls.Add(1) }
+func (f *fakeSlideshow) Next()         { f.calls.Add(1) }
+func (f *fakeSlideshow) RestartCycle() { f.restarts.Add(1) }
 
 type imageHarness struct {
 	handler   http.Handler
@@ -712,6 +717,136 @@ func TestImageNameTagsMatchLibraryPattern(t *testing.T) {
 		if got := field.Tag.Get("pattern"); got != library.ImageNamePattern {
 			t.Errorf("%s pattern tag %q != library.ImageNamePattern %q", typ.Name(), got, library.ImageNamePattern)
 		}
+	}
+}
+
+func (h *imageHarness) put(t *testing.T, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	h.handler.ServeHTTP(rec, req)
+	return rec
+}
+
+func (h *imageHarness) listImageNames(t *testing.T) []string {
+	t.Helper()
+	rec := httptest.NewRecorder()
+	h.handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/images", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list images: status %d", rec.Code)
+	}
+	var items []struct{ Name string }
+	if err := json.NewDecoder(rec.Body).Decode(&items); err != nil {
+		t.Fatalf("list images: decode: %v", err)
+	}
+	names := make([]string, len(items))
+	for i, it := range items {
+		names[i] = it.Name
+	}
+	return names
+}
+
+func newImageServerWithOrder(t *testing.T) *imageHarness {
+	t.Helper()
+	dir := t.TempDir()
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		t.Fatalf("OpenRoot: %v", err)
+	}
+	t.Cleanup(func() { _ = root.Close() })
+	lib := library.New(nil, false)
+	bus := state.NewBus()
+	ss := &fakeSlideshow{}
+	order, _, err := library.LoadOrderStore(testutil.NopLogger(), root)
+	if err != nil {
+		t.Fatalf("LoadOrderStore: %v", err)
+	}
+	h := httpapi.NewServer(httpapi.Config{
+		Log: testutil.NopLogger(), Bus: bus, Library: lib, ImagesRoot: root,
+		Slideshow: ss, KioskBeater: &fakeBeater{}, Order: order,
+	})
+	return &imageHarness{handler: h, lib: lib, bus: bus, root: root, slideshow: ss}
+}
+
+func TestSetImageOrderReordersAndReconciles(t *testing.T) {
+	h := newImageServerWithOrder(t)
+	h.lib.Add("a.jpg")
+	h.lib.Add("b.jpg")
+	h.lib.Add("c.jpg")
+
+	resp := h.put(t, "/api/images/order", `{"names":["c.jpg","z.jpg","a.jpg"]}`)
+	if resp.Code != http.StatusNoContent {
+		t.Fatalf("status %d, body %s", resp.Code, resp.Body)
+	}
+
+	got := h.listImageNames(t)
+	want := []string{"c.jpg", "a.jpg", "b.jpg"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("order %v want %v", got, want)
+	}
+}
+
+func TestSetImageOrderCommitRestartsWhenSequential(t *testing.T) {
+	h := newImageServerWithOrder(t)
+	h.lib.Add("a.jpg")
+	resp := h.put(t, "/api/images/order", `{"names":["a.jpg"],"commit":true}`)
+	if resp.Code != http.StatusNoContent {
+		t.Fatalf("status %d", resp.Code)
+	}
+	if got := h.slideshow.restarts.Load(); got != 1 {
+		t.Errorf("RestartCycle calls = %d, want 1", got)
+	}
+}
+
+func TestSetImageOrderCommitSkippedWhenRandomized(t *testing.T) {
+	h := newImageServerWithOrder(t)
+	h.lib.Add("a.jpg")
+	h.lib.SetRandomize(true)
+	resp := h.put(t, "/api/images/order", `{"names":["a.jpg"],"commit":true}`)
+	if resp.Code != http.StatusNoContent {
+		t.Fatalf("status %d", resp.Code)
+	}
+	if got := h.slideshow.restarts.Load(); got != 0 {
+		t.Errorf("RestartCycle calls = %d, want 0 (shuffle on)", got)
+	}
+}
+
+func TestSetImageOrderNoCommitDoesNotRestart(t *testing.T) {
+	h := newImageServerWithOrder(t)
+	h.lib.Add("a.jpg")
+	resp := h.put(t, "/api/images/order", `{"names":["a.jpg"]}`)
+	if resp.Code != http.StatusNoContent {
+		t.Fatalf("status %d", resp.Code)
+	}
+	if got := h.slideshow.restarts.Load(); got != 0 {
+		t.Errorf("RestartCycle calls = %d, want 0 (no commit)", got)
+	}
+}
+
+func TestSetImageOrderBlockedOnRemoteBackend(t *testing.T) {
+	h := newImageServerWithBackend(t, "immich")
+	resp := h.put(t, "/api/images/order", `{"names":["a.jpg"]}`)
+	if resp.Code != http.StatusConflict {
+		t.Fatalf("status %d want 409", resp.Code)
+	}
+}
+
+func TestUploadPersistsToOrderStore(t *testing.T) {
+	h := newImageServerWithOrder(t)
+	rec := httptest.NewRecorder()
+	h.handler.ServeHTTP(rec, uploadRequest(t, "image", "x.jpg", makeJPEG(t)))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("upload status %d, body %s", rec.Code, rec.Body)
+	}
+	name := uploadedName(t, rec)
+
+	_, saved, err := library.LoadOrderStore(testutil.NopLogger(), h.root)
+	if err != nil {
+		t.Fatalf("LoadOrderStore: %v", err)
+	}
+	if !slices.Contains(saved, name) {
+		t.Errorf("order store %v does not contain %q", saved, name)
 	}
 }
 

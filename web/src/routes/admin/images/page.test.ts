@@ -19,35 +19,53 @@ describe('images page load', () => {
 		vi.clearAllMocks();
 		mockLoadImages.mockResolvedValue([{ name: 'a.jpg' }]);
 		mockLoadLibrary.mockResolvedValue({ backend: 'fs' });
-		mockLoadConfig.mockResolvedValue({ library: { immich: { share_url: 'https://share' } } });
+		mockLoadConfig.mockResolvedValue({
+			library: { immich: { share_url: null } },
+			slideshow: { randomize: false }
+		});
 	});
 
-	it('returns images and library with no errors on the happy path (fs backend)', async () => {
+	it('fetches config for fs backend, shareUrl is null, shuffleOn reflects randomize', async () => {
 		const result = await load(event());
+		expect(mockLoadConfig).toHaveBeenCalledOnce();
 		expect(result).toEqual({
 			images: [{ name: 'a.jpg' }],
 			imagesError: undefined,
 			library: { backend: 'fs' },
 			libraryError: undefined,
-			shareUrl: null
+			shareUrl: null,
+			shuffleOn: false
 		});
-		// fs backend never needs the config fetch.
-		expect(mockLoadConfig).not.toHaveBeenCalled();
 	});
 
-	it('fetches the config and exposes the share URL only for the immich backend', async () => {
-		mockLoadLibrary.mockResolvedValue({ backend: 'immich' });
+	it('exposes shuffleOn true for fs when randomize is true', async () => {
+		mockLoadConfig.mockResolvedValue({
+			library: { immich: { share_url: null } },
+			slideshow: { randomize: true }
+		});
 
 		const result = await load(event());
 		expect(mockLoadConfig).toHaveBeenCalledOnce();
-		expect(result).toMatchObject({ shareUrl: 'https://share' });
+		expect(result).toMatchObject({ shareUrl: null, shuffleOn: true });
 	});
 
-	it('falls back to a null share URL when the immich config omits it', async () => {
+	it('fetches config and exposes shareUrl and shuffleOn for the immich backend', async () => {
+		mockLoadLibrary.mockResolvedValue({ backend: 'immich' });
+		mockLoadConfig.mockResolvedValue({
+			library: { immich: { share_url: 'https://share' } },
+			slideshow: { randomize: false }
+		});
+
+		const result = await load(event());
+		expect(mockLoadConfig).toHaveBeenCalledOnce();
+		expect(result).toMatchObject({ shareUrl: 'https://share', shuffleOn: false });
+	});
+
+	it('falls back to null shareUrl and false shuffleOn when config is null', async () => {
 		mockLoadLibrary.mockResolvedValue({ backend: 'immich' });
 		mockLoadConfig.mockResolvedValue(null);
 
-		expect(await load(event())).toMatchObject({ shareUrl: null });
+		expect(await load(event())).toMatchObject({ shareUrl: null, shuffleOn: false });
 	});
 
 	it('reports an images failure while still returning the library', async () => {
@@ -60,13 +78,14 @@ describe('images page load', () => {
 		});
 	});
 
-	it('reports a library failure (and skips the immich config) with "unknown" for non-Errors', async () => {
+	it('reports a library failure (and skips the config fetch) with "unknown" for non-Errors', async () => {
 		mockLoadLibrary.mockRejectedValue('boom');
 
 		expect(await load(event())).toMatchObject({
 			library: null,
 			libraryError: 'unknown',
-			shareUrl: null
+			shareUrl: null,
+			shuffleOn: false
 		});
 		expect(mockLoadConfig).not.toHaveBeenCalled();
 	});
