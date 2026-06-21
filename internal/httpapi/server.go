@@ -35,9 +35,10 @@ type ScreenController interface {
 	Reconcile(ctx context.Context)
 }
 
-// SlideshowController allows the HTTP layer to trigger immediate advances.
+// SlideshowController allows the HTTP layer to drive slideshow playback.
 type SlideshowController interface {
 	Next()
+	RestartCycle()
 }
 
 // KioskBeater records a kiosk heartbeat (with the reporting build's version); implemented
@@ -69,6 +70,8 @@ type Config struct {
 	KioskBeater KioskBeater // required
 	// Aspect caches per-image dimensions; nil disables split-screen metadata.
 	Aspect *library.AspectStore
+	// Order persists the canonical image order; nil disables order saving.
+	Order *library.OrderStore
 	// Planner rebuilds slide plans and receives the kiosk's screen aspect; nil in
 	// tests/dev that don't exercise split-screen.
 	Planner SlidePlanner
@@ -104,6 +107,7 @@ type server struct {
 	imagesRoot    *os.Root
 	kioskBeater   KioskBeater
 	aspect        *library.AspectStore
+	order         *library.OrderStore
 	planner       SlidePlanner
 	backend       string
 	syncer        SyncerStatus
@@ -145,6 +149,7 @@ func NewServer(cfg Config) http.Handler {
 		imagesRoot:    cfg.ImagesRoot,
 		kioskBeater:   cfg.KioskBeater,
 		aspect:        cfg.Aspect,
+		order:         cfg.Order,
 		planner:       cfg.Planner,
 		backend:       backend,
 		syncer:        cfg.Syncer,

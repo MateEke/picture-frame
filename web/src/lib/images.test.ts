@@ -14,11 +14,13 @@ vi.mock('./toaster', () => ({
 const mockListImages = vi.fn();
 const mockDeleteImage = vi.fn();
 const mockUploadImage = vi.fn();
+const mockSetImageOrder = vi.fn();
 
 vi.mock('$lib/api/sdk.gen', () => ({
 	apiListImages: (...args: unknown[]) => mockListImages(...args),
 	apiDeleteImage: (...args: unknown[]) => mockDeleteImage(...args),
-	apiUploadImage: (...args: unknown[]) => mockUploadImage(...args)
+	apiUploadImage: (...args: unknown[]) => mockUploadImage(...args),
+	apiSetImageOrder: (...args: unknown[]) => mockSetImageOrder(...args)
 }));
 
 describe('images', () => {
@@ -166,6 +168,37 @@ describe('images', () => {
 				description: 'Server returned an error'
 			});
 			expect(invalidate).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('setImageOrder', () => {
+		it('returns true and sends names with commit=false by default', async () => {
+			mockSetImageOrder.mockResolvedValue({ error: undefined });
+			const { setImageOrder } = await import('./images');
+			const ok = await setImageOrder(['b.jpg', 'a.jpg']);
+			expect(ok).toBe(true);
+			expect(mockSetImageOrder).toHaveBeenCalledWith({
+				body: { names: ['b.jpg', 'a.jpg'], commit: false }
+			});
+			expect(toaster.error).not.toHaveBeenCalled();
+		});
+
+		it('sends commit=true when committing', async () => {
+			mockSetImageOrder.mockResolvedValue({ error: undefined });
+			const { setImageOrder } = await import('./images');
+			await setImageOrder(['a.jpg'], true);
+			expect(mockSetImageOrder).toHaveBeenCalledWith({ body: { names: ['a.jpg'], commit: true } });
+		});
+
+		it('returns false and toasts on error', async () => {
+			mockSetImageOrder.mockResolvedValue({ error: { message: 'boom' } });
+			const { setImageOrder } = await import('./images');
+			const ok = await setImageOrder(['a.jpg']);
+			expect(ok).toBe(false);
+			expect(toaster.error).toHaveBeenCalledWith({
+				title: 'Could not save photo order',
+				description: 'Server returned an error'
+			});
 		});
 	});
 });

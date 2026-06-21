@@ -148,27 +148,5 @@ func (s *AspectStore) Flush() error {
 		return fmt.Errorf("library: marshal aspect index: %w", err)
 	}
 
-	// Serialize the shared tmp file so concurrent flushers can't tear-write it.
-	s.flushMu.Lock()
-	defer s.flushMu.Unlock()
-
-	tmp := aspectIndexName + ".tmp"
-	f, err := s.root.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
-	if err != nil {
-		return fmt.Errorf("library: create aspect index: %w", err)
-	}
-	if _, err := f.Write(data); err != nil {
-		f.Close()
-		_ = s.root.Remove(tmp)
-		return fmt.Errorf("library: write aspect index: %w", err)
-	}
-	if err := f.Close(); err != nil {
-		_ = s.root.Remove(tmp)
-		return fmt.Errorf("library: close aspect index: %w", err)
-	}
-	if err := s.root.Rename(tmp, aspectIndexName); err != nil {
-		_ = s.root.Remove(tmp)
-		return fmt.Errorf("library: rename aspect index: %w", err)
-	}
-	return nil
+	return writeFileAtomic(s.root, aspectIndexName, &s.flushMu, data)
 }

@@ -136,6 +136,16 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("load aspect index: %w", err)
 	}
+
+	orderStore, savedOrder, err := library.LoadOrderStore(log, imagesRoot)
+	if err != nil {
+		return fmt.Errorf("load order index: %w", err)
+	}
+	if len(savedOrder) > 0 {
+		lib.SetOrder(savedOrder)
+		lib.Reshuffle() // adopt the saved order into the first playback cycle
+	}
+
 	planner := slideplan.NewPlanner(
 		slideshow.NewLibrarySource(lib),
 		aspectStore.Ratio,
@@ -221,6 +231,7 @@ func run() error {
 			Slideshow:     slides,
 			ImagesRoot:    imagesRoot,
 			Aspect:        aspectStore,
+			Order:         orderStore,
 			Planner:       planner,
 			KioskBeater:   kioskWatch,
 			Backend:       libraryBackend(cfg),

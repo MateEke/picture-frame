@@ -1,5 +1,5 @@
 import { invalidate } from '$app/navigation';
-import { apiListImages, apiDeleteImage, apiUploadImage } from '$lib/api/sdk.gen';
+import { apiListImages, apiDeleteImage, apiUploadImage, apiSetImageOrder } from '$lib/api/sdk.gen';
 import type { ListImagesData } from '$lib/api/types.gen';
 import { toaster } from './toaster';
 
@@ -46,6 +46,16 @@ export async function uploadImage(blob: Blob): Promise<boolean> {
 	}
 	toaster.error({
 		title: 'Could not upload image',
+		description: 'Server returned an error'
+	});
+	return false;
+}
+
+export async function setImageOrder(names: string[], commit = false): Promise<boolean> {
+	const { error } = await apiSetImageOrder({ body: { names, commit } });
+	if (!error) return true;
+	toaster.error({
+		title: 'Could not save photo order',
 		description: 'Server returned an error'
 	});
 	return false;

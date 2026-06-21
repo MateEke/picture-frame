@@ -18,13 +18,14 @@ export const load: PageLoad = async ({ fetch }) => {
 	// On library load failure, return null so the UI surfaces the error and
 	// disables upload/delete instead of guessing a default backend.
 	const library = libraryResult.status === 'fulfilled' ? libraryResult.value : null;
-	// Only needed for the Immich share-URL link.
-	const config = library?.backend === 'immich' ? await loadConfig(fetch) : null;
+	const needConfig = library?.backend === 'immich' || library?.backend === 'fs';
+	const config = needConfig ? await loadConfig(fetch) : null;
 	return {
 		images,
 		imagesError: errorMessage(imagesResult),
 		library,
 		libraryError: errorMessage(libraryResult),
-		shareUrl: config?.library.immich.share_url ?? null
+		shareUrl: config?.library.immich.share_url ?? null,
+		shuffleOn: config?.slideshow.randomize ?? false
 	};
 };

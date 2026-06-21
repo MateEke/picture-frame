@@ -1022,6 +1022,38 @@
         ],
         "type": "object"
       },
+      "SetImageOrderInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/SetImageOrderInputBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "commit": {
+            "description": "Apply the order to the running slideshow now (sent on Done)",
+            "type": "boolean"
+          },
+          "names": {
+            "description": "Full ordered list of image filenames",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "names"
+        ],
+        "type": "object"
+      },
       "SetPasswordRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1849,6 +1881,37 @@
           }
         },
         "summary": "Upload an image"
+      }
+    },
+    "/api/images/order": {
+      "put": {
+        "operationId": "set-image-order",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetImageOrderInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Set the manual photo order"
       }
     },
     "/api/images/{name}": {

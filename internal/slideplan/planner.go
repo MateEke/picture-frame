@@ -44,6 +44,12 @@ func (p *Planner) ensure() bool {
 	return true
 }
 
+// RestartCycle starts a fresh cycle from the source (reshuffled when randomized)
+// and resets the cursor to the first slide.
+func (p *Planner) RestartCycle() {
+	p.rebuild(p.src.NextCycle(), true)
+}
+
 // rebuild re-groups order, keeping the cursor (so a config/aspect change doesn't
 // jump back and re-show); only a wrap or out-of-range idx resets to the start.
 func (p *Planner) rebuild(order []string, reset bool) {

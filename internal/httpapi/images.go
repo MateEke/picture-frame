@@ -57,6 +57,13 @@ type DeleteImageInput struct {
 	Name string `path:"name" pattern:"^[a-zA-Z0-9_.~-]+\\.(jpe?g|png)$" doc:"Image filename"`
 }
 
+type SetImageOrderInput struct {
+	Body struct {
+		Names  []string `json:"names" doc:"Full ordered list of image filenames"`
+		Commit bool     `json:"commit,omitempty" doc:"Apply the order to the running slideshow now (sent on Done)"`
+	}
+}
+
 type ServeImageInput struct {
 	Name string `path:"name" pattern:"^[a-zA-Z0-9_.~-]+\\.(jpe?g|png)$" doc:"Image filename"`
 }
@@ -91,33 +98,15 @@ func (s *server) registerImageRoutes(api huma.API) {
 		Path:          "/api/images/{name}",
 		Summary:       "Delete an image",
 		DefaultStatus: http.StatusNoContent,
-	}, func(_ context.Context, input *DeleteImageInput) (*struct{}, error) {
-		if s.backend != config.BackendFS {
-			return nil, huma.Error409Conflict("deletes disabled: a remote backend is active")
-		}
-		// Membership first so a 404 can't delete an on-disk file outside the library.
-		if !s.lib.Has(input.Name) {
-			return nil, huma.Error404NotFound("image not found")
-		}
-		if err := s.imagesRoot.Remove(input.Name); err != nil && !os.IsNotExist(err) {
-			s.log.Error("failed to delete image file", "name", input.Name, "err", err)
-			return nil, huma.Error500InternalServerError("failed to delete image")
-		}
-		s.lib.Remove(input.Name)
-		if s.aspect != nil {
-			// In-memory only: the sidecar is a cache, a stale entry for a removed file is
-			// never read (the planner queries live names only), and the next upload/sync
-			// flush prunes it. Avoids a full-index rewrite per item during bulk delete.
-			s.aspect.Delete(input.Name)
-		}
-		if s.lib.Len() == 0 {
-			s.bus.Publish(state.Event{
-				Kind:    state.KindImage,
-				Payload: state.ImagePayload{},
-			})
-		}
-		return nil, nil
-	})
+	}, s.handleDeleteImage)
+
+	huma.Register(api, huma.Operation{
+		OperationID:   "set-image-order",
+		Method:        http.MethodPut,
+		Path:          "/api/images/order",
+		Summary:       "Set the manual photo order",
+		DefaultStatus: http.StatusNoContent,
+	}, s.handleSetImageOrder)
 
 	s.kioskExemptPrefix("/img/")
 	huma.Register(api, huma.Operation{
@@ -125,30 +114,72 @@ func (s *server) registerImageRoutes(api huma.API) {
 		Method:      http.MethodGet,
 		Path:        "/img/{name}",
 		Summary:     "Serve an image file",
-	}, func(_ context.Context, input *ServeImageInput) (*huma.StreamResponse, error) {
-		f, err := s.imagesRoot.Open(input.Name)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return nil, huma.Error404NotFound("image not found")
-			}
-			s.log.Error("failed to open image", "name", input.Name, "err", err)
-			return nil, huma.Error500InternalServerError("failed to open image")
+	}, s.handleServeImage)
+}
+
+func (s *server) handleDeleteImage(_ context.Context, input *DeleteImageInput) (*struct{}, error) {
+	if s.backend != config.BackendFS {
+		return nil, huma.Error409Conflict("deletes disabled: a remote backend is active")
+	}
+	// Membership first so a 404 can't delete an on-disk file outside the library.
+	if !s.lib.Has(input.Name) {
+		return nil, huma.Error404NotFound("image not found")
+	}
+	if err := s.imagesRoot.Remove(input.Name); err != nil && !os.IsNotExist(err) {
+		s.log.Error("failed to delete image file", "name", input.Name, "err", err)
+		return nil, huma.Error500InternalServerError("failed to delete image")
+	}
+	s.lib.Remove(input.Name)
+	if s.aspect != nil {
+		// In-memory only: the sidecar is a cache, a stale entry for a removed file is
+		// never read (the planner queries live names only), and the next upload/sync
+		// flush prunes it. Avoids a full-index rewrite per item during bulk delete.
+		s.aspect.Delete(input.Name)
+	}
+	if s.lib.Len() == 0 {
+		s.bus.Publish(state.Event{
+			Kind:    state.KindImage,
+			Payload: state.ImagePayload{},
+		})
+	}
+	return nil, nil
+}
+
+func (s *server) handleSetImageOrder(_ context.Context, input *SetImageOrderInput) (*struct{}, error) {
+	if s.backend != config.BackendFS {
+		return nil, huma.Error409Conflict("ordering disabled: a remote backend is active")
+	}
+	s.lib.SetOrder(input.Body.Names)
+	s.persistOrder()
+	if input.Body.Commit && s.slideshow != nil && !s.lib.Randomized() {
+		s.slideshow.RestartCycle()
+	}
+	return nil, nil
+}
+
+func (s *server) handleServeImage(_ context.Context, input *ServeImageInput) (*huma.StreamResponse, error) {
+	f, err := s.imagesRoot.Open(input.Name)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, huma.Error404NotFound("image not found")
 		}
-		info, err := f.Stat()
-		if err != nil {
-			f.Close()
-			s.log.Error("failed to stat image", "name", input.Name, "err", err)
-			return nil, huma.Error500InternalServerError("failed to open image")
-		}
-		return &huma.StreamResponse{
-			Body: func(ctx huma.Context) {
-				defer f.Close()
-				r, w := humachi.Unwrap(ctx)
-				w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-				http.ServeContent(w, r, input.Name, info.ModTime(), f)
-			},
-		}, nil
-	})
+		s.log.Error("failed to open image", "name", input.Name, "err", err)
+		return nil, huma.Error500InternalServerError("failed to open image")
+	}
+	info, err := f.Stat()
+	if err != nil {
+		f.Close()
+		s.log.Error("failed to stat image", "name", input.Name, "err", err)
+		return nil, huma.Error500InternalServerError("failed to open image")
+	}
+	return &huma.StreamResponse{
+		Body: func(ctx huma.Context) {
+			defer f.Close()
+			r, w := humachi.Unwrap(ctx)
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			http.ServeContent(w, r, input.Name, info.ModTime(), f)
+		},
+	}, nil
 }
 
 func (s *server) registerSlideshowRoutes(api huma.API) {
@@ -236,6 +267,7 @@ func (s *server) handleUploadImage(_ context.Context, input *UploadImageInput) (
 
 	wasEmpty := s.lib.Len() == 0
 	s.lib.Add(name)
+	s.persistOrder()
 	if wasEmpty && s.slideshow != nil {
 		s.slideshow.Next()
 	}
@@ -250,6 +282,20 @@ func (s *server) recordAspect(name string, w, h int) {
 	s.aspect.Set(name, w, h)
 	if err := s.aspect.Flush(); err != nil {
 		s.log.Warn("failed to persist aspect index", "err", err)
+	}
+}
+
+func (s *server) persistOrder() {
+	if s.order == nil {
+		return
+	}
+	imgs := s.lib.List()
+	names := make([]string, len(imgs))
+	for i, img := range imgs {
+		names[i] = img.Name
+	}
+	if err := s.order.Save(names); err != nil {
+		s.log.Warn("failed to persist image order", "err", err)
 	}
 }
 

@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type ServerSentEventsResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { ApplyUpdateData, ApplyUpdateErrors, ApplyUpdateResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthSetPasswordData, AuthSetPasswordErrors, AuthSetPasswordResponses, AuthStatusData, AuthStatusErrors, AuthStatusResponses, CheckUpdateData, CheckUpdateErrors, CheckUpdateResponses, ConfigureApData, ConfigureApErrors, ConfigureApResponses, DeleteImageData, DeleteImageErrors, DeleteImageResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, GetConfigData, GetConfigErrors, GetConfigMetaData, GetConfigMetaErrors, GetConfigMetaResponses, GetConfigResponses, GetLibraryData, GetLibraryErrors, GetLibraryResponses, GetLicensesData, GetLicensesErrors, GetLicensesResponses, GetScreenData, GetScreenErrors, GetScreenResponses, GetSystemDevicesData, GetSystemDevicesErrors, GetSystemDevicesResponses, GetSystemInfoData, GetSystemInfoErrors, GetSystemInfoResponses, GetUpdateData, GetUpdateErrors, GetUpdateResponses, GetWifiNetworksData, GetWifiNetworksErrors, GetWifiNetworksResponses, GetWifiStatusData, GetWifiStatusErrors, GetWifiStatusResponses, HealthzData, HealthzErrors, HealthzResponses, HeartbeatData, HeartbeatErrors, HeartbeatResponses, ListImagesData, ListImagesErrors, ListImagesResponses, PutConfigData, PutConfigErrors, PutConfigResponses, ServeImageData, ServeImageErrors, ServeImageResponses, SetScreenData, SetScreenErrors, SetScreenResponses, SlideshowNextData, SlideshowNextErrors, SlideshowNextResponses, SyncLibraryData, SyncLibraryErrors, SyncLibraryResponses, SystemRestartData, SystemRestartErrors, SystemRestartResponses, UploadImageData, UploadImageErrors, UploadImageResponses, WifiConnectData, WifiConnectErrors, WifiConnectResponses, WifiForgetData, WifiForgetErrors, WifiForgetResponses } from './types.gen';
+import type { ApplyUpdateData, ApplyUpdateErrors, ApplyUpdateResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthSetPasswordData, AuthSetPasswordErrors, AuthSetPasswordResponses, AuthStatusData, AuthStatusErrors, AuthStatusResponses, CheckUpdateData, CheckUpdateErrors, CheckUpdateResponses, ConfigureApData, ConfigureApErrors, ConfigureApResponses, DeleteImageData, DeleteImageErrors, DeleteImageResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, GetConfigData, GetConfigErrors, GetConfigMetaData, GetConfigMetaErrors, GetConfigMetaResponses, GetConfigResponses, GetLibraryData, GetLibraryErrors, GetLibraryResponses, GetLicensesData, GetLicensesErrors, GetLicensesResponses, GetScreenData, GetScreenErrors, GetScreenResponses, GetSystemDevicesData, GetSystemDevicesErrors, GetSystemDevicesResponses, GetSystemInfoData, GetSystemInfoErrors, GetSystemInfoResponses, GetUpdateData, GetUpdateErrors, GetUpdateResponses, GetWifiNetworksData, GetWifiNetworksErrors, GetWifiNetworksResponses, GetWifiStatusData, GetWifiStatusErrors, GetWifiStatusResponses, HealthzData, HealthzErrors, HealthzResponses, HeartbeatData, HeartbeatErrors, HeartbeatResponses, ListImagesData, ListImagesErrors, ListImagesResponses, PutConfigData, PutConfigErrors, PutConfigResponses, ServeImageData, ServeImageErrors, ServeImageResponses, SetImageOrderData, SetImageOrderErrors, SetImageOrderResponses, SetScreenData, SetScreenErrors, SetScreenResponses, SlideshowNextData, SlideshowNextErrors, SlideshowNextResponses, SyncLibraryData, SyncLibraryErrors, SyncLibraryResponses, SystemRestartData, SystemRestartErrors, SystemRestartResponses, UploadImageData, UploadImageErrors, UploadImageResponses, WifiConnectData, WifiConnectErrors, WifiConnectResponses, WifiForgetData, WifiForgetErrors, WifiForgetResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -94,6 +94,18 @@ export const apiUploadImage = <ThrowOnError extends boolean = false>(options?: O
     headers: {
         'Content-Type': null,
         ...options?.headers
+    }
+});
+
+/**
+ * Set the manual photo order
+ */
+export const apiSetImageOrder = <ThrowOnError extends boolean = false>(options: Options<SetImageOrderData, ThrowOnError>): RequestResult<SetImageOrderResponses, SetImageOrderErrors, ThrowOnError> => (options.client ?? client).put<SetImageOrderResponses, SetImageOrderErrors, ThrowOnError>({
+    url: '/api/images/order',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
     }
 });
 

@@ -24,12 +24,12 @@ type Image struct {
 	Name string // filename only, e.g. "1716038400000.jpg"
 }
 
-// Library maintains an ordered, reshufflable list of images. Playback position
-// lives in the slide planner; Library is the ordering source of truth. Safe for
-// concurrent use.
+// Library maintains the canonical image order (admin source of truth) plus the
+// current playback cycle, a shuffled copy when randomized. Safe for concurrent use.
 type Library struct {
 	mu        sync.Mutex
-	images    []Image
+	images    []Image // canonical order; reordered only by Add/Remove/SetOrder
+	cycle     []Image // current playback order; rebuilt by Reshuffle
 	randomize bool
 	rng       *rand.Rand // nil shuffles via the global PRNG; tests inject a seeded one
 }
@@ -44,21 +44,15 @@ func WithTestRNG(rng *rand.Rand) Option {
 	}
 }
 
-// New creates a Library pre-populated with the given images.
+// New creates a Library with the given canonical order and an initial cycle.
 func New(images []Image, randomize bool, opts ...Option) *Library {
-	l := &Library{
-		randomize: randomize,
-	}
+	l := &Library{randomize: randomize}
 	for _, opt := range opts {
 		opt(l)
 	}
-	if len(images) > 0 {
-		l.images = make([]Image, len(images))
-		copy(l.images, images)
-		if l.randomize {
-			l.shuffle()
-		}
-	}
+	l.images = make([]Image, len(images))
+	copy(l.images, images)
+	l.cycle = l.newCycle("")
 	return l
 }
 
@@ -69,13 +63,18 @@ func (l *Library) Len() int {
 	return len(l.images)
 }
 
-// List returns a copy of all images in order.
+// List returns a copy of the canonical order (what the admin UI shows/edits).
 func (l *Library) List() []Image {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	out := make([]Image, len(l.images))
-	copy(out, l.images)
-	return out
+	return clone(l.images)
+}
+
+// Cycle returns a copy of the current playback order.
+func (l *Library) Cycle() []Image {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return clone(l.cycle)
 }
 
 // Has reports whether an image with the given name is present.
@@ -90,70 +89,126 @@ func (l *Library) Has(name string) bool {
 	return false
 }
 
-// Add appends a new image to the end of the library.
+// Add appends a new image to the canonical order and the current cycle so it
+// shows without waiting for a reshuffle.
 func (l *Library) Add(name string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.images = append(l.images, Image{Name: name})
+	l.cycle = append(l.cycle, Image{Name: name})
 }
 
-// Remove deletes the first image with the given name (false if absent), adjusting
-// the current index so Current keeps pointing at the same image.
+// Remove deletes the first image with name from both slices; false if absent
+// from the canonical order.
 func (l *Library) Remove(name string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	l.cycle = deleteByName(l.cycle, name)
 	for i, img := range l.images {
-		if img.Name != name {
-			continue
+		if img.Name == name {
+			l.images = slices.Delete(l.images, i, i+1)
+			return true
 		}
-		l.images = slices.Delete(l.images, i, i+1)
-		return true
 	}
 	return false
 }
 
-// SetRandomize enables or disables random ordering. Disabling sorts images
-// alphabetically; enabling leaves the shuffle to the next Reshuffle (cycle wrap).
-func (l *Library) SetRandomize(enabled bool) {
+// SetOrder reorders the canonical order to match names: unknown names are
+// ignored and ones missing from names keep their relative order at the end (so a
+// stale payload never drops a file). Returns the resulting names to persist.
+func (l *Library) SetOrder(names []string) []string {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if l.randomize == enabled {
-		return
-	}
-	l.randomize = enabled
-	if !enabled && len(l.images) > 1 {
-		slices.SortFunc(l.images, func(a, b Image) int {
-			return cmp.Compare(a.Name, b.Name)
-		})
-	}
-}
-
-// Reshuffle starts a new cycle and returns a copy of its order. When randomized
-// it reshuffles, avoiding an immediate repeat of the previous cycle's last image.
-func (l *Library) Reshuffle() []Image {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if l.randomize && len(l.images) > 1 {
-		prev := l.images[len(l.images)-1]
-		l.shuffle()
-		if l.images[0].Name == prev.Name {
-			l.images[0], l.images[1] = l.images[1], l.images[0]
+	pos := make(map[string]int, len(names))
+	for i, n := range names {
+		if _, ok := pos[n]; !ok {
+			pos[n] = i
 		}
 	}
-	out := make([]Image, len(l.images))
-	copy(out, l.images)
+	slices.SortStableFunc(l.images, func(a, b Image) int {
+		ia, oka := pos[a.Name]
+		ib, okb := pos[b.Name]
+		switch {
+		case oka && okb:
+			return cmp.Compare(ia, ib)
+		case oka:
+			return -1
+		case okb:
+			return 1
+		default:
+			return 0
+		}
+	})
+	out := make([]string, len(l.images))
+	for i, img := range l.images {
+		out[i] = img.Name
+	}
 	return out
 }
 
-// Assumes the caller already holds the mutex.
-func (l *Library) shuffle() {
-	doShuffle := rand.Shuffle
+// SetRandomize toggles random playback and reports whether the value changed.
+func (l *Library) SetRandomize(enabled bool) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.randomize == enabled {
+		return false
+	}
+	l.randomize = enabled
+	return true
+}
 
+// Randomized reports whether playback is shuffled.
+func (l *Library) Randomized() bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.randomize
+}
+
+// Reshuffle starts a new playback cycle from the canonical order and returns a
+// copy. Randomized cycles avoid repeating the previous cycle's last image first.
+func (l *Library) Reshuffle() []Image {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	var prevLast string
+	if n := len(l.cycle); n > 0 {
+		prevLast = l.cycle[n-1].Name
+	}
+	l.cycle = l.newCycle(prevLast)
+	return clone(l.cycle)
+}
+
+// newCycle builds a fresh playback cycle from the canonical order. Caller holds
+// the mutex (or is New).
+func (l *Library) newCycle(prevLast string) []Image {
+	c := clone(l.images)
+	if l.randomize && len(c) > 1 {
+		l.shuffleSlice(c)
+		if prevLast != "" && c[0].Name == prevLast {
+			c[0], c[1] = c[1], c[0]
+		}
+	}
+	return c
+}
+
+func (l *Library) shuffleSlice(s []Image) {
+	doShuffle := rand.Shuffle
 	if l.rng != nil {
 		doShuffle = l.rng.Shuffle
 	}
+	doShuffle(len(s), func(i, j int) { s[i], s[j] = s[j], s[i] })
+}
 
-	doShuffle(len(l.images), func(i, j int) {
-		l.images[i], l.images[j] = l.images[j], l.images[i]
-	})
+func clone(s []Image) []Image {
+	out := make([]Image, len(s))
+	copy(out, s)
+	return out
+}
+
+func deleteByName(s []Image, name string) []Image {
+	for i, img := range s {
+		if img.Name == name {
+			return slices.Delete(s, i, i+1)
+		}
+	}
+	return s
 }

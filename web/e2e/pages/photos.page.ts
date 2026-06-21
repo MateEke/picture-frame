@@ -15,6 +15,9 @@ export class PhotosPage {
 	readonly lightboxClose: Locator;
 	readonly immichStatus: Locator;
 	readonly immichSync: Locator;
+	readonly arrangeButton: Locator;
+	readonly arrangeDone: Locator;
+	readonly shuffleHint: Locator;
 
 	constructor(private readonly page: Page) {
 		this.uploadInput = page.getByTestId('photo-upload-input');
@@ -31,10 +34,23 @@ export class PhotosPage {
 		this.lightboxClose = page.getByTestId('lightbox-close');
 		this.immichStatus = page.getByTestId('immich-status');
 		this.immichSync = page.getByTestId('immich-sync');
+		this.arrangeButton = page.getByTestId('photos-arrange');
+		this.arrangeDone = page.getByTestId('photos-arrange-done');
+		this.shuffleHint = page.getByTestId('photos-shuffle-hint');
 	}
 
 	card(name: string): Locator {
 		return this.page.getByTestId(`photo-card-${name}`);
+	}
+
+	moveDown(name: string): Locator {
+		return this.page.getByTestId(`photo-move-down-${name}`);
+	}
+
+	cardOrder(): Promise<string[]> {
+		return this.page
+			.getByTestId('photo-thumb')
+			.evaluateAll((els) => els.map((e) => e.getAttribute('alt') ?? ''));
 	}
 
 	ratioChip(id: string): Locator {

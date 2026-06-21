@@ -2,9 +2,22 @@
 	import type { PageProps } from './$types';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { invalidate } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { ImageIcon, CheckIcon, MonitorPlayIcon, Trash2Icon } from '@lucide/svelte';
-	import { deleteImage, deleteImages } from '$lib/images';
+	import { flip } from 'svelte/animate';
+	import {
+		ImageIcon,
+		CheckIcon,
+		MonitorPlayIcon,
+		Trash2Icon,
+		ArrowUpIcon,
+		ArrowDownIcon,
+		ChevronsUpIcon,
+		ChevronsDownIcon
+	} from '@lucide/svelte';
+	import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME, type DndEvent } from 'svelte-dnd-action';
+	import { deleteImage, deleteImages, setImageOrder } from '$lib/images';
+	import { moveUp, moveDown, moveToStart, moveToEnd } from '$lib/reorder';
 	import { syncLibrary } from '$lib/library';
 	import { getSSEContext } from '$lib/sse.svelte';
 	import ConfirmDialog from '$lib/ConfirmDialog.svelte';
@@ -27,9 +40,84 @@
 	let syncing = $state(false);
 
 	const isFs = $derived(data.library?.backend === 'fs');
+	const shuffleOn = $derived(data.shuffleOn ?? false);
 	// On-screen photos to badge (a split slide shows two).
 	const onScreen = $derived(new Set(sse.image?.names ?? []));
 	const images = $derived(data.images ?? []);
+
+	let arranging = $state(false);
+
+	type DndItem = { id: string; [key: string]: unknown };
+
+	let arrangeItems = $state<DndItem[] | null>(null);
+	let savedOrder: string[] = []; // last server-confirmed order; revert target on a failed save
+	let changed = false; // a reorder happened this arrange session
+	let saveTimer: ReturnType<typeof setTimeout> | undefined;
+	let inFlightSave: Promise<unknown> = Promise.resolve(); // so Done's commit lands after a pending save
+
+	const orderedNames = $derived(
+		arrangeItems ? arrangeItems.map((i) => i.id) : (data.images ?? []).map((i) => i.name)
+	);
+
+	function isShadowItem(item: DndItem): boolean {
+		return SHADOW_ITEM_MARKER_PROPERTY_NAME in item && !!item[SHADOW_ITEM_MARKER_PROPERTY_NAME];
+	}
+
+	function handleDnd(e: CustomEvent<DndEvent<DndItem>>) {
+		arrangeItems = e.detail.items;
+		if (e.type === 'finalize') {
+			const ids = e.detail.items.filter((i) => !isShadowItem(i)).map((i) => i.id);
+			applyOrder(ids);
+		}
+	}
+
+	function startArranging() {
+		arranging = true;
+		changed = false;
+		arrangeItems = (data.images ?? [])
+			.filter((i) => !brokenImages.has(i.name))
+			.map((i) => ({ id: i.name }));
+		savedOrder = arrangeItems.map((i) => i.id);
+	}
+
+	async function stopArranging() {
+		arranging = false;
+		clearTimeout(saveTimer);
+		saveTimer = undefined;
+		if (changed && arrangeItems) {
+			await inFlightSave; // let a fired debounce land first so commit wins
+			// commit:true tells the server to restart the cycle with the new order.
+			await setImageOrder(
+				arrangeItems.map((i) => i.id),
+				true
+			);
+		}
+		arrangeItems = null;
+		changed = false;
+		await invalidate('/api/images');
+	}
+
+	function applyOrder(next: string[]) {
+		changed = true;
+		arrangeItems = next.map((id) => ({ id }));
+		clearTimeout(saveTimer);
+		saveTimer = setTimeout(() => {
+			inFlightSave = setImageOrder(next).then((ok) => {
+				if (ok) savedOrder = next;
+				else if (arranging) arrangeItems = savedOrder.map((id) => ({ id }));
+			});
+		}, 400);
+	}
+
+	function move(name: string, fn: (items: readonly string[], index: number) => string[]) {
+		if (!arrangeItems) return;
+		const current = arrangeItems.map((i) => i.id);
+		const index = current.indexOf(name);
+		if (index < 0) return;
+		const next = fn(current, index);
+		if (next.length === current.length && next.every((n, i) => n === current[i])) return;
+		applyOrder(next);
+	}
 
 	function subtitle(): string {
 		if (data.library === null) return 'Manage the photos shown on your frame.';
@@ -38,6 +126,7 @@
 	}
 
 	function openImage(name: string) {
+		if (arranging) return;
 		if (selecting) {
 			toggleSelect(name);
 			return;
@@ -154,7 +243,7 @@
 			>
 				{#if selected.has(name)}<CheckIcon class="size-4" />{/if}
 			</span>
-		{:else if isFs}
+		{:else if isFs && !arranging}
 			<button
 				type="button"
 				data-testid="photo-delete-{name}"
@@ -163,6 +252,39 @@
 			>
 				<Trash2Icon class="size-3.5" />
 			</button>
+		{/if}
+
+		{#if arranging}
+			<div class="absolute inset-x-1 bottom-1 flex justify-center gap-1 rounded bg-black/40 p-1">
+				<button
+					type="button"
+					class="btn-icon btn-icon-sm preset-tonal"
+					data-testid="photo-move-start-{name}"
+					aria-label="Move {name} to start"
+					onclick={() => move(name, moveToStart)}><ChevronsUpIcon class="size-4" /></button
+				>
+				<button
+					type="button"
+					class="btn-icon btn-icon-sm preset-tonal"
+					data-testid="photo-move-up-{name}"
+					aria-label="Move {name} up"
+					onclick={() => move(name, moveUp)}><ArrowUpIcon class="size-4" /></button
+				>
+				<button
+					type="button"
+					class="btn-icon btn-icon-sm preset-tonal"
+					data-testid="photo-move-down-{name}"
+					aria-label="Move {name} down"
+					onclick={() => move(name, moveDown)}><ArrowDownIcon class="size-4" /></button
+				>
+				<button
+					type="button"
+					class="btn-icon btn-icon-sm preset-tonal"
+					data-testid="photo-move-end-{name}"
+					aria-label="Move {name} to end"
+					onclick={() => move(name, moveToEnd)}><ChevronsDownIcon class="size-4" /></button
+				>
+			</div>
 		{/if}
 	</div>
 {/snippet}
@@ -208,7 +330,13 @@
 					<span class="text-surface-500-400 text-sm">({images.length})</span>
 				</div>
 				{#if isFs}
-					{#if selecting}
+					{#if arranging}
+						<button
+							class="btn btn-sm preset-tonal-surface"
+							data-testid="photos-arrange-done"
+							onclick={stopArranging}>Done</button
+						>
+					{:else if selecting}
 						<div class="flex items-center gap-2">
 							<button
 								class="btn btn-sm preset-filled-error-500 flex items-center gap-1.5"
@@ -227,22 +355,55 @@
 							</button>
 						</div>
 					{:else}
-						<button
-							class="btn btn-sm preset-tonal-surface"
-							data-testid="photos-select"
-							onclick={startSelecting}>Select</button
-						>
+						<div class="flex items-center gap-2">
+							<button
+								class="btn btn-sm preset-tonal-surface"
+								data-testid="photos-arrange"
+								onclick={startArranging}>Arrange</button
+							>
+							<button
+								class="btn btn-sm preset-tonal-surface"
+								data-testid="photos-select"
+								onclick={startSelecting}>Select</button
+							>
+						</div>
 					{/if}
 				{/if}
 			</div>
 
-			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-				{#each images as img (img.name)}
-					{#if !brokenImages.has(img.name)}
-						{@render photoCard(img.name)}
-					{/if}
-				{/each}
-			</div>
+			{#if arranging && shuffleOn}
+				<div class="card preset-tonal-warning p-3 text-sm" data-testid="photos-shuffle-hint">
+					Shuffle is on, so this order will not affect playback until you turn it off in
+					<a class="anchor" href={resolve('/admin/settings')}>Settings</a>.
+				</div>
+			{/if}
+
+			{#if arranging && arrangeItems}
+				<div
+					class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"
+					use:dndzone={{ items: arrangeItems, flipDurationMs: 150 }}
+					onconsider={handleDnd}
+					onfinalize={handleDnd}
+				>
+					{#each arrangeItems as item (item.id)}
+						<div animate:flip={{ duration: 150 }}>
+							{#if isShadowItem(item)}
+								<div class="bg-surface-200-800 aspect-video rounded-lg opacity-50"></div>
+							{:else}
+								{@render photoCard(item.id)}
+							{/if}
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+					{#each orderedNames as name (name)}
+						{#if !brokenImages.has(name)}
+							{@render photoCard(name)}
+						{/if}
+					{/each}
+				</div>
+			{/if}
 		</div>
 	{:else if !isFs}
 		<div

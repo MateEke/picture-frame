@@ -22,6 +22,7 @@ type Slideshow struct {
 	mu       sync.Mutex
 	interval time.Duration
 	advance  chan struct{}
+	restart  chan struct{}
 }
 
 func New(log *slog.Logger, lib *library.Library, planner *slideplan.Planner, bus *state.Bus, interval time.Duration) *Slideshow {
@@ -32,6 +33,7 @@ func New(log *slog.Logger, lib *library.Library, planner *slideplan.Planner, bus
 		bus:      bus,
 		interval: interval,
 		advance:  make(chan struct{}, 1),
+		restart:  make(chan struct{}, 1),
 	}
 }
 
@@ -47,13 +49,18 @@ func (s *Slideshow) SetInterval(d time.Duration) {
 	}
 }
 
-// SetRandomize toggles random ordering and re-plans in place. Disable sorts now;
-// enable shuffles at the next cycle wrap. The cursor is preserved, not reset.
+// SetRandomize toggles random ordering; an actual change restarts the cycle.
 func (s *Slideshow) SetRandomize(enabled bool) {
-	s.lib.SetRandomize(enabled)
-	s.planner.Invalidate()
+	if s.lib.SetRandomize(enabled) {
+		s.RestartCycle()
+	}
+}
+
+// RestartCycle starts a fresh cycle now (reshuffled when randomized, sequential
+// otherwise) from the first slide. Safe from any goroutine.
+func (s *Slideshow) RestartCycle() {
 	select {
-	case s.advance <- struct{}{}:
+	case s.restart <- struct{}{}:
 	default:
 	}
 }
@@ -119,6 +126,19 @@ func (s *Slideshow) Run(ctx context.Context) {
 			tickerC = ticker.C
 			if slide := s.servable(s.planner.Next()); slide != nil {
 				s.publish(slide)
+			}
+		case <-s.restart:
+			s.planner.RestartCycle()
+			s.mu.Lock()
+			interval = s.interval
+			s.mu.Unlock()
+			if slide := s.servable(s.planner.Current()); slide != nil {
+				ticker.Reset(interval)
+				tickerC = ticker.C
+				s.publish(slide)
+			} else {
+				ticker.Stop()
+				tickerC = nil
 			}
 		}
 	}

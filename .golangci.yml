@@ -38,6 +38,11 @@ linters:
           - funlen
           - unparam
         path: _test\.go
+      # Deterministic seeded RNG in tests is intentional, not insecure.
+      - linters:
+          - gosec
+        text: G404
+        path: _test\.go
     paths:
       - web/node_modules
 formatters:
