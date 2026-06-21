@@ -12,11 +12,11 @@
 	"dependencies": {
 		"@astrojs/starlight": "^0.40.0",
 		"@fontsource-variable/fraunces": "^5.2.9",
-		"@iconify-json/lucide": "^1.2.112",
-		"astro": "^6.4.5",
+		"@iconify-json/lucide": "^1.2.114",
+		"astro": "^6.4.8",
 		"astro-icon": "^1.1.5",
 		"rehype-external-links": "^3.0.0",
-		"sharp": "^0.35.1"
+		"sharp": "^0.35.2"
 	},
 	"devDependencies": {
 		"prettier": "^3.8.4",
