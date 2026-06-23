@@ -111,6 +111,7 @@ func startLibrarySyncer(ctx context.Context, log *slog.Logger, cfg *config.Confi
 	client, err := immich.New(immich.Config{
 		ShareURL: cfg.Library.Immich.ShareURL,
 		Password: cfg.Library.Immich.SharePassword,
+		Logger:   log,
 	})
 	if err != nil {
 		return nil, err

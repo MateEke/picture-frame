@@ -1,14 +1,17 @@
 package immich_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/MateEke/picture-frame/internal/library/adapter/immich"
 )
@@ -30,11 +33,18 @@ type recordedRequest struct {
 	cookie string // immich_shared_link_token value, if sent
 }
 
+type fakeAsset struct {
+	id        string
+	isImage   bool
+	thumbhash string
+}
+
 type fakeImmich struct {
 	mu       sync.Mutex
 	requests []recordedRequest
-	album    string
-	assets   string
+	album    string      // /shared-links/me response
+	assets   []fakeAsset // timeline contents
+	etag     string      // album ETag; "" disables conditional caching
 	preview  []byte
 	status   int
 	// loginStatus drives POST /api/shared-links/login: 0 mimics a pre-2.6 server
@@ -47,7 +57,7 @@ func newFakeImmich(t *testing.T) *fakeImmich {
 	t.Helper()
 	return &fakeImmich{
 		album:   `{"album":{"id":"` + testAlbumID + `"}}`,
-		assets:  `{"assets":[]}`,
+		etag:    `"etag-v1"`,
 		preview: []byte("PREVIEW-BYTES"),
 		status:  http.StatusOK,
 	}
@@ -74,18 +84,10 @@ func (f *fakeImmich) handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		f.record(r)
 		f.mu.Lock()
-		status, loginStatus, loginToken := f.status, f.loginStatus, f.loginToken
+		status, loginStatus, loginToken, etag := f.status, f.loginStatus, f.loginToken, f.etag
 		f.mu.Unlock()
 		if r.URL.Path == "/api/shared-links/login" {
-			switch loginStatus {
-			case 0:
-				http.NotFound(w, r)
-			case http.StatusOK, http.StatusCreated:
-				http.SetCookie(w, &http.Cookie{Name: "immich_shared_link_token", Value: loginToken, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode})
-				w.WriteHeader(loginStatus)
-			default:
-				http.Error(w, "denied", loginStatus)
-			}
+			f.serveLogin(w, r, loginStatus, loginToken)
 			return
 		}
 		if status != http.StatusOK {
@@ -94,11 +96,13 @@ func (f *fakeImmich) handler() http.Handler {
 		}
 		switch {
 		case r.URL.Path == "/api/shared-links/me":
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = io.WriteString(w, f.album)
+			writeJSON(w, f.album)
 		case r.URL.Path == "/api/albums/"+testAlbumID:
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = io.WriteString(w, f.assets)
+			serveGate(w, r, etag)
+		case r.URL.Path == "/api/timeline/buckets":
+			f.serveBuckets(w)
+		case r.URL.Path == "/api/timeline/bucket":
+			f.serveBucket(w)
 		case strings.HasPrefix(r.URL.Path, "/api/assets/") && strings.HasSuffix(r.URL.Path, "/thumbnail"):
 			w.Header().Set("Content-Type", "image/jpeg")
 			_, _ = w.Write(f.preview)
@@ -106,6 +110,63 @@ func (f *fakeImmich) handler() http.Handler {
 			http.NotFound(w, r)
 		}
 	})
+}
+
+func (f *fakeImmich) serveLogin(w http.ResponseWriter, r *http.Request, loginStatus int, loginToken string) {
+	switch loginStatus {
+	case 0:
+		http.NotFound(w, r)
+	case http.StatusOK, http.StatusCreated:
+		http.SetCookie(w, &http.Cookie{Name: "immich_shared_link_token", Value: loginToken, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode})
+		w.WriteHeader(loginStatus)
+	default:
+		http.Error(w, "denied", loginStatus)
+	}
+}
+
+func serveGate(w http.ResponseWriter, r *http.Request, etag string) {
+	if etag != "" {
+		if r.Header.Get("If-None-Match") == etag {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+		w.Header().Set("ETag", etag)
+	}
+	writeJSON(w, `{"id":"`+testAlbumID+`"}`)
+}
+
+func (f *fakeImmich) serveBuckets(w http.ResponseWriter) {
+	f.mu.Lock()
+	n := len(f.assets)
+	f.mu.Unlock()
+	if n == 0 {
+		writeJSON(w, `[]`)
+		return
+	}
+	writeJSON(w, `[{"timeBucket":"2026-05-01","count":`+strconv.Itoa(n)+`}]`)
+}
+
+func (f *fakeImmich) serveBucket(w http.ResponseWriter) {
+	f.mu.Lock()
+	assets := append([]fakeAsset(nil), f.assets...)
+	f.mu.Unlock()
+	var cols struct {
+		ID        []string `json:"id"`
+		IsImage   []bool   `json:"isImage"`
+		Thumbhash []string `json:"thumbhash"`
+	}
+	for _, a := range assets {
+		cols.ID = append(cols.ID, a.id)
+		cols.IsImage = append(cols.IsImage, a.isImage)
+		cols.Thumbhash = append(cols.Thumbhash, a.thumbhash)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(cols)
+}
+
+func writeJSON(w http.ResponseWriter, body string) {
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = io.WriteString(w, body)
 }
 
 func newClient(t *testing.T, srv *httptest.Server, password string) *immich.Client {
@@ -169,11 +230,11 @@ func TestParseShareURLIgnoresQueryAndFragment(t *testing.T) {
 
 func TestListReturnsImageAssetsOnly(t *testing.T) {
 	fake := newFakeImmich(t)
-	fake.assets = `{"assets":[
-		{"id":"` + assetA + `","type":"IMAGE","updatedAt":"2026-04-20T08:00:11Z"},
-		{"id":"video","type":"VIDEO","updatedAt":"2026-04-20T08:00:11Z"},
-		{"id":"` + assetB + `","type":"IMAGE","updatedAt":"2026-04-21T08:00:11Z"}
-	]}`
+	fake.assets = []fakeAsset{
+		{id: assetA, isImage: true, thumbhash: "ha"},
+		{id: "video", isImage: false, thumbhash: "hv"},
+		{id: assetB, isImage: true, thumbhash: "hb"},
+	}
 	srv := httptest.NewServer(fake.handler())
 	defer srv.Close()
 	c := newClient(t, srv, "")
@@ -183,14 +244,91 @@ func TestListReturnsImageAssetsOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(got) != 2 {
-		t.Fatalf("got %d assets, want 2", len(got))
+		t.Fatalf("got %d assets, want 2 (video filtered)", len(got))
 	}
 	if got[0].ID != assetA || got[1].ID != assetB {
 		t.Errorf("ids: %v", got)
 	}
-	wantTime := time.Date(2026, 4, 20, 8, 0, 11, 0, time.UTC)
-	if !got[0].UpdatedAt.Equal(wantTime) {
-		t.Errorf("updatedAt: got %v, want %v", got[0].UpdatedAt, wantTime)
+	for _, a := range got {
+		if len(a.Version) != 16 {
+			t.Errorf("version %q is not 16 hex chars", a.Version)
+		}
+	}
+	if got[0].Version == got[1].Version {
+		t.Error("distinct thumbhashes should yield distinct tokens")
+	}
+}
+
+// A missing thumbhash (not yet generated) maps to the sentinel token.
+func TestListTokenizesThumbhash(t *testing.T) {
+	fake := newFakeImmich(t)
+	fake.assets = []fakeAsset{
+		{id: assetA, isImage: true, thumbhash: ""},
+		{id: assetB, isImage: true, thumbhash: "hb"},
+	}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+	c := newClient(t, srv, "")
+
+	got, err := c.List(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got[0].Version != "0000000000000000" {
+		t.Errorf("empty thumbhash token = %q, want sentinel", got[0].Version)
+	}
+	if got[1].Version == "0000000000000000" {
+		t.Error("non-empty thumbhash should not map to the sentinel")
+	}
+}
+
+// The adapter logs whether a tick re-enumerated or was served from the 304 cache.
+func TestListLogsCacheVsEnumerate(t *testing.T) {
+	fake := newFakeImmich(t)
+	fake.assets = []fakeAsset{{id: assetA, isImage: true, thumbhash: "ha"}}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+	var buf bytes.Buffer
+	c, err := immich.New(immich.Config{
+		ShareURL: srv.URL + "/share/" + testKey,
+		HTTP:     srv.Client(),
+		Logger:   slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if _, err := c.List(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if out := buf.String(); !strings.Contains(out, "enumerated album") || !strings.Contains(out, "served from cache") {
+		t.Errorf("missing enumerate/cache log lines:\n%s", out)
+	}
+}
+
+// A second List with an unchanged album ETag is served from cache: no second
+// timeline enumeration.
+func TestListReusesCacheOn304(t *testing.T) {
+	fake := newFakeImmich(t)
+	fake.assets = []fakeAsset{{id: assetA, isImage: true, thumbhash: "ha"}}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+	c := newClient(t, srv, "")
+
+	for range 2 {
+		if _, err := c.List(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	buckets := 0
+	for _, r := range fake.requests {
+		if r.path == "/api/timeline/bucket" {
+			buckets++
+		}
+	}
+	if buckets != 1 {
+		t.Errorf("timeline/bucket fetched %d times, want 1 (second List served from 304)", buckets)
 	}
 }
 
@@ -223,7 +361,7 @@ func TestLegacyServerFallsBackToPasswordQuery(t *testing.T) {
 		t.Errorf("login probed %d times, want 1", logins)
 	}
 	if others < 2 {
-		t.Fatalf("expected at least 2 data requests (share-link + album), got %d", others)
+		t.Fatalf("expected at least 2 data requests, got %d", others)
 	}
 }
 
@@ -384,7 +522,6 @@ func TestFetchReturnsPreviewBody(t *testing.T) {
 	}
 	if thumbReq == nil {
 		t.Fatal("no thumbnail request recorded")
-		return
 	}
 	if thumbReq.size != "preview" {
 		t.Errorf("size=%q, want preview", thumbReq.size)
@@ -403,41 +540,25 @@ func TestFetchPropagatesHTTPError(t *testing.T) {
 	}
 }
 
-func TestListSkipsAssetsWithZeroUpdatedAt(t *testing.T) {
-	fake := newFakeImmich(t)
-	fake.assets = `{"assets":[
-		{"id":"` + assetA + `","type":"IMAGE","updatedAt":"2026-04-20T08:00:11Z"},
-		{"id":"zero","type":"IMAGE","updatedAt":"0001-01-01T00:00:00Z"}
-	]}`
-	srv := httptest.NewServer(fake.handler())
-	defer srv.Close()
-	c := newClient(t, srv, "")
-
-	got, err := c.List(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(got) != 1 || got[0].ID != assetA {
-		t.Errorf("zero-updatedAt asset should be skipped: %+v", got)
-	}
-}
-
 func TestListInvalidatesAlbumIDOn404(t *testing.T) {
 	fake := newFakeImmich(t)
-	var albumCalls int
+	var gateCalls int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.URL.Path == "/api/shared-links/me":
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = io.WriteString(w, fake.album)
-		case strings.HasPrefix(r.URL.Path, "/api/albums/"):
-			albumCalls++
-			if albumCalls == 1 {
+		switch r.URL.Path {
+		case "/api/shared-links/me":
+			writeJSON(w, fake.album)
+		case "/api/albums/" + testAlbumID:
+			gateCalls++
+			if gateCalls == 1 {
 				http.Error(w, "gone", http.StatusNotFound)
 				return
 			}
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = io.WriteString(w, fake.assets)
+			w.Header().Set("ETag", `"e"`)
+			writeJSON(w, `{}`)
+		case "/api/timeline/buckets":
+			writeJSON(w, `[{"timeBucket":"2026-05-01","count":1}]`)
+		case "/api/timeline/bucket":
+			writeJSON(w, `{"id":["`+assetA+`"],"isImage":[true],"thumbhash":["h"]}`)
 		default:
 			http.NotFound(w, r)
 		}
@@ -445,12 +566,12 @@ func TestListInvalidatesAlbumIDOn404(t *testing.T) {
 	defer srv.Close()
 	c := newClient(t, srv, "")
 
-	// First album call 404s; the retry succeeds after re-resolving via /me.
+	// First gate call 404s; the retry succeeds after re-resolving via /me.
 	if _, err := c.List(context.Background()); err != nil {
 		t.Fatalf("expected retry success, got %v", err)
 	}
-	if albumCalls != 2 {
-		t.Errorf("expected 2 album calls (first 404 → re-resolve → retry), got %d", albumCalls)
+	if gateCalls != 2 {
+		t.Errorf("expected 2 gate calls (404 → re-resolve → retry), got %d", gateCalls)
 	}
 }
 

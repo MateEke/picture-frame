@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -82,7 +83,7 @@ func setup(t *testing.T) (*os.Root, *library.Library) {
 }
 
 func asset(id string, ts int64) library.Asset {
-	return library.Asset{ID: id, UpdatedAt: time.Unix(ts, 0)}
+	return library.Asset{ID: id, Version: strconv.FormatInt(ts, 10)}
 }
 
 func names(t *testing.T, root *os.Root) []string {
