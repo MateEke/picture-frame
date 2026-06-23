@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,8 +16,8 @@ import (
 )
 
 // Syncer reconciles a RemoteAlbum with a local directory and Library on a tick.
-// Files are named "<asset-id>-<updatedAt-unix>.jpg" so an edit upstream becomes
-// a new local file (old version deleted, new version downloaded).
+// Files are named "<asset-id>-<version>.jpg" so an edit upstream (new version)
+// becomes a new local file: old version deleted, new version downloaded.
 type Syncer struct {
 	log      *slog.Logger
 	remote   RemoteAlbum
@@ -173,9 +172,9 @@ func (s *Syncer) syncOnce(ctx context.Context) {
 
 // localFile is the parsed form of a synced filename.
 type localFile struct {
-	name      string
-	id        string
-	updatedAt int64
+	name    string
+	id      string
+	version string
 }
 
 type localSet []localFile
@@ -189,15 +188,15 @@ func (ls localSet) byID() map[string]localFile {
 }
 
 // staleAgainst returns local files whose ID is gone from remote or whose
-// updatedAt differs from the remote version.
+// version differs from the remote one.
 func (ls localSet) staleAgainst(remote []Asset) []localFile {
-	want := make(map[string]int64, len(remote))
+	want := make(map[string]string, len(remote))
 	for _, a := range remote {
-		want[a.ID] = a.UpdatedAt.Unix()
+		want[a.ID] = a.Version
 	}
 	var out []localFile
 	for _, f := range ls {
-		if t, ok := want[f.id]; !ok || t != f.updatedAt {
+		if v, ok := want[f.id]; !ok || v != f.version {
 			out = append(out, f)
 		}
 	}
@@ -210,14 +209,14 @@ func (ls localSet) missingFrom(remote []Asset) []Asset {
 	have := ls.byID()
 	var out []Asset
 	for _, a := range remote {
-		if f, ok := have[a.ID]; !ok || f.updatedAt != a.UpdatedAt.Unix() {
+		if f, ok := have[a.ID]; !ok || f.version != a.Version {
 			out = append(out, a)
 		}
 	}
 	return out
 }
 
-var syncedNameRe = regexp.MustCompile(`^([0-9a-f-]{36})-(\d+)\.jpg$`)
+var syncedNameRe = regexp.MustCompile(`^([0-9a-f-]{36})-([0-9a-f]+)\.jpg$`)
 
 func (s *Syncer) scanLocal() (localSet, error) {
 	d, err := s.root.OpenFile(".", os.O_RDONLY, 0)
@@ -238,11 +237,7 @@ func (s *Syncer) scanLocal() (localSet, error) {
 		if match == nil {
 			continue
 		}
-		updatedAt, err := strconv.ParseInt(match[2], 10, 64)
-		if err != nil {
-			continue
-		}
-		out = append(out, localFile{name: entry.Name(), id: match[1], updatedAt: updatedAt})
+		out = append(out, localFile{name: entry.Name(), id: match[1], version: match[2]})
 	}
 	return out, nil
 }
@@ -333,15 +328,13 @@ func (s *Syncer) writeAtomic(ctx context.Context, id, tmp, final string) error {
 // strings stay UI-safe and bounded.
 func safeErrorMessage(s string) string { return redact.Path(s) }
 
-// SyncedFilename returns the canonical local name for an asset. Panics if
-// UpdatedAt is zero, since a zero timestamp produces an unparseable filename
-// and would loop forever in the diff. Callers must filter zero-timed assets
-// upstream (Immich's listOnce does).
+// SyncedFilename returns the canonical local name for an asset. Panics on an
+// empty Version, which would produce an unparseable name and loop in the diff.
 func SyncedFilename(a Asset) string {
-	if a.UpdatedAt.IsZero() {
-		panic("library: SyncedFilename requires non-zero UpdatedAt")
+	if a.Version == "" {
+		panic("library: SyncedFilename requires non-empty Version")
 	}
-	return a.ID + "-" + strconv.FormatInt(a.UpdatedAt.Unix(), 10) + ".jpg"
+	return a.ID + "-" + a.Version + ".jpg"
 }
 
 // IsSyncedName reports whether name matches the synced-file pattern.

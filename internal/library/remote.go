@@ -3,13 +3,12 @@ package library
 import (
 	"context"
 	"io"
-	"time"
 )
 
 // Asset is one image in a RemoteAlbum.
 type Asset struct {
-	ID        string    // stable identity; used as the filename stem
-	UpdatedAt time.Time // changes when the asset is edited remotely
+	ID      string // stable identity; used as the filename stem
+	Version string // opaque change token; a new value means re-download
 }
 
 // RemoteAlbum is a read-only view of an album in a remote photo service.
