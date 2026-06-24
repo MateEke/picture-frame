@@ -17,6 +17,12 @@ func TestKioskEventPayload(t *testing.T) {
 	if got.Locale != "en-US" {
 		t.Errorf("locale: got %q, want en-US", got.Locale)
 	}
+	if !got.HideClockDate {
+		t.Error("hide_clock_date: want true")
+	}
+	if got.Timezone != "Europe/Budapest" {
+		t.Errorf("timezone: got %q, want Europe/Budapest", got.Timezone)
+	}
 	if !got.Weather {
 		t.Error("weather: want true when weatherActive")
 	}
@@ -40,11 +46,13 @@ func fullTestConfig() config.Config {
 		LogLevel:         "debug",
 		BluetoothAdapter: "hci0",
 		Display: config.DisplayConfig{
-			BlankAfter: config.Duration{Duration: 20 * time.Minute},
-			Backend:    config.DisplayBackendWlopm,
-			Output:     "HDMI-A-1",
-			Locale:     "en-US",
-			Labels:     config.KioskLabelsConfig{Outside: "Kint", Inside: "Bent", Humidity: "Pára"},
+			BlankAfter:    config.Duration{Duration: 20 * time.Minute},
+			Backend:       config.DisplayBackendWlopm,
+			Output:        "HDMI-A-1",
+			Locale:        "en-US",
+			HideClockDate: true,
+			Timezone:      "Europe/Budapest",
+			Labels:        config.KioskLabelsConfig{Outside: "Kint", Inside: "Bent", Humidity: "Pára"},
 		},
 		Slideshow: config.SlideshowConfig{
 			Interval:  config.Duration{Duration: 2 * time.Minute},
@@ -360,6 +368,12 @@ func TestApplyDTORoundTrip(t *testing.T) {
 	if out.Display.Locale != current.Display.Locale {
 		t.Errorf("display.locale: got %q, want %q", out.Display.Locale, current.Display.Locale)
 	}
+	if out.Display.HideClockDate != current.Display.HideClockDate {
+		t.Errorf("display.hide_clock_date: got %v, want %v", out.Display.HideClockDate, current.Display.HideClockDate)
+	}
+	if out.Display.Timezone != current.Display.Timezone {
+		t.Errorf("display.timezone: got %q, want %q", out.Display.Timezone, current.Display.Timezone)
+	}
 	if out.Display.Labels != current.Display.Labels {
 		t.Errorf("display.labels: got %+v, want %+v", out.Display.Labels, current.Display.Labels)
 	}
@@ -486,6 +500,8 @@ func TestNeedsRestartTier1FieldsAreLive(t *testing.T) {
 		{"log_level", func(c *config.Config) { c.LogLevel = "warn" }},
 		{"display.blank_after", func(c *config.Config) { c.Display.BlankAfter = config.Duration{Duration: 5 * time.Minute} }},
 		{"display.locale", func(c *config.Config) { c.Display.Locale = "hu-HU" }},
+		{"display.hide_clock_date", func(c *config.Config) { c.Display.HideClockDate = !c.Display.HideClockDate }},
+		{"display.timezone", func(c *config.Config) { c.Display.Timezone = "America/New_York" }},
 		{"display.labels", func(c *config.Config) { c.Display.Labels.Outside = "Garden" }},
 		{"slideshow.interval", func(c *config.Config) { c.Slideshow.Interval = config.Duration{Duration: 5 * time.Minute} }},
 		{"slideshow.randomize", func(c *config.Config) { c.Slideshow.Randomize = !c.Slideshow.Randomize }},

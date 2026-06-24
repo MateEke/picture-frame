@@ -12,6 +12,9 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	// Embed the full IANA tz database so display.timezone validation (time.LoadLocation)
+	// accepts any zone the browser's picker offers, even on a minimal Pi.
+	_ "time/tzdata"
 
 	"github.com/coreos/go-systemd/v22/daemon"
 

@@ -361,6 +361,8 @@ describe('SSESubscriber', () => {
 				version: 'v1.0.0',
 				labels: { outside: 'Out', inside: 'In', humidity: 'Hum' },
 				locale: 'en-US',
+				hide_clock_date: false,
+				timezone: '',
 				sensors: ['inside:temperature'],
 				weather: true
 			};

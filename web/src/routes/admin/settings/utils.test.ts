@@ -118,6 +118,8 @@ describe('settings utils', () => {
 					backend: 'wlopm',
 					output: 'HDMI-A-1',
 					locale: 'en-US',
+					hide_clock_date: false,
+					timezone: '',
 					labels: { outside: '', inside: '', humidity: '' }
 				},
 				slideshow: { interval: '2m', randomize: false, split_screen: true, images_dir: 'images' },

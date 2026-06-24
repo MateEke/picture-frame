@@ -54,11 +54,13 @@ func (ScreenAspectPayload) busPayload() {}
 
 // KioskPayload carries the kiosk overlay's render inputs.
 type KioskPayload struct {
-	Version string      `json:"version"` // running build; the kiosk reloads when it changes (post-update)
-	Locale  string      `json:"locale"`
-	Sensors []string    `json:"sensors"`
-	Weather bool        `json:"weather"`
-	Labels  KioskLabels `json:"labels"`
+	Version       string      `json:"version"` // running build; the kiosk reloads when it changes (post-update)
+	Locale        string      `json:"locale"`
+	HideClockDate bool        `json:"hide_clock_date"`
+	Timezone      string      `json:"timezone"`
+	Sensors       []string    `json:"sensors"`
+	Weather       bool        `json:"weather"`
+	Labels        KioskLabels `json:"labels"`
 }
 
 // KioskLabels mirrors config.KioskLabelsConfig; empty strings hide the caption.

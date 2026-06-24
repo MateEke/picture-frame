@@ -1,6 +1,9 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // Validate checks structural invariants; backends validate external references
 // (e.g. decoder names) at startup.
@@ -126,10 +129,15 @@ func (w WiFiConfig) validate() error {
 func (d DisplayConfig) validate() error {
 	switch d.Backend {
 	case "", DisplayBackendWlopm, DisplayBackendVcgencmd:
-		return nil
 	default:
 		return fmt.Errorf("unknown backend %q (valid: %s, %s)", d.Backend, DisplayBackendWlopm, DisplayBackendVcgencmd)
 	}
+	if d.Timezone != "" {
+		if _, err := time.LoadLocation(d.Timezone); err != nil {
+			return fmt.Errorf("unknown timezone %q: %w", d.Timezone, err)
+		}
+	}
+	return nil
 }
 
 func (l LibraryConfig) validate() error {

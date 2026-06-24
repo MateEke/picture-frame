@@ -242,6 +242,31 @@ func TestPutConfigLocaleIsLive(t *testing.T) {
 	}
 }
 
+func TestPutConfigHideClockDateAndTimezoneAreLive(t *testing.T) {
+	saved := defaultSaved()
+	srv, _, restartCalls := makeConfigServer(t, saved)
+
+	body := putBody(t, saved, func(dto *map[string]any) {
+		display := (*dto)["display"].(map[string]any)
+		display["hide_clock_date"] = true
+		display["timezone"] = "Europe/Budapest"
+	})
+	rec := doJSONPut(srv, "/api/config", body)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d; body: %s", rec.Code, rec.Body)
+	}
+	if restartCalls.Load() != 0 {
+		t.Error("Restart must not be called on PUT")
+	}
+	var resp map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp["restart_pending"] != false {
+		t.Errorf("hide_clock_date/timezone change: restart_pending must be false, got %v", resp["restart_pending"])
+	}
+}
+
 func TestPutConfigPublishesKioskEvent(t *testing.T) {
 	overridesPath := filepath.Join(t.TempDir(), "overrides.toml")
 	saved := defaultSaved()
@@ -260,7 +285,10 @@ func TestPutConfigPublishesKioskEvent(t *testing.T) {
 	})
 
 	body := putBody(t, saved, func(dto *map[string]any) {
-		(*dto)["display"].(map[string]any)["locale"] = "hu-HU"
+		display := (*dto)["display"].(map[string]any)
+		display["locale"] = "hu-HU"
+		display["hide_clock_date"] = true
+		display["timezone"] = "Europe/Budapest"
 	})
 	if rec := doJSONPut(srv, "/api/config", body); rec.Code != http.StatusOK {
 		t.Fatalf("status: got %d; body: %s", rec.Code, rec.Body)
@@ -277,6 +305,12 @@ func TestPutConfigPublishesKioskEvent(t *testing.T) {
 		}
 		if kp.Locale != "hu-HU" {
 			t.Errorf("kiosk locale: got %q, want hu-HU", kp.Locale)
+		}
+		if !kp.HideClockDate {
+			t.Error("kiosk hide_clock_date: got false, want true")
+		}
+		if kp.Timezone != "Europe/Budapest" {
+			t.Errorf("kiosk timezone: got %q, want Europe/Budapest", kp.Timezone)
 		}
 	default:
 		t.Fatal("expected a kiosk event to be published on PUT")

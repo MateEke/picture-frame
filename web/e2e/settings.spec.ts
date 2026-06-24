@@ -36,6 +36,38 @@ test.describe('settings', () => {
 		});
 	});
 
+	test('toggles hide clock and date, applies live (no restart)', async ({ page, settings }) => {
+		const input = settings.hideClockDateSwitch.locator('input[type="checkbox"]');
+		const before = await input.isChecked();
+		await settings.hideClockDateSwitch.click();
+		await expect(input).toBeChecked({ checked: !before });
+		await expect(settings.save).toBeEnabled();
+
+		await settings.save.click();
+		await expect(settings.saveBar).toBeHidden();
+		await expect(settings.restartDialog).toBeHidden();
+
+		await page.reload();
+		await expect(settings.hideClockDateSwitch.locator('input[type="checkbox"]')).toBeChecked({
+			checked: !before
+		});
+	});
+
+	test('selects a time zone and persists across reload', async ({ page, settings }) => {
+		await settings.timezone.click();
+		await settings.timezone.fill('Asia/Tokyo');
+		await page.getByRole('option', { name: /Asia\/Tokyo/ }).click();
+		await expect(settings.save).toBeEnabled();
+
+		await settings.save.click();
+		await expect(settings.saveBar).toBeHidden();
+		// Live field: no restart prompt.
+		await expect(settings.restartDialog).toBeHidden();
+
+		await page.reload();
+		await expect(settings.timezone).toHaveValue(/Asia\/Tokyo/);
+	});
+
 	test('links to the manual', async ({ settings }) => {
 		await expect(settings.docs).toHaveAttribute('href', /pictureframe\.ekemate\.hu\/manual/);
 	});

@@ -121,6 +121,10 @@ type DisplayConfig struct {
 	Output string `toml:"output"`
 	// Locale is the BCP-47 tag the kiosk formats the clock and date with; default "en-US".
 	Locale string `toml:"locale"`
+	// HideClockDate hides the clock and date block on the kiosk.
+	HideClockDate bool `toml:"hide_clock_date"`
+	// Timezone is the IANA zone for the kiosk clock and date; empty follows the browser.
+	Timezone string `toml:"timezone"`
 	// Labels are the owner-provided captions under the kiosk readings;
 	// an empty string hides that caption.
 	Labels KioskLabelsConfig `toml:"labels"`

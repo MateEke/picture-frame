@@ -5,6 +5,7 @@
 	import { eq, hasMotionSensor } from '../utils';
 	import DurationSlider from './DurationSlider.svelte';
 	import LocaleCombobox from './LocaleCombobox.svelte';
+	import TimezoneCombobox from './TimezoneCombobox.svelte';
 	import Field from './Field.svelte';
 	import ToggleRow from './ToggleRow.svelte';
 
@@ -83,6 +84,24 @@
 	>
 		<LocaleCombobox bind:value={display.locale} />
 	</Field>
+
+	<Field
+		label="Time zone"
+		help="Time zone for the clock and date on the frame. Leave as browser default to follow the device."
+		changed={display.timezone !== savedDisplay.timezone}
+		onrevert={() => (display.timezone = savedDisplay.timezone)}
+	>
+		<TimezoneCombobox bind:value={display.timezone} />
+	</Field>
+
+	<ToggleRow
+		label="Hide clock and date"
+		checked={display.hide_clock_date}
+		changed={display.hide_clock_date !== savedDisplay.hide_clock_date}
+		onchange={(v) => (display.hide_clock_date = v)}
+		onrevert={() => (display.hide_clock_date = savedDisplay.hide_clock_date)}
+		testId="hide-clock-date-switch"
+	/>
 
 	<Field
 		label="Reading labels"
