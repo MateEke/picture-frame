@@ -58,6 +58,41 @@ func (e *errSource) Start(ctx context.Context, out chan<- sensors.Reading) error
 	return nil
 }
 
+// capturingSource hands its out channel to the test, then blocks until ctx ends.
+type capturingSource struct {
+	id  string
+	got chan chan<- sensors.Reading
+}
+
+func (c *capturingSource) ID() string { return c.id }
+func (c *capturingSource) Start(ctx context.Context, out chan<- sensors.Reading) error {
+	c.got <- out
+	<-ctx.Done()
+	return nil
+}
+
+// A BLE GATT notification can fire after Start returns (tinygo Disconnect is
+// async); the registry must not close out under it or the late send panics.
+func TestRegistryDoesNotCloseOutWhileLateSendPossible(t *testing.T) {
+	src := &capturingSource{id: "cap", got: make(chan chan<- sensors.Reading, 1)}
+	reg := sensors.NewRegistry(testutil.NopLogger(), []sensors.Source{src}, func(sensors.Reading) {})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	runDone := make(chan struct{})
+	go func() { reg.Run(ctx); close(runDone) }()
+
+	out := <-src.got
+	cancel()
+	<-runDone
+
+	// out must stay open after the source stops: the late send must not panic or block.
+	select {
+	case out <- sensors.Reading{DeviceID: "cap"}:
+	case <-time.After(time.Second):
+		t.Fatal("late send blocked; out should remain open with buffer space")
+	}
+}
+
 func TestRegistryDeliverReadings(t *testing.T) {
 	want := []sensors.Reading{
 		{DeviceID: "a", Kind: sensors.KindTemperature, Value: 21.0},
