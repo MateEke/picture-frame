@@ -40,16 +40,30 @@ func (r *Registry) Run(ctx context.Context) {
 
 func (r *Registry) runSource(ctx context.Context, s Source) {
 	out := make(chan Reading, 8)
+	done := make(chan struct{})
 	var fanout sync.WaitGroup
 	fanout.Go(func() {
-		for reading := range out {
-			r.emit(reading)
+		for {
+			select {
+			case <-done:
+				// Deliver anything already buffered before exiting.
+				for {
+					select {
+					case reading := <-out:
+						r.emit(reading)
+					default:
+						return
+					}
+				}
+			case reading := <-out:
+				r.emit(reading)
+			}
 		}
 	})
-	// Close out and let the drain finish before returning, so no readings are
-	// still in flight when the source's WaitGroup entry completes.
+	// Don't close out: a source's async callbacks (BLE notifications) can fire
+	// after Start returns, and a send on a closed channel panics. done stops the drain.
 	defer func() {
-		close(out)
+		close(done)
 		fanout.Wait()
 	}()
 
