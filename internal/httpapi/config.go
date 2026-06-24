@@ -27,6 +27,8 @@ func copyTier1(dst *config.Config, src config.Config) {
 	dst.LogLevel = src.LogLevel // applied live via the slog LevelVar
 	dst.Display.BlankAfter = src.Display.BlankAfter
 	dst.Display.Locale = src.Display.Locale // re-published on the kiosk SSE event
+	dst.Display.HideClockDate = src.Display.HideClockDate
+	dst.Display.Timezone = src.Display.Timezone
 	dst.Display.Labels = src.Display.Labels
 	dst.Slideshow.Interval = src.Slideshow.Interval
 	dst.Slideshow.Randomize = src.Slideshow.Randomize

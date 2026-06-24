@@ -20,6 +20,12 @@ export type ServerOptions = {
 	updateOffline?: boolean;
 	/** Seed image directory to copy in; defaults to the shared fixtures/images. */
 	seedDir?: string;
+	/** Hide the kiosk clock and date. */
+	hideClockDate?: boolean;
+	/** IANA timezone for the kiosk clock/date. */
+	timezone?: string;
+	/** Drop sensors and the [weather] block so the overlay can go fully empty. */
+	minimalOverlay?: boolean;
 };
 
 export type PfServer = {
@@ -51,7 +57,15 @@ async function spawnOnce(opts: ServerOptions): Promise<PfServer> {
 	await cp(opts.seedDir ?? seedImagesDir(), imagesDir, { recursive: true });
 	await writeFile(
 		path.join(dir, 'config.toml'),
-		renderConfig({ port, imagesDir, passwordHash: opts.passwordHash, immich: opts.immich })
+		renderConfig({
+			port,
+			imagesDir,
+			passwordHash: opts.passwordHash,
+			immich: opts.immich,
+			hideClockDate: opts.hideClockDate,
+			timezone: opts.timezone,
+			minimalOverlay: opts.minimalOverlay
+		})
 	);
 
 	const env: NodeJS.ProcessEnv = { ...process.env, GO_ENV: 'dev', UPDATER_MOCK_DELAY: '0' };

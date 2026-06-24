@@ -18,7 +18,8 @@ set. Manage the photos on [Photos](/manual/photos/), and set the timing and orde
 just the clock and date.
 
 **The clock and date.** The time sits large in the corner, with the weekday and date beneath it,
-formatted for the language you chose, in 12- or 24-hour style. Set it under
+formatted for the language you chose, in 12- or 24-hour style, and in the time zone you set. You
+can also hide the clock and date entirely. Set all of this under
 [Slideshow & display](/manual/slideshow-display/).
 
 **The readings.** Along the bottom the frame shows, when each one is available, the outside
@@ -30,7 +31,8 @@ reading, the inside reading, and the humidity, each under the caption you gave i
 - the **inside** temperature and **humidity** come from the matching inside sensors.
 
 A reading shows only when its source is configured, and one that has stopped arriving falls back
-to `--`.
+to `--`. When nothing is left to show, no readings, no weather, and the clock and date hidden, the
+whole bottom overlay disappears and the photo fills the screen on its own.
 
 ## When the screen sleeps
 

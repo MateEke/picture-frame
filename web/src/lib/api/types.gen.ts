@@ -129,6 +129,10 @@ export type DisplayDto = {
      * Idle duration before screen blanks, e.g. "20m"
      */
     blank_after: string;
+    /**
+     * Hide the clock and date block on the kiosk overlay
+     */
+    hide_clock_date: boolean;
     labels: KioskLabelsDto;
     /**
      * BCP-47 date/time locale for the kiosk clock, e.g. en-US
@@ -138,6 +142,10 @@ export type DisplayDto = {
      * Wayland connector name, e.g. "HDMI-A-1" (wlopm only)
      */
     output: string;
+    /**
+     * IANA timezone for the kiosk clock/date, e.g. Europe/Budapest; empty uses the browser timezone
+     */
+    timezone: string;
 };
 
 export type ErrorDetail = {
@@ -243,9 +251,11 @@ export type KioskLabelsDto = {
 };
 
 export type KioskPayload = {
+    hide_clock_date: boolean;
     labels: KioskLabels;
     locale: string;
     sensors: Array<string> | null;
+    timezone: string;
     version: string;
     weather: boolean;
 };

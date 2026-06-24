@@ -7,6 +7,8 @@ export class SettingsPage {
 	readonly issues: Locator;
 	readonly labelOutside: Locator;
 	readonly splitScreenSwitch: Locator;
+	readonly hideClockDateSwitch: Locator;
+	readonly timezone: Locator;
 	readonly weatherLat: Locator;
 	readonly sensorAdd: Locator;
 	readonly dialogId: Locator;
@@ -42,6 +44,8 @@ export class SettingsPage {
 		this.issues = page.getByTestId('settings-issues');
 		this.labelOutside = page.getByTestId('setting-label-outside');
 		this.splitScreenSwitch = page.getByTestId('split-screen-switch');
+		this.hideClockDateSwitch = page.getByTestId('hide-clock-date-switch');
+		this.timezone = page.getByTestId('setting-timezone');
 		this.weatherLat = page.getByTestId('setting-weather-lat');
 		this.sensorAdd = page.getByTestId('sensor-add');
 		this.dialogId = page.getByTestId('sensor-dialog-id');

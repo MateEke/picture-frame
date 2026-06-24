@@ -65,11 +65,13 @@ type ConfigMetaBody struct {
 
 // DisplayDTO maps config.DisplayConfig.
 type DisplayDTO struct {
-	BlankAfter string         `json:"blank_after" doc:"Idle duration before screen blanks, e.g. \"20m\""`
-	Backend    string         `json:"backend" enum:"wlopm,vcgencmd"`
-	Output     string         `json:"output" doc:"Wayland connector name, e.g. \"HDMI-A-1\" (wlopm only)"`
-	Locale     string         `json:"locale" doc:"BCP-47 date/time locale for the kiosk clock, e.g. en-US"`
-	Labels     KioskLabelsDTO `json:"labels"`
+	BlankAfter    string         `json:"blank_after" doc:"Idle duration before screen blanks, e.g. \"20m\""`
+	Backend       string         `json:"backend" enum:"wlopm,vcgencmd"`
+	Output        string         `json:"output" doc:"Wayland connector name, e.g. \"HDMI-A-1\" (wlopm only)"`
+	Locale        string         `json:"locale" doc:"BCP-47 date/time locale for the kiosk clock, e.g. en-US"`
+	HideClockDate bool           `json:"hide_clock_date" doc:"Hide the clock and date block on the kiosk overlay"`
+	Timezone      string         `json:"timezone" doc:"IANA timezone for the kiosk clock/date, e.g. Europe/Budapest; empty uses the browser timezone"`
+	Labels        KioskLabelsDTO `json:"labels"`
 }
 
 // KioskLabelsDTO maps config.KioskLabelsConfig.
@@ -186,11 +188,13 @@ func toDTO(cfg config.Config) ConfigDTO {
 		LogLevel:         logLevelOrDefault(cfg.LogLevel),
 		BluetoothAdapter: cfg.BluetoothAdapter,
 		Display: DisplayDTO{
-			BlankAfter: durString(cfg.Display.BlankAfter.Duration),
-			Backend:    cfg.Display.Backend,
-			Output:     cfg.Display.Output,
-			Locale:     cfg.Display.Locale,
-			Labels:     labelsToDTO(cfg.Display.Labels),
+			BlankAfter:    durString(cfg.Display.BlankAfter.Duration),
+			Backend:       cfg.Display.Backend,
+			Output:        cfg.Display.Output,
+			Locale:        cfg.Display.Locale,
+			HideClockDate: cfg.Display.HideClockDate,
+			Timezone:      cfg.Display.Timezone,
+			Labels:        labelsToDTO(cfg.Display.Labels),
 		},
 		Slideshow: SlideshowDTO{
 			Interval:    durString(cfg.Slideshow.Interval.Duration),
@@ -317,6 +321,8 @@ func applyDisplayDTO(dst *config.DisplayConfig, dto DisplayDTO) error {
 	dst.Backend = dto.Backend
 	dst.Output = dto.Output
 	dst.Locale = dto.Locale
+	dst.HideClockDate = dto.HideClockDate
+	dst.Timezone = dto.Timezone
 	dst.Labels = labelsFromDTO(dto.Labels)
 	return nil
 }
@@ -477,11 +483,13 @@ func parseDurationOr(s, field string, fallback config.Duration) (config.Duration
 // (see startup.WeatherEnabled) gates the weather UI.
 func KioskEventPayload(cfg config.Config, weatherActive bool) state.KioskPayload {
 	return state.KioskPayload{
-		Version: version.Version,
-		Locale:  cfg.Display.Locale,
-		Sensors: config.SensorKeys(cfg.Sensors),
-		Weather: weatherActive,
-		Labels:  labelsToState(cfg.Display.Labels),
+		Version:       version.Version,
+		Locale:        cfg.Display.Locale,
+		HideClockDate: cfg.Display.HideClockDate,
+		Timezone:      cfg.Display.Timezone,
+		Sensors:       config.SensorKeys(cfg.Sensors),
+		Weather:       weatherActive,
+		Labels:        labelsToState(cfg.Display.Labels),
 	}
 }
 

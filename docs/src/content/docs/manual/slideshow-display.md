@@ -63,6 +63,14 @@ outside what the frame controls.
 24-hour clock (`display.locale`, American English by default). It changes the frame, not the
 admin interface.
 
+**Time zone** sets the zone the clock and date follow (`display.timezone`). Left as **Browser
+default** it uses the frame device's own zone, which is right for most setups. Pick an IANA zone,
+such as `Europe/Budapest`, to pin the frame to a different place.
+
+**Hide clock and date** removes the time and date from the frame (`display.hide_clock_date`, off
+by default). With the clock hidden and no readings configured, the whole bottom overlay
+disappears and you get just the photos. [The kiosk display](/manual/kiosk/) shows what hides.
+
 **Reading labels** are the captions under the sensor readings on the frame, in your own words:
 the outside reading, the inside reading, and humidity. Leave one blank to hide that caption.
 [The kiosk display](/manual/kiosk/) shows where they appear.

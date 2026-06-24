@@ -392,6 +392,10 @@
             "description": "Idle duration before screen blanks, e.g. \"20m\"",
             "type": "string"
           },
+          "hide_clock_date": {
+            "description": "Hide the clock and date block on the kiosk overlay",
+            "type": "boolean"
+          },
           "labels": {
             "$ref": "#/components/schemas/KioskLabelsDTO"
           },
@@ -402,6 +406,10 @@
           "output": {
             "description": "Wayland connector name, e.g. \"HDMI-A-1\" (wlopm only)",
             "type": "string"
+          },
+          "timezone": {
+            "description": "IANA timezone for the kiosk clock/date, e.g. Europe/Budapest; empty uses the browser timezone",
+            "type": "string"
           }
         },
         "required": [
@@ -409,6 +417,8 @@
           "backend",
           "output",
           "locale",
+          "hide_clock_date",
+          "timezone",
           "labels"
         ],
         "type": "object"
@@ -630,6 +640,9 @@
       "KioskPayload": {
         "additionalProperties": false,
         "properties": {
+          "hide_clock_date": {
+            "type": "boolean"
+          },
           "labels": {
             "$ref": "#/components/schemas/KioskLabels"
           },
@@ -645,6 +658,9 @@
               "null"
             ]
           },
+          "timezone": {
+            "type": "string"
+          },
           "version": {
             "type": "string"
           },
@@ -655,6 +671,8 @@
         "required": [
           "version",
           "locale",
+          "hide_clock_date",
+          "timezone",
           "sensors",
           "weather",
           "labels"

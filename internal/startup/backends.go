@@ -30,17 +30,25 @@ func NewDisplayController(log *slog.Logger, cfg config.DisplayConfig) (displaypk
 	}
 }
 
-// WeatherEnabled reports whether a weather fetcher runs (real with an api_key,
-// the dev mock otherwise). Only prod-without-key disables it.
+// WeatherEnabled reports whether a weather fetcher runs: real OWM when an api_key
+// is set, or the dev mock when weather is otherwise configured (a location is set).
 func WeatherEnabled(cfg *config.Config, production bool) bool {
-	return cfg.Weather.APIKey != "" || !production
+	if cfg.Weather.APIKey != "" {
+		return true
+	}
+	return !production && weatherConfigured(cfg)
 }
 
-// BuildWeatherFetcher returns the OWM client when an API key is set, a static
-// mock in dev, or nil to disable weather in prod.
+// weatherConfigured reports whether the [weather] block sets a location.
+func weatherConfigured(cfg *config.Config) bool {
+	return cfg.Weather.Lat != 0 || cfg.Weather.Lon != 0
+}
+
+// BuildWeatherFetcher returns the OWM client when an API key is set, the static
+// dev mock when weather is configured without a key, or nil to disable weather.
 func BuildWeatherFetcher(log *slog.Logger, cfg *config.Config, production bool) weather.Fetcher {
 	if !WeatherEnabled(cfg, production) {
-		log.Info("weather: disabled (no api_key configured)")
+		log.Info("weather: disabled (not configured)")
 		return nil
 	}
 	if cfg.Weather.APIKey != "" {

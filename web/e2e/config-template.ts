@@ -5,6 +5,12 @@ export type ConfigOptions = {
 	passwordHash?: string;
 	/** Immich backend with a dummy (unreachable) share URL. */
 	immich?: boolean;
+	/** Hide the clock and date on the kiosk. */
+	hideClockDate?: boolean;
+	/** IANA timezone for the kiosk clock/date; empty follows the device. */
+	timezone?: string;
+	/** Drop all sensors and weather so the overlay can go fully empty. */
+	minimalOverlay?: boolean;
 };
 
 // Sentinel labels the kiosk spec asserts on.
@@ -21,19 +27,33 @@ export function renderConfig(opts: ConfigOptions): string {
 	const library = opts.immich
 		? '\n[library]\nbackend = "immich"\n\n[library.immich]\nshare_url = "http://127.0.0.1:9/share/e2e"\n'
 		: '';
+	const displayExtra =
+		(opts.hideClockDate ? 'hide_clock_date = true\n' : '') +
+		(opts.timezone ? `timezone = "${opts.timezone}"\n` : '');
+	const display = `[display]
+blank_after = "20m"
+${displayExtra}`;
+	const slideshow = `[slideshow]
+interval   = "2s"
+images_dir = "${opts.imagesDir}"`;
+
+	if (opts.minimalOverlay) {
+		return `addr = "127.0.0.1:${opts.port}"
+
+${display}
+${slideshow}
+${library}${auth}`;
+	}
+
 	return `addr = "127.0.0.1:${opts.port}"
 
-[display]
-blank_after = "20m"
-
+${display}
 [display.labels]
 outside  = "${LABELS.outside}"
 inside   = "${LABELS.inside}"
 humidity = "${LABELS.humidity}"
 
-[slideshow]
-interval   = "2s"
-images_dir = "${opts.imagesDir}"
+${slideshow}
 
 [[sensor]]
 id            = "mock_inside"

@@ -3,6 +3,7 @@ import { expect } from '@playwright/test';
 
 export class KioskPage {
 	readonly imgBottom: Locator;
+	readonly overlay: Locator;
 	readonly clock: Locator;
 	readonly date: Locator;
 	readonly tempInside: Locator;
@@ -14,6 +15,7 @@ export class KioskPage {
 
 	constructor(private readonly page: Page) {
 		this.imgBottom = page.getByTestId('kiosk-img-bottom');
+		this.overlay = page.getByTestId('kiosk-overlay');
 		this.clock = page.getByTestId('kiosk-clock');
 		this.date = page.getByTestId('kiosk-date');
 		this.tempInside = page.getByTestId('kiosk-temp-inside');

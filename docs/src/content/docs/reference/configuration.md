@@ -26,12 +26,14 @@ duration strings, such as `500ms`, `120s`, `10m`, or `2h`.
 
 See [Slideshow & display](/manual/slideshow-display/).
 
-| Key           | Type     | Default | Description                                                                                            |
-| ------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------ |
-| `blank_after` | duration | `20m`   | Idle time with no motion before the screen blanks. `0s` disables it. Needs a motion sensor. **(live)** |
-| `backend`     | string   | `wlopm` | Screen-power backend, `wlopm` or `vcgencmd`. Switching it means re-running the installer.              |
-| `output`      | string   | (auto)  | Wayland connector for the wlopm backend, such as `HDMI-A-1`.                                           |
-| `locale`      | string   | `en-US` | BCP-47 locale for the clock and date on the frame. **(live)**                                          |
+| Key               | Type     | Default  | Description                                                                                            |
+| ----------------- | -------- | -------- | ------------------------------------------------------------------------------------------------------ |
+| `blank_after`     | duration | `20m`    | Idle time with no motion before the screen blanks. `0s` disables it. Needs a motion sensor. **(live)** |
+| `backend`         | string   | `wlopm`  | Screen-power backend, `wlopm` or `vcgencmd`. Switching it means re-running the installer.              |
+| `output`          | string   | (auto)   | Wayland connector for the wlopm backend, such as `HDMI-A-1`.                                           |
+| `locale`          | string   | `en-US`  | BCP-47 locale for the clock and date on the frame. **(live)**                                          |
+| `hide_clock_date` | boolean  | `false`  | Hide the clock and date on the frame. With no readings configured, the whole overlay hides. **(live)** |
+| `timezone`        | string   | (device) | IANA time zone for the clock and date, such as `Europe/Budapest`. Empty follows the device. **(live)** |
 
 ### `[display.labels]`
 

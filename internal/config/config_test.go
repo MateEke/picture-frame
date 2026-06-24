@@ -37,6 +37,12 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Display.Output != "HDMI-A-1" {
 		t.Errorf("display output: got %q, want HDMI-A-1", cfg.Display.Output)
 	}
+	if cfg.Display.HideClockDate {
+		t.Error("display hide_clock_date should default to false")
+	}
+	if cfg.Display.Timezone != "" {
+		t.Errorf("display timezone: got %q, want empty", cfg.Display.Timezone)
+	}
 	if cfg.Weather.Units != "metric" {
 		t.Errorf("weather units: got %q, want metric", cfg.Weather.Units)
 	}
@@ -82,6 +88,8 @@ addr = ":9090"
 
 [display]
 blank_after = "30m"
+hide_clock_date = true
+timezone = "Europe/Budapest"
 `)
 	cfg, err := config.Load(userPath, filepath.Join(dir, "overrides.toml"))
 	if err != nil {
@@ -92,6 +100,12 @@ blank_after = "30m"
 	}
 	if cfg.Display.BlankAfter.Duration != 30*time.Minute {
 		t.Errorf("blank_after: got %v, want 30m", cfg.Display.BlankAfter)
+	}
+	if !cfg.Display.HideClockDate {
+		t.Error("hide_clock_date: got false, want true")
+	}
+	if cfg.Display.Timezone != "Europe/Budapest" {
+		t.Errorf("timezone: got %q, want Europe/Budapest", cfg.Display.Timezone)
 	}
 }
 
@@ -574,6 +588,9 @@ func TestValidateDisplay(t *testing.T) {
 		{"wlopm", config.DisplayConfig{Backend: config.DisplayBackendWlopm, Output: "HDMI-A-1"}, ""},
 		{"vcgencmd", config.DisplayConfig{Backend: config.DisplayBackendVcgencmd}, ""},
 		{"unknown backend", config.DisplayConfig{Backend: "x11"}, "unknown backend"},
+		{"empty timezone ok", config.DisplayConfig{Timezone: ""}, ""},
+		{"valid timezone", config.DisplayConfig{Timezone: "Europe/Budapest"}, ""},
+		{"unknown timezone", config.DisplayConfig{Timezone: "Not/AZone"}, "unknown timezone"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
 	sensorKey,
 	formatClockParts,
 	formatWeekday,
 	formatMonthDay,
+	timezoneOffsetLabel,
 	isSensorStale,
 	SENSOR_STALE_MS,
 	formatSensorValue,
@@ -109,6 +110,55 @@ describe('helpers', () => {
 
 		it('localizes the month abbreviation', () => {
 			expect(formatMonthDay(new Date('2026-05-18T12:00:00'), 'hu-HU')).toContain('máj');
+		});
+	});
+
+	describe('timezone', () => {
+		const utcNoon = new Date('2026-05-18T12:00:00Z');
+
+		it('empty timezone matches the no-arg formatting', () => {
+			expect(formatClockParts(utcNoon, 'hu-HU', '')).toEqual(formatClockParts(utcNoon, 'hu-HU'));
+			expect(formatWeekday(utcNoon, 'en-US', '')).toBe(formatWeekday(utcNoon, 'en-US'));
+			expect(formatMonthDay(utcNoon, 'en-US', '')).toBe(formatMonthDay(utcNoon, 'en-US'));
+		});
+
+		it('shifts the clock to the given zone', () => {
+			expect(formatClockParts(utcNoon, 'hu-HU', 'UTC').hours).toBe('12');
+			expect(formatClockParts(utcNoon, 'hu-HU', 'Asia/Tokyo').hours).toBe('21'); // UTC+9
+		});
+
+		it('shifts the date across midnight', () => {
+			// 23:00Z Monday is already Tuesday in Tokyo.
+			const lateUtc = new Date('2026-05-18T23:00:00Z');
+			expect(formatWeekday(lateUtc, 'en-US', 'UTC')).toBe('Monday');
+			expect(formatWeekday(lateUtc, 'en-US', 'Asia/Tokyo')).toBe('Tuesday');
+		});
+
+		it('falls back to the no-arg formatting when the zone is invalid', () => {
+			expect(formatClockParts(utcNoon, 'hu-HU', 'Not/AZone')).toEqual(
+				formatClockParts(utcNoon, 'hu-HU')
+			);
+			expect(formatWeekday(utcNoon, 'en-US', 'Not/AZone')).toBe(formatWeekday(utcNoon, 'en-US'));
+			expect(formatMonthDay(utcNoon, 'en-US', 'Not/AZone')).toBe(formatMonthDay(utcNoon, 'en-US'));
+		});
+	});
+
+	describe('timezoneOffsetLabel', () => {
+		it('returns a short UTC offset for a known zone', () => {
+			expect(timezoneOffsetLabel('Asia/Tokyo')).toMatch(/\+0?9/);
+		});
+
+		it('returns empty for an unknown zone', () => {
+			expect(timezoneOffsetLabel('Not/AZone')).toBe('');
+		});
+
+		it('memoizes per zone, building the formatter only once', () => {
+			const spy = vi.spyOn(Intl, 'DateTimeFormat');
+			// A zone unused elsewhere, so the module-level cache starts cold for it.
+			timezoneOffsetLabel('Europe/Paris');
+			timezoneOffsetLabel('Europe/Paris');
+			expect(spy).toHaveBeenCalledTimes(1);
+			spy.mockRestore();
 		});
 	});
 
