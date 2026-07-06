@@ -117,6 +117,7 @@ describe('settings utils', () => {
 					blank_after: '20m',
 					backend: 'wlopm',
 					output: 'HDMI-A-1',
+					rotation: 0,
 					locale: 'en-US',
 					hide_clock_date: false,
 					timezone: '',

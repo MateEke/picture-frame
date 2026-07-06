@@ -324,7 +324,7 @@ determine_src_dir() {
 install_runtime_deps() {
     # seatd brokers seat/DRM access for the User= compositor/browser (no login session).
     local pkgs="seatd cog dnsmasq-base bluez avahi-daemon"
-    [ "$DISPLAY_BACKEND" = "wlopm" ] && pkgs="$pkgs labwc wlopm"
+    [ "$DISPLAY_BACKEND" = "wlopm" ] && pkgs="$pkgs labwc wlopm wlr-randr"
     log "installing runtime packages: $pkgs"
     # shellcheck disable=SC2086 # intentional word-splitting of the package list
     apt_install $pkgs

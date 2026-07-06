@@ -18,6 +18,10 @@ are on. When one is available, a badge appears on the [Dashboard](/manual/dashbo
 Installing an update downloads it, verifies its signature and checksum, swaps it in, and restarts
 the frame on the new version.
 
+Updates replace the frame's program, not the system packages or boot scripts the installer
+set up. When a new feature needs one of those, its section in this manual says so; rerunning
+the install script brings everything current and keeps your settings.
+
 Automatic installs are limited to the **same version line**. Releases follow semantic
 versioning, written `major.minor.patch` (for example `1.4.2`). A new **minor or patch**, like
 `1.4.0` or `1.3.2`, only fixes or adds things and keeps working with your existing setup, so the

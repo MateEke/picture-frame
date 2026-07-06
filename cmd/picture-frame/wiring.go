@@ -48,6 +48,15 @@ func newDisplay(production bool, log *slog.Logger, cfg *config.Config, screenSta
 	return display, displaypkg.NewFileIntentStore(screenStatePath), nil
 }
 
+// newRotator: wlr-randr in prod (nil on vcgencmd), a mock in dev;
+// ROTATION_MOCK=unsupported simulates missing wlr-randr for e2e.
+func newRotator(production bool, log *slog.Logger, cfg *config.Config) displaypkg.Rotator {
+	if !production {
+		return displaypkg.NewMockRotator(os.Getenv("ROTATION_MOCK") != "unsupported")
+	}
+	return startup.NewRotator(log, cfg.Display)
+}
+
 // kioskTimeoutFunc returns the watchdog's on-loss action: exit (→ systemd
 // restart) in prod, a warning no-op in dev.
 func kioskTimeoutFunc(production bool, log *slog.Logger) func() {
@@ -198,7 +207,8 @@ func mockUpdaterDelay() time.Duration {
 type liveConfigImpl struct {
 	slideshow *slideshow.Slideshow
 	policy    *displaypkg.Policy
-	weather   *weather.Poller // may be nil if api_key not configured
+	rotator   displaypkg.Rotator // nil on vcgencmd
+	weather   *weather.Poller    // may be nil if api_key not configured
 	logLevel  *slog.LevelVar
 	log       *slog.Logger
 }
@@ -208,6 +218,14 @@ func (l *liveConfigImpl) ApplyLive(cfg config.Config) {
 	l.slideshow.SetRandomize(cfg.Slideshow.Randomize)
 	l.slideshow.SetSplitConfig(cfg.Slideshow.SplitScreen, slideplan.Threshold{Factor: cfg.Slideshow.PairThreshold})
 	l.policy.SetBlankAfter(cfg.Display.BlankAfter.Duration)
+	if l.rotator != nil {
+		if err := l.rotator.Set(context.Background(), cfg.Display.Rotation); err != nil {
+			l.log.Warn("rotation apply failed", "err", err)
+		}
+		// wlr-randr's output commit can power a manually-off panel back on;
+		// re-assert desired power so state and panel stay consistent.
+		l.policy.Reconcile(context.Background())
+	}
 	if l.weather != nil {
 		l.weather.SetIntervals(cfg.Weather.PollInterval.Duration, cfg.Weather.RetryInterval.Duration)
 	}

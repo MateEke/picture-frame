@@ -137,6 +137,11 @@ func (d DisplayConfig) validate() error {
 			return fmt.Errorf("unknown timezone %q: %w", d.Timezone, err)
 		}
 	}
+	switch d.Rotation {
+	case 0, 90, 180, 270:
+	default:
+		return fmt.Errorf("rotation must be 0, 90, 180 or 270, got %d", d.Rotation)
+	}
 	return nil
 }
 

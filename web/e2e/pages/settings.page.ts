@@ -9,6 +9,8 @@ export class SettingsPage {
 	readonly splitScreenSwitch: Locator;
 	readonly hideClockDateSwitch: Locator;
 	readonly timezone: Locator;
+	readonly rotation: Locator;
+	readonly rotationHint: Locator;
 	readonly weatherLat: Locator;
 	readonly sensorAdd: Locator;
 	readonly dialogId: Locator;
@@ -46,6 +48,8 @@ export class SettingsPage {
 		this.splitScreenSwitch = page.getByTestId('split-screen-switch');
 		this.hideClockDateSwitch = page.getByTestId('hide-clock-date-switch');
 		this.timezone = page.getByTestId('setting-timezone');
+		this.rotation = page.getByTestId('setting-rotation');
+		this.rotationHint = page.getByTestId('setting-rotation-hint');
 		this.weatherLat = page.getByTestId('setting-weather-lat');
 		this.sensorAdd = page.getByTestId('sensor-add');
 		this.dialogId = page.getByTestId('sensor-dialog-id');

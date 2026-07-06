@@ -101,4 +101,22 @@ a connected display from the list or type the name.
 A change to the screen output takes effect after the frame restarts.
 :::
 
+## Screen rotation
+
+**Rotation** turns the whole picture to match how the frame hangs: landscape, portrait
+(rotated right or left), or upside down. It applies the moment you save, with no restart
+(`display.rotation`, degrees counter-clockwise, default `0`).
+
+Rotation changes what fits the screen, and the slideshow follows. On a portrait frame,
+portrait photos fill the screen on their own, and [split-screen pairing](#split-screen-pairing)
+pairs the landscape photos instead, stacked one above the other.
+
+Rotation is available on the default `wlopm` backend only.
+
+:::note[Installed before version 1.2.0?]
+Rotation needs the `wlr-randr` tool and an updated browser launch script, which software
+updates alone do not deliver. If the Rotation dropdown is greyed out, rerun the install
+script from [Install](/getting-started/install/); it keeps your settings and photos.
+:::
+
 Every setting on this page maps to a key in the [configuration reference](/reference/configuration/).

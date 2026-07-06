@@ -22,6 +22,7 @@ var hciAdapterRe = regexp.MustCompile(`^hci[0-9]+$`)
 type SystemDevicesBody struct {
 	BluetoothAdapters []string `json:"bluetooth_adapters" doc:"HCI device IDs, e.g. hci0"`
 	DisplayOutputs    []string `json:"display_outputs" doc:"Connected display connectors, e.g. HDMI-A-1"`
+	RotationSupported bool     `json:"rotation_supported" doc:"true when the display backend can rotate and wlr-randr is installed"`
 }
 
 type getSystemDevicesOutput struct {
@@ -35,7 +36,9 @@ func (s *server) registerDeviceRoutes(api huma.API) {
 		Path:        "/api/system/devices",
 		Summary:     "Enumerate Bluetooth adapters and display outputs from sysfs",
 	}, func(_ context.Context, _ *struct{}) (*getSystemDevicesOutput, error) {
-		return &getSystemDevicesOutput{Body: enumerateDevices(s.sysfsBase)}, nil
+		body := enumerateDevices(s.sysfsBase)
+		body.RotationSupported = s.rotator != nil && s.rotator.Supported()
+		return &getSystemDevicesOutput{Body: body}, nil
 	})
 }
 

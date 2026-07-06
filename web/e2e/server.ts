@@ -26,6 +26,8 @@ export type ServerOptions = {
 	timezone?: string;
 	/** Drop sensors and the [weather] block so the overlay can go fully empty. */
 	minimalOverlay?: boolean;
+	/** ROTATION_MOCK=unsupported → rotation select disabled with the install hint. */
+	rotationUnsupported?: boolean;
 };
 
 export type PfServer = {
@@ -73,6 +75,7 @@ async function spawnOnce(opts: ServerOptions): Promise<PfServer> {
 	if (opts.updateLatest) env.UPDATER_MOCK_LATEST = opts.updateLatest;
 	if (opts.updateOutcome) env.UPDATER_MOCK_OUTCOME = opts.updateOutcome;
 	if (opts.updateOffline) env.UPDATER_MOCK_OFFLINE = '1';
+	if (opts.rotationUnsupported) env.ROTATION_MOCK = 'unsupported';
 
 	const proc = spawn(
 		binaryPath(),

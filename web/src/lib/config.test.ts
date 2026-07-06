@@ -29,6 +29,7 @@ const sampleConfig = {
 		blank_after: '20m0s',
 		backend: 'wlopm' as const,
 		output: 'HDMI-A-1',
+		rotation: 0 as const,
 		locale: 'en-US',
 		hide_clock_date: false,
 		timezone: '',

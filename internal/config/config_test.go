@@ -591,6 +591,11 @@ func TestValidateDisplay(t *testing.T) {
 		{"empty timezone ok", config.DisplayConfig{Timezone: ""}, ""},
 		{"valid timezone", config.DisplayConfig{Timezone: "Europe/Budapest"}, ""},
 		{"unknown timezone", config.DisplayConfig{Timezone: "Not/AZone"}, "unknown timezone"},
+		{"rotation 90 ok", config.DisplayConfig{Rotation: 90}, ""},
+		{"rotation 180 ok", config.DisplayConfig{Rotation: 180}, ""},
+		{"rotation 270 ok", config.DisplayConfig{Rotation: 270}, ""},
+		{"rotation invalid", config.DisplayConfig{Rotation: 45}, "rotation must be"},
+		{"rotation negative", config.DisplayConfig{Rotation: -90}, "rotation must be"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

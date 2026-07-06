@@ -119,6 +119,9 @@ type DisplayConfig struct {
 	// Output is the wlopm connector, e.g. "HDMI-A-1" (run `wlopm` to list);
 	// required for wlopm, ignored by vcgencmd.
 	Output string `toml:"output"`
+	// Rotation is the counter-clockwise screen rotation in degrees
+	// (0/90/180/270, wlr-randr transform semantics); wlopm only.
+	Rotation int `toml:"rotation"`
 	// Locale is the BCP-47 tag the kiosk formats the clock and date with; default "en-US".
 	Locale string `toml:"locale"`
 	// HideClockDate hides the clock and date block on the kiosk.

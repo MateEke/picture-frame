@@ -143,6 +143,10 @@ export type DisplayDto = {
      */
     output: string;
     /**
+     * Counter-clockwise screen rotation in degrees (wlopm only); applied live via wlr-randr
+     */
+    rotation: 0 | 90 | 180 | 270;
+    /**
      * IANA timezone for the kiosk clock/date, e.g. Europe/Budapest; empty uses the browser timezone
      */
     timezone: string;
@@ -463,6 +467,10 @@ export type SystemDevicesBody = {
      * Connected display connectors, e.g. HDMI-A-1
      */
     display_outputs: Array<string> | null;
+    /**
+     * true when the display backend can rotate and wlr-randr is installed
+     */
+    rotation_supported: boolean;
 };
 
 export type SystemInfoBody = {
@@ -798,6 +806,10 @@ export type SystemDevicesBodyWritable = {
      * Connected display connectors, e.g. HDMI-A-1
      */
     display_outputs: Array<string> | null;
+    /**
+     * true when the display backend can rotate and wlr-randr is installed
+     */
+    rotation_supported: boolean;
 };
 
 export type SystemInfoBodyWritable = {

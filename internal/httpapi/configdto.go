@@ -68,6 +68,7 @@ type DisplayDTO struct {
 	BlankAfter    string         `json:"blank_after" doc:"Idle duration before screen blanks, e.g. \"20m\""`
 	Backend       string         `json:"backend" enum:"wlopm,vcgencmd"`
 	Output        string         `json:"output" doc:"Wayland connector name, e.g. \"HDMI-A-1\" (wlopm only)"`
+	Rotation      int            `json:"rotation" enum:"0,90,180,270" doc:"Counter-clockwise screen rotation in degrees (wlopm only); applied live via wlr-randr"`
 	Locale        string         `json:"locale" doc:"BCP-47 date/time locale for the kiosk clock, e.g. en-US"`
 	HideClockDate bool           `json:"hide_clock_date" doc:"Hide the clock and date block on the kiosk overlay"`
 	Timezone      string         `json:"timezone" doc:"IANA timezone for the kiosk clock/date, e.g. Europe/Budapest; empty uses the browser timezone"`
@@ -191,6 +192,7 @@ func toDTO(cfg config.Config) ConfigDTO {
 			BlankAfter:    durString(cfg.Display.BlankAfter.Duration),
 			Backend:       cfg.Display.Backend,
 			Output:        cfg.Display.Output,
+			Rotation:      cfg.Display.Rotation,
 			Locale:        cfg.Display.Locale,
 			HideClockDate: cfg.Display.HideClockDate,
 			Timezone:      cfg.Display.Timezone,
@@ -320,6 +322,7 @@ func applyDisplayDTO(dst *config.DisplayConfig, dto DisplayDTO) error {
 	dst.BlankAfter = blankAfter
 	dst.Backend = dto.Backend
 	dst.Output = dto.Output
+	dst.Rotation = dto.Rotation
 	dst.Locale = dto.Locale
 	dst.HideClockDate = dto.HideClockDate
 	dst.Timezone = dto.Timezone
