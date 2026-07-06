@@ -93,3 +93,19 @@ func TestBuildWeatherFetcher(t *testing.T) {
 		})
 	}
 }
+
+func TestNewRotatorWlopm(t *testing.T) {
+	t.Setenv("XDG_RUNTIME_DIR", t.TempDir()) // keep the intent file out of the real runtime dir
+	if r := startup.NewRotator(testutil.NopLogger(), config.DisplayConfig{Backend: config.DisplayBackendWlopm, Output: "HDMI-A-1"}); r == nil {
+		t.Error("wlopm: expected a rotator")
+	}
+	if r := startup.NewRotator(testutil.NopLogger(), config.DisplayConfig{Backend: "", Output: "HDMI-A-1"}); r == nil {
+		t.Error("empty backend (defaults to wlopm): expected a rotator")
+	}
+}
+
+func TestNewRotatorVcgencmdNil(t *testing.T) {
+	if r := startup.NewRotator(testutil.NopLogger(), config.DisplayConfig{Backend: config.DisplayBackendVcgencmd}); r != nil {
+		t.Error("vcgencmd: expected nil rotator")
+	}
+}

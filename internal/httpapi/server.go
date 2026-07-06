@@ -35,6 +35,14 @@ type ScreenController interface {
 	Reconcile(ctx context.Context)
 }
 
+// RotationController is implemented by display.Rotator; nil when the backend
+// can't rotate.
+type RotationController interface {
+	Set(ctx context.Context, degrees int) error
+	Reconcile(ctx context.Context)
+	Supported() bool
+}
+
 // SlideshowController allows the HTTP layer to drive slideshow playback.
 type SlideshowController interface {
 	Next()
@@ -63,6 +71,7 @@ type SyncerStatus = library.SyncerStatus
 type Config struct {
 	Log         *slog.Logger
 	Screen      ScreenController
+	Rotator     RotationController // nil when the display backend can't rotate
 	Bus         *state.Bus
 	Library     *library.Library
 	Slideshow   SlideshowController
@@ -101,6 +110,7 @@ type Config struct {
 type server struct {
 	log           *slog.Logger
 	screen        ScreenController
+	rotator       RotationController
 	bus           *state.Bus
 	lib           *library.Library
 	slideshow     SlideshowController
@@ -143,6 +153,7 @@ func NewServer(cfg Config) http.Handler {
 	s := &server{
 		log:           cfg.Log,
 		screen:        cfg.Screen,
+		rotator:       cfg.Rotator,
 		bus:           cfg.Bus,
 		lib:           cfg.Library,
 		slideshow:     cfg.Slideshow,

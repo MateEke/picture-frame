@@ -29,6 +29,7 @@ func copyTier1(dst *config.Config, src config.Config) {
 	dst.Display.Locale = src.Display.Locale // re-published on the kiosk SSE event
 	dst.Display.HideClockDate = src.Display.HideClockDate
 	dst.Display.Timezone = src.Display.Timezone
+	dst.Display.Rotation = src.Display.Rotation // applied live via Rotator.Set
 	dst.Display.Labels = src.Display.Labels
 	dst.Slideshow.Interval = src.Slideshow.Interval
 	dst.Slideshow.Randomize = src.Slideshow.Randomize

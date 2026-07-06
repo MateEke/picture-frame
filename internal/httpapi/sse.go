@@ -51,6 +51,11 @@ func (s *server) streamEvents(ctx context.Context, send sse.Sender) {
 	ch, unsub := s.bus.Subscribe()
 	defer unsub()
 
+	// Rotator first: its drift-apply can power a manually-off panel back on,
+	// and the screen reconcile then re-asserts desired power.
+	if s.rotator != nil {
+		s.rotator.Reconcile(ctx)
+	}
 	s.screen.Reconcile(ctx)
 
 	maxSnapshotID := s.sendSnapshot(send)

@@ -68,3 +68,34 @@ func (m *Mock) Calls() (on, off int) {
 	defer m.mu.Unlock()
 	return m.onCalls, m.offCalls
 }
+
+// MockRotator is the dev/test Rotator: records calls, never execs.
+type MockRotator struct {
+	mu         sync.Mutex
+	supported  bool
+	degrees    int
+	reconciles int
+}
+
+func NewMockRotator(supported bool) *MockRotator { return &MockRotator{supported: supported} }
+
+func (m *MockRotator) Set(_ context.Context, degrees int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.degrees = degrees
+	return nil
+}
+
+func (m *MockRotator) Reconcile(_ context.Context) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.reconciles++
+}
+
+func (m *MockRotator) Supported() bool { return m.supported }
+
+// Degrees is the last Set value.
+func (m *MockRotator) Degrees() int { m.mu.Lock(); defer m.mu.Unlock(); return m.degrees }
+
+// Reconciles counts Reconcile calls.
+func (m *MockRotator) Reconciles() int { m.mu.Lock(); defer m.mu.Unlock(); return m.reconciles }

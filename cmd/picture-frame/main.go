@@ -122,6 +122,12 @@ func run() error {
 	// Screen: manual on/off shared by the HTTP API and MQTT bridge.
 	screen := displaypkg.NewScreen(policy)
 
+	// Apply configured rotation; if labwc isn't up yet the SSE-connect reconcile heals it.
+	rotator := newRotator(production, log, cfg)
+	if rotator != nil {
+		rotator.Reconcile(ctx)
+	}
+
 	libDir := libraryDir(cfg)
 	lib, err := libadapter.Load(log, libDir, cfg.Slideshow.Randomize)
 	if err != nil {
@@ -218,7 +224,7 @@ func run() error {
 		go mqttHub.Connect(ctx)
 	}
 
-	liveCfg := &liveConfigImpl{slideshow: slides, policy: policy, weather: weatherPoller, logLevel: &levelVar, log: log}
+	liveCfg := &liveConfigImpl{slideshow: slides, policy: policy, rotator: rotator, weather: weatherPoller, logLevel: &levelVar, log: log}
 
 	restartFn := startup.MakeRestartFunc(restartCh)
 	updaterSvc := startUpdater(ctx, log, cfg, production, restartFn)
@@ -229,6 +235,7 @@ func run() error {
 		Handler: httpapi.NewServer(httpapi.Config{
 			Log:           log,
 			Screen:        screen,
+			Rotator:       rotator,
 			Bus:           bus,
 			Library:       lib,
 			Slideshow:     slides,

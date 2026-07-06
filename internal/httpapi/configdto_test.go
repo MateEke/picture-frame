@@ -222,6 +222,23 @@ func TestUpdaterDTOClearsToken(t *testing.T) {
 	}
 }
 
+func TestDisplayRotationRoundTrip(t *testing.T) {
+	cfg := fullTestConfig()
+	cfg.Display.Rotation = 90
+	dto := toDTO(cfg)
+	if dto.Display.Rotation != 90 {
+		t.Fatalf("toDTO rotation = %d, want 90", dto.Display.Rotation)
+	}
+	dto.Display.Rotation = 270
+	out, err := applyDTO(dto, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Display.Rotation != 270 {
+		t.Errorf("applyDTO rotation = %d, want 270", out.Display.Rotation)
+	}
+}
+
 func TestUpdaterDTORejectsBadHour(t *testing.T) {
 	// fullTestConfig is valid everywhere else, so the bad hour is the only possible error.
 	dto := toDTO(fullTestConfig())
@@ -502,6 +519,7 @@ func TestNeedsRestartTier1FieldsAreLive(t *testing.T) {
 		{"display.locale", func(c *config.Config) { c.Display.Locale = "hu-HU" }},
 		{"display.hide_clock_date", func(c *config.Config) { c.Display.HideClockDate = !c.Display.HideClockDate }},
 		{"display.timezone", func(c *config.Config) { c.Display.Timezone = "America/New_York" }},
+		{"display.rotation", func(c *config.Config) { c.Display.Rotation = 90 }},
 		{"display.labels", func(c *config.Config) { c.Display.Labels.Outside = "Garden" }},
 		{"slideshow.interval", func(c *config.Config) { c.Slideshow.Interval = config.Duration{Duration: 5 * time.Minute} }},
 		{"slideshow.randomize", func(c *config.Config) { c.Slideshow.Randomize = !c.Slideshow.Randomize }},

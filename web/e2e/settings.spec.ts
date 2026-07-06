@@ -68,6 +68,21 @@ test.describe('settings', () => {
 		await expect(settings.timezone).toHaveValue(/Asia\/Tokyo/);
 	});
 
+	test('changes rotation, applies live and persists', async ({ page, settings }) => {
+		await settings.openSection('display');
+		await settings.rotation.selectOption('90');
+		await expect(settings.save).toBeEnabled();
+
+		await settings.save.click();
+		await expect(settings.saveBar).toBeHidden();
+		// Live field: no restart prompt.
+		await expect(settings.restartDialog).toBeHidden();
+
+		await page.reload();
+		await settings.openSection('display');
+		await expect(settings.rotation).toHaveValue('90');
+	});
+
 	test('links to the manual', async ({ settings }) => {
 		await expect(settings.docs).toHaveAttribute('href', /pictureframe\.ekemate\.hu\/manual/);
 	});
@@ -229,5 +244,17 @@ test.describe('settings security (already protected)', () => {
 		await settings.securityCurrent.fill('wrong-password');
 		await settings.securityDisable.click();
 		await expect(settings.securityDisableError).toBeVisible();
+	});
+});
+
+// Own server: the dev mock rotator reports no wlr-randr.
+test.describe('rotation unsupported', () => {
+	test.use({ serverOptions: { rotationUnsupported: true } });
+
+	test('rotation select is disabled with the install hint', async ({ settings }) => {
+		await settings.goto();
+		await settings.openSection('display');
+		await expect(settings.rotation).toBeDisabled();
+		await expect(settings.rotationHint).toBeVisible();
 	});
 });

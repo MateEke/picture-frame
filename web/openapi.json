@@ -407,6 +407,17 @@
             "description": "Wayland connector name, e.g. \"HDMI-A-1\" (wlopm only)",
             "type": "string"
           },
+          "rotation": {
+            "description": "Counter-clockwise screen rotation in degrees (wlopm only); applied live via wlr-randr",
+            "enum": [
+              0,
+              90,
+              180,
+              270
+            ],
+            "format": "int64",
+            "type": "integer"
+          },
           "timezone": {
             "description": "IANA timezone for the kiosk clock/date, e.g. Europe/Budapest; empty uses the browser timezone",
             "type": "string"
@@ -416,6 +427,7 @@
           "blank_after",
           "backend",
           "output",
+          "rotation",
           "locale",
           "hide_clock_date",
           "timezone",
@@ -1182,11 +1194,16 @@
               "array",
               "null"
             ]
+          },
+          "rotation_supported": {
+            "description": "true when the display backend can rotate and wlr-randr is installed",
+            "type": "boolean"
           }
         },
         "required": [
           "bluetooth_adapters",
-          "display_outputs"
+          "display_outputs",
+          "rotation_supported"
         ],
         "type": "object"
       },

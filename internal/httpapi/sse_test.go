@@ -2,13 +2,17 @@ package httpapi_test
 
 import (
 	"bufio"
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	displaypkg "github.com/MateEke/picture-frame/internal/display"
 	"github.com/MateEke/picture-frame/internal/httpapi"
 	"github.com/MateEke/picture-frame/internal/state"
 	"github.com/MateEke/picture-frame/internal/testutil"
@@ -214,5 +218,76 @@ func collectSSEBlock(t *testing.T, scanner *bufio.Scanner, timeout time.Duration
 	case <-time.After(timeout):
 		t.Fatal("timeout waiting for SSE block")
 		return ""
+	}
+}
+
+func TestSSERotatorReconcilesOnConnect(t *testing.T) {
+	rot := displaypkg.NewMockRotator(true)
+	srv := httptest.NewServer(httpapi.NewServer(httpapi.Config{
+		Log:     testutil.NopLogger(),
+		Screen:  &mockScreen{},
+		Bus:     state.NewBus(),
+		Rotator: rot,
+	}))
+	t.Cleanup(srv.Close)
+
+	resp, err := http.Get(srv.URL + "/events")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	// Headers arrive only after handleEvents runs the reconciles + flushes.
+	if got := rot.Reconciles(); got != 1 {
+		t.Errorf("expected exactly 1 rotator reconcile on connect, got %d", got)
+	}
+}
+
+// reconcileOrder records cross-goroutine reconcile sequencing.
+type reconcileOrder struct {
+	mu  sync.Mutex
+	seq []string
+}
+
+func (o *reconcileOrder) add(s string) { o.mu.Lock(); defer o.mu.Unlock(); o.seq = append(o.seq, s) }
+func (o *reconcileOrder) get() []string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return slices.Clone(o.seq)
+}
+
+type orderScreen struct {
+	mockScreen
+	ord *reconcileOrder
+}
+
+func (s *orderScreen) Reconcile(context.Context) { s.ord.add("screen") }
+
+type orderRotator struct{ ord *reconcileOrder }
+
+func (r *orderRotator) Set(context.Context, int) error { return nil }
+func (r *orderRotator) Reconcile(context.Context)      { r.ord.add("rotator") }
+func (r *orderRotator) Supported() bool                { return true }
+
+// The rotator's drift-apply can power a manually-off panel back on, so the
+// screen reconcile must run after it to re-assert desired power.
+func TestSSERotatorReconcilesBeforeScreen(t *testing.T) {
+	ord := &reconcileOrder{}
+	srv := httptest.NewServer(httpapi.NewServer(httpapi.Config{
+		Log:     testutil.NopLogger(),
+		Screen:  &orderScreen{ord: ord},
+		Bus:     state.NewBus(),
+		Rotator: &orderRotator{ord: ord},
+	}))
+	t.Cleanup(srv.Close)
+
+	resp, err := http.Get(srv.URL + "/events")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if got := ord.get(); !slices.Equal(got, []string{"rotator", "screen"}) {
+		t.Errorf("reconcile order = %v, want [rotator screen]", got)
 	}
 }

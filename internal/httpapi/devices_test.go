@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"testing"
 
+	displaypkg "github.com/MateEke/picture-frame/internal/display"
 	"github.com/MateEke/picture-frame/internal/httpapi"
 	"github.com/MateEke/picture-frame/internal/state"
 	"github.com/MateEke/picture-frame/internal/testutil"
@@ -106,5 +107,41 @@ func TestEnumerateDevicesMissingSysfsIsEmpty(t *testing.T) {
 	}
 	if len(body.DisplayOutputs) != 0 {
 		t.Errorf("display_outputs: got %v, want empty", body.DisplayOutputs)
+	}
+}
+
+func TestDevicesRotationSupported(t *testing.T) {
+	cases := []struct {
+		name    string
+		rotator httpapi.RotationController
+		want    bool
+	}{
+		{"nil rotator", nil, false},
+		{"unsupported", displaypkg.NewMockRotator(false), false},
+		{"supported", displaypkg.NewMockRotator(true), true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httpapi.NewServer(httpapi.Config{
+				Log:         testutil.NopLogger(),
+				Screen:      &mockScreen{},
+				Bus:         state.NewBus(),
+				KioskBeater: &fakeBeater{},
+				SysfsBase:   filepath.Join(t.TempDir(), "absent"),
+				Rotator:     tc.rotator,
+			})
+			rec := httptest.NewRecorder()
+			srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/system/devices", nil))
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status %d", rec.Code)
+			}
+			var body httpapi.SystemDevicesBody
+			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+				t.Fatal(err)
+			}
+			if body.RotationSupported != tc.want {
+				t.Errorf("rotation_supported = %v, want %v", body.RotationSupported, tc.want)
+			}
+		})
 	}
 }

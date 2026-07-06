@@ -31,6 +31,7 @@ See [Slideshow & display](/manual/slideshow-display/).
 | `blank_after`     | duration | `20m`    | Idle time with no motion before the screen blanks. `0s` disables it. Needs a motion sensor. **(live)** |
 | `backend`         | string   | `wlopm`  | Screen-power backend, `wlopm` or `vcgencmd`. Switching it means re-running the installer.              |
 | `output`          | string   | (auto)   | Wayland connector for the wlopm backend, such as `HDMI-A-1`.                                           |
+| `rotation`        | integer  | `0`      | Counter-clockwise screen rotation: `0`, `90`, `180` or `270`. wlopm backend only. **(live)**           |
 | `locale`          | string   | `en-US`  | BCP-47 locale for the clock and date on the frame. **(live)**                                          |
 | `hide_clock_date` | boolean  | `false`  | Hide the clock and date on the frame. With no readings configured, the whole overlay hides. **(live)** |
 | `timezone`        | string   | (device) | IANA time zone for the clock and date, such as `Europe/Budapest`. Empty follows the device. **(live)** |

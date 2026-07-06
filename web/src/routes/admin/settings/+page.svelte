@@ -94,7 +94,8 @@
 	// Per-section dirty flags surface changes hidden inside collapsed panels.
 	const displayDirty = $derived(
 		draft.display.backend !== savedConfig.display.backend ||
-			draft.display.output !== savedConfig.display.output
+			draft.display.output !== savedConfig.display.output ||
+			draft.display.rotation !== savedConfig.display.rotation
 	);
 	const libraryDirty = $derived(
 		!eq(draft.library, savedConfig.library) ||
@@ -120,6 +121,7 @@
 	function revertDisplay() {
 		draft.display.backend = savedConfig.display.backend;
 		draft.display.output = savedConfig.display.output;
+		draft.display.rotation = savedConfig.display.rotation;
 	}
 	function revertLibrary() {
 		draft.library = $state.snapshot(savedConfig.library);
@@ -291,6 +293,7 @@
 								bind:display={draft.display}
 								savedDisplay={savedConfig.display}
 								{outputs}
+								rotationSupported={data.devices?.rotation_supported ?? true}
 							/>
 						</div>
 					</Accordion.ItemContent>

@@ -22,5 +22,18 @@ for conn in /sys/class/drm/card*-*/status; do
     esac
 done
 
+# A 90/270 transform makes the logical output portrait but the pinned mode above
+# is the native landscape WxH; swap so cog matches. Missing file = no rotation.
+rot="$(cat "${XDG_RUNTIME_DIR:-/run/picture-frame}/rotation" 2>/dev/null || true)"
+if [ -n "${COG_PLATFORM_WL_VIEW_WIDTH:-}" ]; then
+    case "$rot" in
+    90 | 270)
+        swap="$COG_PLATFORM_WL_VIEW_WIDTH"
+        COG_PLATFORM_WL_VIEW_WIDTH="$COG_PLATFORM_WL_VIEW_HEIGHT"
+        COG_PLATFORM_WL_VIEW_HEIGHT="$swap"
+        ;;
+    esac
+fi
+
 # --webprocess-failure=restart recovers a renderer crash in place (no remap/flash).
 exec /usr/bin/cog -P wl --webprocess-failure=restart http://localhost:80/kiosk

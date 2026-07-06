@@ -3,6 +3,7 @@ package startup
 import (
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/MateEke/picture-frame/internal/config"
 	displaypkg "github.com/MateEke/picture-frame/internal/display"
@@ -28,6 +29,14 @@ func NewDisplayController(log *slog.Logger, cfg config.DisplayConfig) (displaypk
 	default:
 		return nil, fmt.Errorf("unknown display backend %q", cfg.Backend)
 	}
+}
+
+// NewRotator builds the wlr-randr rotator; nil on vcgencmd (nothing to rotate).
+func NewRotator(log *slog.Logger, cfg config.DisplayConfig) displaypkg.Rotator {
+	if cfg.Backend != "" && cfg.Backend != config.DisplayBackendWlopm {
+		return nil
+	}
+	return displayadapter.NewWlrRandr(cfg.Output, cfg.Rotation, os.Getenv("XDG_RUNTIME_DIR"), log)
 }
 
 // WeatherEnabled reports whether a weather fetcher runs: real OWM when an api_key
