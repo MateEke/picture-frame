@@ -5,7 +5,7 @@ go 1.26.5
 require (
 	aead.dev/minisign v0.3.0
 	github.com/coreos/go-systemd/v22 v22.7.0
-	github.com/danielgtaylor/huma/v2 v2.38.0
+	github.com/danielgtaylor/huma/v2 v2.39.0
 	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/godbus/dbus/v5 v5.2.2
