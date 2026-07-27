@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Component } from 'svelte';
-	import { WifiIcon, WifiOffIcon, RadioIcon, LoaderIcon } from '@lucide/svelte';
+	import { WifiIcon, WifiOffIcon, RadioIcon, LoaderIcon, EthernetPortIcon } from '@lucide/svelte';
 	import type { WiFiState } from '$lib/api/types.gen';
 	import SignalBars from '$lib/SignalBars.svelte';
 
@@ -31,6 +31,14 @@
 					spin: false,
 					headline: status.ssid,
 					detail: status.security ? `${status.security} secured` : 'Open network'
+				};
+			case 'ethernet':
+				return {
+					icon: EthernetPortIcon,
+					tone: 'success',
+					spin: false,
+					headline: 'Ethernet',
+					detail: status.ip || 'Connected'
 				};
 			case 'ap':
 				return {

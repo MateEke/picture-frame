@@ -7,7 +7,7 @@ import {
 } from '$lib/api/sdk.gen';
 import type { WiFiState, WiFiNetwork } from '$lib/api/types.gen';
 import { toaster } from './toaster';
-export type WiFiMode = 'connected' | 'ap' | 'disconnected' | 'connecting';
+export type WiFiMode = 'connected' | 'ethernet' | 'ap' | 'disconnected' | 'connecting';
 
 export async function loadWiFiStatus(
 	fetch: typeof globalThis.fetch,
@@ -90,6 +90,48 @@ export function signalLevel(signal: number): number {
 
 export function isWPA3Only(security: string): boolean {
 	return security.trim() === 'WPA3';
+}
+
+export type NetworkTileIcon = 'wifi' | 'wifi-off' | 'ethernet';
+
+export interface NetworkTile {
+	label: string;
+	value: string;
+	sub?: string;
+	icon: NetworkTileIcon;
+	tone: 'success' | 'surface';
+}
+
+export function networkTile(w: WiFiState | null): NetworkTile {
+	if (!w) return { label: 'WiFi', value: 'Unavailable', icon: 'wifi-off', tone: 'surface' };
+	if (w.mode === 'ethernet') {
+		return {
+			label: 'Ethernet',
+			value: w.ip || 'Connected',
+			sub: w.ip ? 'Connected' : undefined,
+			icon: 'ethernet',
+			tone: 'success'
+		};
+	}
+	if (w.mode === 'ap')
+		return {
+			label: 'WiFi',
+			value: w.ap_ssid || 'Hotspot',
+			sub: 'Hotspot mode',
+			icon: 'wifi',
+			tone: 'success'
+		};
+	if (w.mode === 'connecting')
+		return { label: 'WiFi', value: 'Connecting…', icon: 'wifi', tone: 'success' };
+	if (w.mode === 'connected')
+		return {
+			label: 'WiFi',
+			value: w.ssid || 'Connected',
+			sub: 'Connected',
+			icon: 'wifi',
+			tone: 'success'
+		};
+	return { label: 'WiFi', value: 'Disconnected', icon: 'wifi', tone: 'success' };
 }
 
 // Maps the AP password field to configureAP's optional password: a typed value

@@ -75,13 +75,18 @@ func kioskTimeoutFunc(production bool, log *slog.Logger) func() {
 // dev, or nil (wifi routes then serve 503) when WIFI_MOCK=off.
 func buildWiFiManager(ctx context.Context, log *slog.Logger, cfg *config.Config, production bool, store *config.Store) (httpapi.WiFiManager, error) {
 	if !production {
-		if strings.EqualFold(os.Getenv("WIFI_MOCK"), "off") {
+		hostname, _ := os.Hostname()
+		switch strings.ToLower(os.Getenv("WIFI_MOCK")) {
+		case "off":
 			log.Info("wifi: disabled (development, WIFI_MOCK=off), routes serve 503")
 			return nil, nil
+		case "ethernet":
+			log.Info("wifi: using in-memory ethernet mock (development mode)")
+			return wifimock.NewEthernet(hostname), nil
+		default:
+			log.Info("wifi: using in-memory mock (development mode)")
+			return wifimock.NewDefault(hostname), nil
 		}
-		log.Info("wifi: using in-memory mock (development mode)")
-		hostname, _ := os.Hostname()
-		return wifimock.NewDefault(hostname), nil
 	}
 	if cfg.WiFi.ScanIntervalMinutes <= 0 {
 		return nil, fmt.Errorf("wifi.scan_interval_minutes must be positive")

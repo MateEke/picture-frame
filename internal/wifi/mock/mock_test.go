@@ -29,6 +29,20 @@ func TestNewDefaultIsSeeded(t *testing.T) {
 	}
 }
 
+func TestNewEthernetIsSeeded(t *testing.T) {
+	m := NewEthernet("frame")
+	s := m.Status()
+	if s.Mode != wifi.ModeEthernet || s.Hostname != "frame" {
+		t.Errorf("state = %+v, want ethernet with hostname frame", s)
+	}
+	if s.IP == "" {
+		t.Error("ethernet mock should carry an IP")
+	}
+	if nets, _ := m.Scan(context.Background()); len(nets) == 0 {
+		t.Error("ethernet mock network list should not be empty")
+	}
+}
+
 func TestStatusReturnsSeededState(t *testing.T) {
 	m := seeded()
 	if got := m.Status(); got.SSID != "Home" || got.Signal != 70 {

@@ -123,3 +123,20 @@ test.describe('wifi unavailable', () => {
 		await expect(wifi.unavailable).toBeVisible();
 	});
 });
+
+test.describe('ethernet connection', () => {
+	test.use({ serverOptions: { wifiEthernet: true } });
+
+	test('wifi page shows an ethernet status card and still lists networks', async ({ wifi }) => {
+		await wifi.goto();
+		await expect(wifi.status).toContainText('Ethernet');
+		await expect(wifi.status).toContainText('192.168.1.50');
+		await wifi.scan.click();
+		await expect(wifi.networks).toHaveCount(7);
+	});
+
+	test('dashboard network tile shows Ethernet, not Disconnected', async ({ dashboard }) => {
+		await dashboard.goto();
+		await expect(dashboard.tileWifi).toContainText('Ethernet');
+	});
+});
