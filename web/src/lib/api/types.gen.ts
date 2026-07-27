@@ -198,13 +198,6 @@ export type ErrorModel = {
     type?: string;
 };
 
-export type FormFile = {
-    ContentType: string;
-    Filename: string;
-    IsSet: boolean;
-    Size: number;
-};
-
 export type ImageItem = {
     /**
      * A URL to the JSON Schema for this object.
