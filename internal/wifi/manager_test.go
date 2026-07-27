@@ -1484,3 +1484,204 @@ func TestConfigureDisableTearsDownActiveAP(t *testing.T) {
 		}
 	})
 }
+
+func setupEthernetFake(f *fakeCommander) {
+	f.set("nmcli -t -f STATE,CONNECTIVITY general status", "connected:full", nil)
+	f.set("nmcli -t -f ACTIVE,SSID,SIGNAL,SECURITY device wifi", "", nil)
+	f.set("nmcli -t -f ACTIVE device wifi", "no\nno", nil)
+	f.set("nmcli -t -f NAME,TYPE,STATE connection show --active", "hotspot:wifi:deactivated", nil)
+	f.set("nmcli connection show hotspot", "connection.id: hotspot", nil)
+	f.set("nmcli connection modify hotspot", "", nil)
+	f.set("nmcli -t -f DEVICE,TYPE,STATE device status",
+		"eth0:ethernet:connected\nwlan0:wifi:disconnected\nlo:loopback:unmanaged", nil)
+	f.set("nmcli -t -f IP4.ADDRESS device show eth0", "IP4.ADDRESS[1]:192.168.1.42/24", nil)
+}
+
+func TestRunEthernetOnBoot(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFake()
+		setupEthernetFake(f)
+		m := newTestManager(defaultCfg(), f)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go m.Run(ctx)
+		bootWait(t)
+
+		s := m.Status()
+		if s.Mode != ModeEthernet {
+			t.Errorf("mode: got %q, want %q", s.Mode, ModeEthernet)
+		}
+		if s.IP != "192.168.1.42" {
+			t.Errorf("ip: got %q, want 192.168.1.42", s.IP)
+		}
+		if s.SSID != "" || s.Signal != 0 || s.Security != "" {
+			t.Errorf("wifi fields should be empty on ethernet: %+v", s)
+		}
+	})
+}
+
+func TestRunEthernetIPUnresolvedShowsNoIP(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFake()
+		setupEthernetFake(f)
+		f.set("nmcli -t -f DEVICE,TYPE,STATE device status",
+			"wlan0:wifi:disconnected\nlo:loopback:unmanaged", nil)
+		m := newTestManager(defaultCfg(), f)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go m.Run(ctx)
+		bootWait(t)
+
+		s := m.Status()
+		if s.Mode != ModeEthernet {
+			t.Errorf("mode: got %q, want ethernet", s.Mode)
+		}
+		if s.IP != "" {
+			t.Errorf("ip: got %q, want empty", s.IP)
+		}
+	})
+}
+
+func TestRunEthernetStateVariantTolerated(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFake()
+		setupEthernetFake(f)
+		f.set("nmcli -t -f DEVICE,TYPE,STATE device status",
+			"eth0:ethernet:connected (externally)\nlo:loopback:unmanaged", nil)
+		m := newTestManager(defaultCfg(), f)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go m.Run(ctx)
+		bootWait(t)
+
+		if s := m.Status(); s.Mode != ModeEthernet || s.IP != "192.168.1.42" {
+			t.Errorf("state = %+v, want ethernet with IP 192.168.1.42", s)
+		}
+	})
+}
+
+func TestEthernetClearsStaleSSID(t *testing.T) {
+	f := newFake()
+	setupEthernetFake(f)
+	m := newTestManager(defaultCfg(), f)
+	m.booted = true
+	m.setState(WiFiState{Mode: ModeConnected, SSID: "OldWiFi", Signal: 70, Security: "WPA2"})
+
+	m.onPoll(context.Background())
+
+	s := m.Status()
+	if s.Mode != ModeEthernet {
+		t.Errorf("mode: got %q, want ethernet", s.Mode)
+	}
+	if s.SSID != "" {
+		t.Errorf("stale ssid not cleared: got %q", s.SSID)
+	}
+}
+
+func TestDualHomedWiFiWins(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFake()
+		setupEthernetFake(f)
+		f.set("nmcli -t -f ACTIVE,SSID,SIGNAL,SECURITY device wifi", "yes:HomeWiFi:80:WPA2", nil)
+		f.set("nmcli -t -f IP4.ADDRESS device show wlan0", "IP4.ADDRESS[1]:192.168.1.5/24", nil)
+		m := newTestManager(defaultCfg(), f)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go m.Run(ctx)
+		bootWait(t)
+
+		s := m.Status()
+		if s.Mode != ModeConnected || s.SSID != "HomeWiFi" {
+			t.Errorf("dual-homed should show WiFi: mode=%q ssid=%q", s.Mode, s.SSID)
+		}
+		if f.called("DEVICE,TYPE,STATE device status") {
+			t.Error("wired path should not run when a WiFi link is active")
+		}
+	})
+}
+
+func TestConnectedHiddenSSIDNotMisclassified(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFake()
+		setupEthernetFake(f)
+		f.set("nmcli -t -f ACTIVE,SSID,SIGNAL,SECURITY device wifi", "yes::80:WPA2", nil)
+		f.set("nmcli -t -f ACTIVE device wifi", "yes\nno", nil)
+		m := newTestManager(defaultCfg(), f)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go m.Run(ctx)
+		bootWait(t)
+
+		if s := m.Status(); s.Mode != ModeConnected {
+			t.Errorf("hidden-SSID station must stay connected, got %q", s.Mode)
+		}
+	})
+}
+
+func TestStationQueryErrorNotMisclassified(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFake()
+		setupEthernetFake(f)
+		f.set("nmcli -t -f ACTIVE device wifi", "", errors.New("nmcli busy"))
+		m := newTestManager(defaultCfg(), f)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go m.Run(ctx)
+		bootWait(t)
+
+		if s := m.Status(); s.Mode == ModeEthernet {
+			t.Error("must not classify ethernet when the station query errors")
+		}
+	})
+}
+
+func TestFirstIP4(t *testing.T) {
+	if got := firstIP4([]byte("IP4.ADDRESS[1]:10.0.0.9/24")); got != "10.0.0.9" {
+		t.Errorf("got %q, want 10.0.0.9", got)
+	}
+	if got := firstIP4([]byte("GENERAL.STATE:100")); got != "" {
+		t.Errorf("got %q, want empty (no IP4.ADDRESS line)", got)
+	}
+	if got := firstIP4(nil); got != "" {
+		t.Errorf("got %q, want empty", got)
+	}
+}
+
+func TestWiredIP(t *testing.T) {
+	f := newFake()
+	f.set("nmcli -t -f DEVICE,TYPE,STATE device status", "", errors.New("boom"))
+	if got := newTestManager(defaultCfg(), f).wiredIP(context.Background()); got != "" {
+		t.Errorf("device-status error: got %q, want empty", got)
+	}
+	f2 := newFake()
+	f2.set("nmcli -t -f DEVICE,TYPE,STATE device status", "eth0:ethernet:connected", nil)
+	f2.set("nmcli -t -f IP4.ADDRESS device show eth0", "", errors.New("boom"))
+	if got := newTestManager(defaultCfg(), f2).wiredIP(context.Background()); got != "" {
+		t.Errorf("device-show error: got %q, want empty", got)
+	}
+	f3 := newFake()
+	f3.set("nmcli -t -f DEVICE,TYPE,STATE device status", "bad\neth0:ethernet:connected", nil)
+	f3.set("nmcli -t -f IP4.ADDRESS device show eth0", "GENERAL.STATE:100", nil)
+	if got := newTestManager(defaultCfg(), f3).wiredIP(context.Background()); got != "" {
+		t.Errorf("no IP4 line: got %q, want empty", got)
+	}
+}
+
+func TestHiddenFallbackClearsStaleIP(t *testing.T) {
+	f := newFake()
+	setupEthernetFake(f)
+	f.set("nmcli -t -f ACTIVE device wifi", "yes\nno", nil)
+	m := newTestManager(defaultCfg(), f)
+	m.booted = true
+	m.setState(WiFiState{Mode: ModeConnected, SSID: "Home", IP: "192.168.1.5", Signal: 70, Security: "WPA2"})
+
+	m.onPoll(context.Background())
+
+	s := m.Status()
+	if s.Mode != ModeConnected {
+		t.Errorf("mode: got %q, want connected", s.Mode)
+	}
+	if s.SSID != "" || s.IP != "" {
+		t.Errorf("stale fields not cleared: ssid=%q ip=%q", s.SSID, s.IP)
+	}
+}

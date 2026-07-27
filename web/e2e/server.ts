@@ -10,6 +10,8 @@ export type ServerOptions = {
 	passwordHash?: string;
 	/** WIFI_MOCK=off → wifi routes serve 503. */
 	wifiOff?: boolean;
+	/** WIFI_MOCK=ethernet → wired connection with no active WiFi link. */
+	wifiEthernet?: boolean;
 	/** Immich library backend (dummy share URL; syncer fails in the background). */
 	immich?: boolean;
 	/** Updater mock: fake newer version offered (unset = up to date). */
@@ -72,6 +74,7 @@ async function spawnOnce(opts: ServerOptions): Promise<PfServer> {
 
 	const env: NodeJS.ProcessEnv = { ...process.env, GO_ENV: 'dev', UPDATER_MOCK_DELAY: '0' };
 	if (opts.wifiOff) env.WIFI_MOCK = 'off';
+	if (opts.wifiEthernet) env.WIFI_MOCK = 'ethernet';
 	if (opts.updateLatest) env.UPDATER_MOCK_LATEST = opts.updateLatest;
 	if (opts.updateOutcome) env.UPDATER_MOCK_OUTCOME = opts.updateOutcome;
 	if (opts.updateOffline) env.UPDATER_MOCK_OFFLINE = '1';

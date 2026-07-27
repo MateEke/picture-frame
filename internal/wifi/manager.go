@@ -16,6 +16,7 @@ type Mode string
 
 const (
 	ModeConnected    Mode = "connected"
+	ModeEthernet     Mode = "ethernet"
 	ModeAP           Mode = "ap"
 	ModeDisconnected Mode = "disconnected"
 	ModeConnecting   Mode = "connecting"
@@ -344,6 +345,22 @@ func (m *Manager) onConnected(ctx context.Context, next WiFiState) time.Duration
 	}
 	link, _ := m.queryActiveWiFi(ctx)
 	m.apTimeoutUntil = time.Time{}
+	if link.ssid == "" {
+		// Blank SSID = no station, hidden station, or query error; only a confirmed-absent station is ethernet.
+		hasWiFi, err := m.hasActiveWiFiStation(ctx)
+		if err != nil || hasWiFi {
+			next.Mode = ModeConnected
+			next.SSID = ""
+			next.IP = ""
+			m.setState(next)
+			return pollInterval
+		}
+		next.Mode = ModeEthernet
+		next.SSID = ""
+		next.IP = m.wiredIP(ctx)
+		m.setState(next)
+		return pollInterval
+	}
 	next.Mode = ModeConnected
 	next.SSID = link.ssid
 	next.IP = link.ip

@@ -235,3 +235,59 @@ func (m *Manager) profileSSID(ctx context.Context, name string) string {
 	}
 	return strings.TrimSpace(string(out))
 }
+
+// hasActiveWiFiStation is true if a WiFi station is active even with a blank (hidden) SSID; err means couldn't tell.
+func (m *Manager) hasActiveWiFiStation(ctx context.Context) (bool, error) {
+	out, err := m.nmcli.Output(ctx, "nmcli", "-t", "-f", "ACTIVE", "device", "wifi")
+	if err != nil {
+		return false, err
+	}
+	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
+		if strings.TrimSpace(line) == "yes" {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func firstIP4(out []byte) string {
+	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
+		fields := parseTerseFields(line)
+		if len(fields) >= 2 && strings.HasPrefix(fields[0], "IP4.ADDRESS") {
+			ip, _, _ := strings.Cut(fields[1], "/")
+			return ip
+		}
+	}
+	return ""
+}
+
+// wiredIP is the best-effort, display-only IPv4 of the wired (ethernet) link; "" on miss/err.
+func (m *Manager) wiredIP(ctx context.Context) string {
+	out, err := m.nmcli.Output(ctx, "nmcli", "-t", "-f", "DEVICE,TYPE,STATE", "device", "status")
+	if err != nil {
+		return ""
+	}
+	dev := ""
+	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
+		fields := parseTerseFields(line)
+		if len(fields) < 3 {
+			continue
+		}
+		typ, state := fields[1], fields[2]
+		if typ == "wifi" || typ == "loopback" {
+			continue
+		}
+		if strings.HasPrefix(state, "connected") {
+			dev = fields[0]
+			break
+		}
+	}
+	if dev == "" {
+		return ""
+	}
+	ipOut, err := m.nmcli.Output(ctx, "nmcli", "-t", "-f", "IP4.ADDRESS", "device", "show", dev)
+	if err != nil {
+		return ""
+	}
+	return firstIP4(ipOut)
+}

@@ -49,6 +49,22 @@ func NewDefault(hostname string) *Manager {
 	)
 }
 
+// NewEthernet seeds a wired connection (no active WiFi link) with the default scan list.
+func NewEthernet(hostname string) *Manager {
+	def := NewDefault(hostname)
+	return New(
+		wifi.WiFiState{
+			Mode:          wifi.ModeEthernet,
+			IP:            "192.168.1.50",
+			APEnabled:     true,
+			APSSID:        "PictureFrame",
+			APHasPassword: true,
+			Hostname:      hostname,
+		},
+		def.networks,
+	)
+}
+
 func (m *Manager) Status() wifi.WiFiState {
 	m.mu.Lock()
 	defer m.mu.Unlock()

@@ -9,9 +9,10 @@ import {
 	signalLevel,
 	isWPA3Only,
 	groupNetworks,
-	apPasswordPayload
+	apPasswordPayload,
+	networkTile
 } from './wifi';
-import type { WiFiNetwork } from '$lib/api/types.gen';
+import type { WiFiNetwork, WiFiState } from '$lib/api/types.gen';
 
 vi.mock('./toaster', () => ({
 	toaster: { error: vi.fn(), success: vi.fn() }
@@ -442,6 +443,96 @@ describe('wifi', () => {
 
 		it('returns empty groups for an empty scan', () => {
 			expect(groupNetworks([], null)).toEqual({ saved: [], available: [] });
+		});
+	});
+
+	describe('networkTile', () => {
+		const state = (overrides: Partial<WiFiState>): WiFiState => ({
+			mode: 'connected',
+			ssid: '',
+			ip: '',
+			signal: 0,
+			security: '',
+			ap_enabled: false,
+			ap_has_password: false,
+			ap_ssid: '',
+			hostname: 'frame',
+			...overrides
+		});
+
+		it('labels an ethernet connection with its IP', () => {
+			expect(networkTile(state({ mode: 'ethernet', ip: '192.168.1.42' }))).toEqual({
+				label: 'Ethernet',
+				value: '192.168.1.42',
+				sub: 'Connected',
+				icon: 'ethernet',
+				tone: 'success'
+			});
+		});
+
+		it('falls back to Connected when the ethernet IP is unknown', () => {
+			expect(networkTile(state({ mode: 'ethernet', ip: '' }))).toMatchObject({
+				label: 'Ethernet',
+				value: 'Connected',
+				icon: 'ethernet'
+			});
+		});
+
+		it('keeps the WiFi label and SSID for a wireless connection', () => {
+			expect(networkTile(state({ mode: 'connected', ssid: 'Home' }))).toEqual({
+				label: 'WiFi',
+				value: 'Home',
+				sub: 'Connected',
+				icon: 'wifi',
+				tone: 'success'
+			});
+		});
+
+		it('falls back to Connected for a wireless connection with no SSID', () => {
+			expect(networkTile(state({ mode: 'connected', ssid: '' }))).toMatchObject({
+				value: 'Connected'
+			});
+		});
+
+		it('shows the hotspot SSID in AP mode', () => {
+			expect(networkTile(state({ mode: 'ap', ap_ssid: 'PictureFrame' }))).toEqual({
+				label: 'WiFi',
+				value: 'PictureFrame',
+				sub: 'Hotspot mode',
+				icon: 'wifi',
+				tone: 'success'
+			});
+		});
+
+		it('falls back to Hotspot when the AP SSID is empty', () => {
+			expect(networkTile(state({ mode: 'ap', ap_ssid: '' }))).toMatchObject({ value: 'Hotspot' });
+		});
+
+		it('shows Connecting… while associating', () => {
+			expect(networkTile(state({ mode: 'connecting' }))).toEqual({
+				label: 'WiFi',
+				value: 'Connecting…',
+				icon: 'wifi',
+				tone: 'success'
+			});
+		});
+
+		it('shows Disconnected for a non-null disconnected state', () => {
+			expect(networkTile(state({ mode: 'disconnected' }))).toEqual({
+				label: 'WiFi',
+				value: 'Disconnected',
+				icon: 'wifi',
+				tone: 'success'
+			});
+		});
+
+		it('shows Unavailable with the off icon when status is null', () => {
+			expect(networkTile(null)).toEqual({
+				label: 'WiFi',
+				value: 'Unavailable',
+				icon: 'wifi-off',
+				tone: 'surface'
+			});
 		});
 	});
 

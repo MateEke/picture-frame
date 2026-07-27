@@ -1,11 +1,11 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
-	import type { WiFiState } from '$lib/api/types.gen';
 	import { onMount } from 'svelte';
 	import { Switch } from '@skeletonlabs/skeleton-svelte';
 	import {
 		WifiIcon,
 		WifiOffIcon,
+		EthernetPortIcon,
 		CloudSunIcon,
 		RadioIcon,
 		ImagesIcon,
@@ -19,6 +19,7 @@
 	import { isSensorStale } from '$lib/helpers';
 	import { formatDuration } from '$lib/duration';
 	import { setScreen } from '$lib/screen';
+	import { networkTile } from '$lib/wifi';
 	import { getSSEContext } from '$lib/sse.svelte';
 	import NowPlaying from './components/NowPlaying.svelte';
 	import StatTile from './components/StatTile.svelte';
@@ -58,14 +59,9 @@
 		toggleScreenBusy = false;
 	}
 
-	function wifiTile(w: WiFiState | null): { value: string; sub?: string } {
-		if (!w) return { value: 'Unavailable' };
-		if (w.mode === 'ap') return { value: w.ap_ssid || 'Hotspot', sub: 'Hotspot mode' };
-		if (w.mode === 'connecting') return { value: 'Connecting…' };
-		if (w.mode === 'connected') return { value: w.ssid || 'Connected', sub: 'Connected' };
-		return { value: 'Disconnected' };
-	}
-	const wifi = $derived(wifiTile(data.wifi));
+	const iconFor = { wifi: WifiIcon, 'wifi-off': WifiOffIcon, ethernet: EthernetPortIcon };
+	const wifi = $derived(networkTile(data.wifi));
+	const wifiIcon = $derived(iconFor[wifi.icon]);
 
 	const weather = $derived.by(() => {
 		const w = sse.weather;
@@ -125,11 +121,11 @@
 		<div class="flex flex-col gap-3 md:h-full">
 			<div class="reveal order-2 grid grid-cols-2 gap-3 delay-75 md:order-1">
 				<StatTile
-					label="WiFi"
+					label={wifi.label}
 					value={wifi.value}
 					sub={wifi.sub}
-					Icon={data.wifi ? WifiIcon : WifiOffIcon}
-					tone={data.wifi ? 'success' : 'surface'}
+					Icon={wifiIcon}
+					tone={wifi.tone}
 					href={resolve('/admin/wifi')}
 					data-testid="tile-wifi"
 				/>
