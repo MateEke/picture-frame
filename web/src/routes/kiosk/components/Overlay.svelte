@@ -92,7 +92,7 @@
 		{/if}
 
 		{#if showReadings}
-			<div class="flex gap-9 text-right portrait:text-left ml-auto portrait:ml-0">
+			<div class="ml-auto flex gap-9 text-right portrait:ml-0 portrait:text-left">
 				{#if showOutside}
 					<div class="min-w-60 portrait:min-w-0">
 						<div
