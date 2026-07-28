@@ -6,7 +6,7 @@
 		ImagesIcon,
 		SettingsIcon,
 		FrameIcon,
-		WifiIcon,
+		NetworkIcon,
 		LogOutIcon
 	} from '@lucide/svelte';
 	import { Navigation, Toast } from '@skeletonlabs/skeleton-svelte';
@@ -41,7 +41,7 @@
 	const links = [
 		{ label: 'Dashboard', href: '/admin', icon: HouseIcon },
 		{ label: 'Images', href: '/admin/images', icon: ImagesIcon },
-		{ label: 'WiFi', href: '/admin/wifi', icon: WifiIcon },
+		{ label: 'Network', href: '/admin/network', icon: NetworkIcon },
 		{ label: 'Settings', href: '/admin/settings', icon: SettingsIcon }
 	];
 </script>

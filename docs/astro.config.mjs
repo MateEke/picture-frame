@@ -16,6 +16,8 @@ const SITE_URL = 'https://pictureframe.ekemate.hu';
 export default defineConfig({
 	// Cloudflare Pages serves at the domain root, so no base path; links stay root-relative.
 	site: SITE_URL,
+	// The page was /manual/wifi before it covered ethernet too; keep old links alive.
+	redirects: { '/manual/wifi': '/manual/network' },
 	// Open external links in a new tab, site-wide. Astro 6.4+ takes plugins via a unified()
 	// processor; Starlight appends its own transforms to this same processor.
 	markdown: {
@@ -70,7 +72,7 @@ export default defineConfig({
 						{ label: 'Weather', slug: 'manual/weather' },
 						{ label: 'Sensors', slug: 'manual/sensors' },
 						{ label: 'Home Assistant', slug: 'manual/home-assistant' },
-						{ label: 'Wi-Fi', slug: 'manual/wifi' },
+						{ label: 'Network', slug: 'manual/network' },
 						{ label: 'Software updates', slug: 'manual/updates' },
 						{ label: 'Security', slug: 'manual/security' },
 						{ label: 'The kiosk display', slug: 'manual/kiosk' }

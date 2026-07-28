@@ -224,8 +224,30 @@ func TestCaptiveProbeAPMode(t *testing.T) {
 			if w.Code != http.StatusOK {
 				t.Errorf("%s: got %d, want 200", path, w.Code)
 			}
-			if !strings.Contains(w.Body.String(), "/admin/wifi") {
-				t.Errorf("%s: body should redirect to /admin/wifi, got: %s", path, w.Body.String())
+			if !strings.Contains(w.Body.String(), "/admin/network") {
+				t.Errorf("%s: body should redirect to /admin/network, got: %s", path, w.Body.String())
+			}
+		})
+	}
+}
+
+func TestLegacyWiFiPathRedirects(t *testing.T) {
+	srv := makeWiFiServer(&fakeWiFiMgr{})
+	cases := []struct{ method, path, want string }{
+		{http.MethodGet, "/admin/wifi", "/admin/network"},
+		{http.MethodGet, "/admin/wifi?tab=ap", "/admin/network"}, // query dropped; the page reads none
+		{http.MethodHead, "/admin/wifi", "/admin/network"},       // else HEAD 200s off the SPA
+	}
+	for _, tc := range cases {
+		t.Run(tc.method+" "+tc.path, func(t *testing.T) {
+			r := httptest.NewRequest(tc.method, tc.path, nil)
+			w := httptest.NewRecorder()
+			srv.ServeHTTP(w, r)
+			if w.Code != http.StatusFound {
+				t.Errorf("got %d, want 302", w.Code)
+			}
+			if got := w.Header().Get("Location"); got != tc.want {
+				t.Errorf("Location = %q, want %q", got, tc.want)
 			}
 		})
 	}
@@ -265,9 +287,9 @@ func TestCaptiveProbeNormalMode(t *testing.T) {
 			if w.Code != tc.code {
 				t.Errorf("%s: got %d, want %d", tc.path, w.Code, tc.code)
 			}
-			// In normal mode, body must NOT redirect to /admin/wifi.
-			if strings.Contains(w.Body.String(), "/admin/wifi") {
-				t.Errorf("%s: should not contain /admin/wifi redirect in normal mode", tc.path)
+			// In normal mode, body must NOT redirect to /admin/network.
+			if strings.Contains(w.Body.String(), "/admin/network") {
+				t.Errorf("%s: should not contain /admin/network redirect in normal mode", tc.path)
 			}
 		})
 	}

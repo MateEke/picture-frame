@@ -21,7 +21,8 @@ order or shuffled. Those last two come from the slideshow settings on
 A row of tiles summarizes the frame's connections and inputs. Each one links to the section
 where you can change it.
 
-- **Wi-Fi.** The current network and connection state. Opens [Wi-Fi](/manual/wifi/).
+- **Network.** The current connection and its state, wired or wireless. Opens
+  [Network](/manual/network/).
 - **Weather.** The latest reading from OpenWeatherMap, when weather is configured. Set it up
   under [Weather](/manual/weather/).
 - **Sensors.** How many sensors are configured and whether their readings are fresh. If any have

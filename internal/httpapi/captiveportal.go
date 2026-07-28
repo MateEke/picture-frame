@@ -15,8 +15,8 @@ var captiveProbes = []string{
 
 const captiveRedirectHTML = `<!DOCTYPE html>
 <html>
-<head><meta http-equiv="refresh" content="0;url=/admin/wifi"></head>
-<body><a href="/admin/wifi">Open WiFi setup</a></body>
+<head><meta http-equiv="refresh" content="0;url=/admin/network"></head>
+<body><a href="/admin/network">Open network setup</a></body>
 </html>`
 
 func (s *server) handleCaptiveProbe(w http.ResponseWriter, r *http.Request) {

@@ -140,8 +140,8 @@
 					sub={wifi.sub}
 					Icon={wifiIcon}
 					tone={wifi.tone}
-					href={resolve('/admin/wifi')}
-					data-testid="tile-wifi"
+					href={resolve('/admin/network')}
+					data-testid="tile-network"
 				/>
 				<StatTile
 					label="Weather"

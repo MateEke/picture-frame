@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import { loadAuthStatus } from '$lib/auth';
 import type { LayoutLoad } from './$types';
 
-// Gate every /admin/* route (incl. /admin/wifi, only the captive-portal probes
+// Gate every /admin/* route (incl. /admin/network, only the captive-portal probes
 // stay public); also exposes auth status to the UI.
 export const load: LayoutLoad = async ({ fetch, url, depends }) => {
 	depends('app:auth');

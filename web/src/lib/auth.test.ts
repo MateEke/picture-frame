@@ -136,8 +136,12 @@ describe('auth', () => {
 
 		it('redirects a gated 401 to /login with the encoded current path and query', () => {
 			expect(
-				loginRedirectTarget({ status: 401, url: 'http://f/api/config' }, '/admin/wifi', '?tab=ap')
-			).toBe(`/login?next=${encodeURIComponent('/admin/wifi?tab=ap')}`);
+				loginRedirectTarget(
+					{ status: 401, url: 'http://f/api/config' },
+					'/admin/network',
+					'?tab=ap'
+				)
+			).toBe(`/login?next=${encodeURIComponent('/admin/network?tab=ap')}`);
 		});
 	});
 });
