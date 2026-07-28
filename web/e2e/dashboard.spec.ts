@@ -32,6 +32,15 @@ test.describe('dashboard', () => {
 		await expect(dashboard.systemUptime).not.toHaveText('—');
 	});
 
+	test('system card shows Pi host metrics', async ({ dashboard }) => {
+		// Memory and system uptime read from /proc, present on any Linux host.
+		await expect(dashboard.systemMemory).not.toHaveText('—');
+		await expect(dashboard.systemUptimeSystem).not.toHaveText('—');
+		// CPU temp and power depend on Pi-only sources, so only assert they render.
+		await expect(dashboard.systemCpuTemp).toBeVisible();
+		await expect(dashboard.systemPower).toBeVisible();
+	});
+
 	test('tiles link to their pages', async ({ page, dashboard }) => {
 		await dashboard.tileLibrary.click();
 		await expect(page).toHaveURL(/\/admin\/images$/);

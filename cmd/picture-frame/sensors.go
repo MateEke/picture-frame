@@ -3,10 +3,14 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net"
+	"strings"
 	"time"
 
 	"github.com/MateEke/picture-frame/internal/config"
 	displaypkg "github.com/MateEke/picture-frame/internal/display"
+	displayadapter "github.com/MateEke/picture-frame/internal/display/adapter"
+	"github.com/MateEke/picture-frame/internal/hostmetrics"
 	"github.com/MateEke/picture-frame/internal/mqtt"
 	mqttadapter "github.com/MateEke/picture-frame/internal/mqtt/adapter"
 	"github.com/MateEke/picture-frame/internal/sensors"
@@ -16,7 +20,39 @@ import (
 	"github.com/MateEke/picture-frame/internal/sensors/mqttsubscriber"
 	"github.com/MateEke/picture-frame/internal/startup"
 	"github.com/MateEke/picture-frame/internal/state"
+	"github.com/MateEke/picture-frame/internal/version"
 )
+
+// newHostReader wires vcgencmd for the throttle read, whatever the display backend is.
+func newHostReader() *hostmetrics.Reader {
+	return hostmetrics.New(hostmetrics.Config{Throttle: displayadapter.NewVcgencmd()})
+}
+
+func deviceMeta(info hostmetrics.HostInfo, ip, addr string) mqtt.DeviceMeta {
+	meta := mqtt.DeviceMeta{Model: info.Model, HwVersion: info.Revision, SwVersion: version.Version}
+	if strings.HasPrefix(info.Model, "Raspberry Pi") {
+		meta.Manufacturer = "Raspberry Pi Ltd"
+	}
+	if _, port, err := net.SplitHostPort(addr); err == nil && port != "" && ip != "" {
+		meta.ConfigurationURL = "http://" + net.JoinHostPort(ip, port)
+	}
+	return meta
+}
+
+func primaryIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	for _, a := range addrs {
+		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if v4 := ipnet.IP.To4(); v4 != nil {
+				return v4.String()
+			}
+		}
+	}
+	return ""
+}
 
 func hasMqttSubscribers(cfg *config.Config) bool {
 	for _, s := range cfg.Sensors {
@@ -29,7 +65,7 @@ func hasMqttSubscribers(cfg *config.Config) bool {
 
 // setupMQTT returns (nil, closed) when MQTT isn't needed. pubDone closes after
 // the Publisher's offline publish so main can disconnect cleanly.
-func setupMQTT(ctx context.Context, log *slog.Logger, cfg *config.Config, bus *state.Bus, screen *displaypkg.Screen) (*mqtt.Hub, <-chan struct{}) {
+func setupMQTT(ctx context.Context, log *slog.Logger, cfg *config.Config, bus *state.Bus, screen *displaypkg.Screen, reader *hostmetrics.Reader) (*mqtt.Hub, <-chan struct{}) {
 	closed := make(chan struct{})
 	close(closed)
 	if !cfg.Mqtt.Bridge.Enabled && !hasMqttSubscribers(cfg) {
@@ -40,6 +76,10 @@ func setupMQTT(ctx context.Context, log *slog.Logger, cfg *config.Config, bus *s
 		BaseTopic:       cfg.Mqtt.Bridge.BaseTopic,
 		DiscoveryPrefix: cfg.Mqtt.Bridge.DiscoveryPrefix,
 		StaleAfter:      cfg.Mqtt.Bridge.StaleAfter.Duration,
+	}
+	if cfg.Mqtt.Bridge.Enabled {
+		mqttSet.Device = deviceMeta(reader.ReadInfo(), primaryIP(), cfg.Addr)
+		mqttSet.Undervoltage = reader.Read(ctx).HasThrottle
 	}
 	willTopic := ""
 	if cfg.Mqtt.Bridge.Enabled {
@@ -57,7 +97,7 @@ func setupMQTT(ctx context.Context, log *slog.Logger, cfg *config.Config, bus *s
 		log.Info("mqtt: connection enabled for mqtt-subscriber sensors only", "broker", cfg.Mqtt.Broker)
 		return hub, closed
 	}
-	pub := mqtt.New(log, hub, bus, screen, mqttSet, startup.BuildSensorSpecs(cfg))
+	pub := mqtt.New(log, hub, bus, screen, reader, mqttSet, startup.BuildSensorSpecs(cfg))
 	pubDone := make(chan struct{})
 	go func() {
 		defer close(pubDone)

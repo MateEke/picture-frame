@@ -10,6 +10,10 @@ export class DashboardPage {
 	readonly screenSwitch: Locator;
 	readonly systemHostname: Locator;
 	readonly systemUptime: Locator;
+	readonly systemCpuTemp: Locator;
+	readonly systemMemory: Locator;
+	readonly systemUptimeSystem: Locator;
+	readonly systemPower: Locator;
 	readonly nowPlaying: Locator;
 	readonly restart: Locator;
 	readonly restartDialog: Locator;
@@ -43,6 +47,10 @@ export class DashboardPage {
 		this.screenSwitch = page.getByTestId('screen-switch');
 		this.systemHostname = page.getByTestId('system-hostname');
 		this.systemUptime = page.getByTestId('system-uptime');
+		this.systemCpuTemp = page.getByTestId('system-cpu-temp');
+		this.systemMemory = page.getByTestId('system-memory');
+		this.systemUptimeSystem = page.getByTestId('system-uptime-system');
+		this.systemPower = page.getByTestId('system-undervoltage');
 		this.nowPlaying = page.getByTestId('now-playing-image');
 		this.restart = page.getByTestId('dashboard-restart');
 		this.restartDialog = page.getByTestId('restart-dialog');

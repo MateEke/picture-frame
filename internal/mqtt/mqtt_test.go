@@ -9,6 +9,7 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/MateEke/picture-frame/internal/hostmetrics"
 	"github.com/MateEke/picture-frame/internal/state"
 	"github.com/MateEke/picture-frame/internal/testutil"
 )
@@ -136,15 +137,26 @@ func (s *fakeScreen) Off(context.Context) error {
 func (s *fakeScreen) Auto() bool  { return s.auto }
 func (s *fakeScreen) State() bool { return s.on }
 
+// fakeReader returns a fixed telemetry snapshot for the metrics poller.
+type fakeReader struct{ m hostmetrics.Metrics }
+
+func (f fakeReader) Read(context.Context) hostmetrics.Metrics { return f.m }
+
 func newTestPublisher(client *fakeClient, screen Screen) *Publisher {
 	hub := NewHub(testutil.NopLogger(), client)
-	return New(testutil.NopLogger(), hub, state.NewBus(), screen, testSettings(), testSpecs())
+	return New(testutil.NopLogger(), hub, state.NewBus(), screen, fakeReader{}, testSettings(), testSpecs())
 }
 
 // newTestPublisherWithHub returns both for tests that drive the connection explicitly.
 func newTestPublisherWithHub(client *fakeClient, screen Screen, bus *state.Bus) (*Publisher, *Hub) {
 	hub := NewHub(testutil.NopLogger(), client)
-	return New(testutil.NopLogger(), hub, bus, screen, testSettings(), testSpecs()), hub
+	return New(testutil.NopLogger(), hub, bus, screen, fakeReader{}, testSettings(), testSpecs()), hub
+}
+
+// newTestPublisherWithReader drives the metrics poller with a specific snapshot.
+func newTestPublisherWithReader(client *fakeClient, bus *state.Bus, m hostmetrics.Metrics) (*Publisher, *Hub) {
+	hub := NewHub(testutil.NopLogger(), client)
+	return New(testutil.NopLogger(), hub, bus, &fakeScreen{bus: bus}, fakeReader{m: m}, testSettings(), testSpecs()), hub
 }
 
 func sensorEvent(id, kind string, value float64) state.Event {
@@ -186,6 +198,88 @@ func TestRunRetriesInitialConnect(t *testing.T) {
 		synctest.Wait()
 		if v, _ := client.lastPayload("picture-frame/availability"); v != "online" {
 			t.Errorf("expected bridge online after retries, got %q", v)
+		}
+	})
+}
+
+func TestPublishesHostMetricsOnConnectAndTick(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		boot := time.Now().Add(-2 * time.Hour)
+		client := &fakeClient{}
+		bus := state.NewBus()
+		p, hub := newTestPublisherWithReader(client, bus, hostmetrics.Metrics{
+			CPUTempC: 47.2, HasCPUTemp: true,
+			MemUsedPct: 62.8, HasMem: true,
+			BootTime: boot, HasBootTime: true,
+			Undervoltage: true, HasThrottle: true,
+		})
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go p.Run(ctx)
+		go hub.Connect(ctx)
+
+		synctest.Wait() // let the connect-time seed publish land
+		if v, _ := client.lastPayload("picture-frame/sensor/cpu_temperature/state"); v != "47.2" {
+			t.Errorf("cpu temp: got %q, want 47.2", v)
+		}
+		if v, _ := client.lastPayload("picture-frame/sensor/memory_usage/state"); v != "63" {
+			t.Errorf("memory: got %q, want 63", v)
+		}
+		if v, _ := client.lastPayload("picture-frame/sensor/uptime/state"); v != boot.UTC().Format(time.RFC3339) {
+			t.Errorf("uptime: got %q, want %q", v, boot.UTC().Format(time.RFC3339))
+		}
+		if v, _ := client.lastPayload("picture-frame/binary_sensor/undervoltage/state"); v != "ON" {
+			t.Errorf("undervoltage: got %q, want ON", v)
+		}
+
+		before := client.countTopic("picture-frame/sensor/cpu_temperature/state")
+		time.Sleep(hostMetricsInterval + time.Second)
+		synctest.Wait()
+		if after := client.countTopic("picture-frame/sensor/cpu_temperature/state"); after <= before {
+			t.Errorf("expected another publish after a tick: before=%d after=%d", before, after)
+		}
+	})
+}
+
+func TestNoMetricsPublishedBeforeConnect(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		client := &fakeClient{}
+		bus := state.NewBus()
+		p, _ := newTestPublisherWithReader(client, bus, hostmetrics.Metrics{CPUTempC: 40, HasCPUTemp: true})
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go p.Run(ctx) // never connected
+
+		time.Sleep(hostMetricsInterval + time.Second)
+		synctest.Wait()
+		if _, ok := client.lastPayload("picture-frame/sensor/cpu_temperature/state"); ok {
+			t.Error("metrics ticker must not publish before the bridge connects")
+		}
+	})
+}
+
+func TestAbsentHostMetricsAreNotPublished(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		client := &fakeClient{}
+		bus := state.NewBus()
+		// Empty snapshot: every Has* false (a non-Pi dev box).
+		p, hub := newTestPublisherWithReader(client, bus, hostmetrics.Metrics{})
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go p.Run(ctx)
+		go hub.Connect(ctx)
+		synctest.Wait()
+
+		for _, topic := range []string{
+			"picture-frame/sensor/cpu_temperature/state",
+			"picture-frame/sensor/memory_usage/state",
+			"picture-frame/sensor/uptime/state",
+			"picture-frame/binary_sensor/undervoltage/state",
+		} {
+			if _, ok := client.lastPayload(topic); ok {
+				t.Errorf("absent metric must not be published: %s", topic)
+			}
 		}
 	})
 }
@@ -338,7 +432,7 @@ func TestMarkFreshStaleAfterDisabledSkipsTimer(t *testing.T) {
 	set := testSettings()
 	set.StaleAfter = 0
 	hub := NewHub(testutil.NopLogger(), client)
-	p := New(testutil.NopLogger(), hub, state.NewBus(), &fakeScreen{}, set, testSpecs())
+	p := New(testutil.NopLogger(), hub, state.NewBus(), &fakeScreen{}, fakeReader{}, set, testSpecs())
 	stale := make(chan string, 1)
 
 	p.markFresh(context.Background(), "living_room", stale)
@@ -390,7 +484,7 @@ func TestHandleCommand(t *testing.T) {
 	screen := &fakeScreen{bus: bus}
 	client := &fakeClient{}
 	hub := NewHub(testutil.NopLogger(), client)
-	p := New(testutil.NopLogger(), hub, bus, screen, testSettings(), testSpecs())
+	p := New(testutil.NopLogger(), hub, bus, screen, fakeReader{}, testSettings(), testSpecs())
 
 	p.handleCommand([]byte("ON"))
 	if screen.ons != 1 {
@@ -410,7 +504,7 @@ func TestHandleCommandScreenErrorIsLogged(t *testing.T) {
 	bus := state.NewBus()
 	screen := &fakeScreen{bus: bus, err: errors.New("vcgencmd failed")}
 	hub := NewHub(testutil.NopLogger(), &fakeClient{})
-	p := New(testutil.NopLogger(), hub, bus, screen, testSettings(), testSpecs())
+	p := New(testutil.NopLogger(), hub, bus, screen, fakeReader{}, testSettings(), testSpecs())
 
 	p.handleCommand([]byte("ON"))
 	p.handleCommand([]byte("OFF"))

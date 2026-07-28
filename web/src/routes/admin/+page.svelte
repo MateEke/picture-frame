@@ -86,6 +86,20 @@
 	const librarySyncIssue = $derived(Boolean(data.library?.sync?.last_error));
 	const restartPending = $derived(data.config?.restart_pending ?? false);
 	const uptime = $derived(data.system ? formatDuration(data.system.uptime, 'just now') : '—');
+	const cpuTemp = $derived(
+		data.system?.cpuTempC != null ? `${data.system.cpuTempC.toFixed(1)} °C` : '—'
+	);
+	const memory = $derived(
+		data.system?.memUsedPct != null ? `${Math.round(data.system.memUsedPct)}%` : '—'
+	);
+	const systemUptime = $derived(
+		data.system?.systemUptime ? formatDuration(data.system.systemUptime, 'just now') : '—'
+	);
+	function powerLabel(undervoltage: boolean | undefined): string {
+		if (undervoltage === undefined) return '—';
+		return undervoltage ? 'Undervoltage' : 'OK';
+	}
+	const power = $derived(powerLabel(data.system?.undervoltage));
 </script>
 
 <div class="mx-auto max-w-3xl space-y-6">
@@ -251,6 +265,22 @@
 			<div>
 				<dt class="text-surface-500-400 text-xs">IP address</dt>
 				<dd class="truncate font-medium">{data.system?.ip || '—'}</dd>
+			</div>
+			<div>
+				<dt class="text-surface-500-400 text-xs">CPU temp</dt>
+				<dd class="truncate font-medium" data-testid="system-cpu-temp">{cpuTemp}</dd>
+			</div>
+			<div>
+				<dt class="text-surface-500-400 text-xs">Memory</dt>
+				<dd class="truncate font-medium" data-testid="system-memory">{memory}</dd>
+			</div>
+			<div>
+				<dt class="text-surface-500-400 text-xs">System uptime</dt>
+				<dd class="truncate font-medium" data-testid="system-uptime-system">{systemUptime}</dd>
+			</div>
+			<div>
+				<dt class="text-surface-500-400 text-xs">Power</dt>
+				<dd class="truncate font-medium" data-testid="system-undervoltage">{power}</dd>
 			</div>
 		</dl>
 

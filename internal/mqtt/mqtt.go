@@ -10,8 +10,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MateEke/picture-frame/internal/hostmetrics"
 	"github.com/MateEke/picture-frame/internal/state"
 )
+
+// hostMetricsInterval keeps telemetry cheap on a Pi Zero; 60s granularity is plenty in HA.
+const hostMetricsInterval = time.Minute
+
+// MetricsReader supplies Pi telemetry snapshots; implemented by *hostmetrics.Reader.
+type MetricsReader interface {
+	Read(ctx context.Context) hostmetrics.Metrics
+}
 
 // Client is the minimal MQTT transport the Hub needs (paho in the adapter
 // subpackage). OnConnect must fire on every (re)connect.
@@ -34,13 +43,14 @@ type Screen interface {
 
 // Publisher mirrors bus state to MQTT and applies inbound screen commands.
 type Publisher struct {
-	log    *slog.Logger
-	hub    *Hub
-	bus    *state.Bus
-	screen Screen
-	set    Settings
-	specs  []SensorSpec
-	disc   []message
+	log     *slog.Logger
+	hub     *Hub
+	bus     *state.Bus
+	screen  Screen
+	metrics MetricsReader
+	set     Settings
+	specs   []SensorSpec
+	disc    []message
 
 	known map[string]bool // advertised sensor IDs; readings for others are dropped
 
@@ -57,7 +67,7 @@ type Publisher struct {
 
 // New registers with the Hub at construction so a connect that beats Run still
 // queues a republish.
-func New(log *slog.Logger, hub *Hub, bus *state.Bus, screen Screen, set Settings, specs []SensorSpec) *Publisher {
+func New(log *slog.Logger, hub *Hub, bus *state.Bus, screen Screen, metrics MetricsReader, set Settings, specs []SensorSpec) *Publisher {
 	known := make(map[string]bool, len(specs))
 	for _, s := range specs {
 		known[s.ID] = true
@@ -67,6 +77,7 @@ func New(log *slog.Logger, hub *Hub, bus *state.Bus, screen Screen, set Settings
 		hub:         hub,
 		bus:         bus,
 		screen:      screen,
+		metrics:     metrics,
 		set:         set,
 		specs:       specs,
 		disc:        set.discoveryMessages(specs),
@@ -94,6 +105,9 @@ func (p *Publisher) Run(ctx context.Context) {
 	ch, unsub := p.bus.Subscribe()
 	defer unsub()
 
+	ticker := time.NewTicker(hostMetricsInterval)
+	defer ticker.Stop()
+
 	var everConnected bool
 	for {
 		select {
@@ -105,6 +119,11 @@ func (p *Publisher) Run(ctx context.Context) {
 		case <-p.reconnected:
 			everConnected = true
 			p.republish()
+			p.publishMetrics(ctx) // seed telemetry immediately, not after the first tick
+		case <-ticker.C:
+			if everConnected {
+				p.publishMetrics(ctx)
+			}
 		case id := <-stale:
 			p.markStale(id)
 		case e, ok := <-ch:
@@ -208,6 +227,24 @@ func (p *Publisher) publishSwitch(on bool) {
 
 func (p *Publisher) publishScreenPower(on bool) {
 	p.publish(p.set.screenPowerStateTopic(), boolWord(on), 1, true)
+}
+
+// publishMetrics mirrors each present field to its state topic, skipping absent ones.
+// Retained so HA repopulates after a restart.
+func (p *Publisher) publishMetrics(ctx context.Context) {
+	m := p.metrics.Read(ctx)
+	if m.HasCPUTemp {
+		p.publish(p.set.cpuTempStateTopic(), strconv.FormatFloat(m.CPUTempC, 'f', 1, 64), 1, true)
+	}
+	if m.HasMem {
+		p.publish(p.set.memoryStateTopic(), strconv.FormatFloat(m.MemUsedPct, 'f', 0, 64), 1, true)
+	}
+	if m.HasBootTime {
+		p.publish(p.set.uptimeStateTopic(), m.BootTime.UTC().Format(time.RFC3339), 1, true)
+	}
+	if m.HasThrottle {
+		p.publish(p.set.undervoltageStateTopic(), boolWord(m.Undervoltage), 1, true)
+	}
 }
 
 func (p *Publisher) pub(m message) {

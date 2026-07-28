@@ -1194,6 +1194,11 @@
             "readOnly": true,
             "type": "string"
           },
+          "cpuTempC": {
+            "description": "CPU temperature in Celsius",
+            "format": "double",
+            "type": "number"
+          },
           "hostname": {
             "description": "OS hostname",
             "type": "string"
@@ -1202,9 +1207,22 @@
             "description": "Primary non-loopback IPv4, empty if none",
             "type": "string"
           },
+          "memUsedPct": {
+            "description": "Used memory percent",
+            "format": "double",
+            "type": "number"
+          },
           "platform": {
             "description": "Build target, e.g. linux_armv6",
             "type": "string"
+          },
+          "systemUptime": {
+            "description": "System uptime since boot as a Go duration",
+            "type": "string"
+          },
+          "undervoltage": {
+            "description": "True if undervoltage detected",
+            "type": "boolean"
           },
           "uptime": {
             "description": "Process uptime as a Go duration, e.g. 3h12m0s",

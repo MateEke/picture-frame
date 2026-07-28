@@ -4,6 +4,27 @@ import (
 	"testing"
 )
 
+func TestParseThrottled(t *testing.T) {
+	cases := []struct {
+		input  []byte
+		want   uint64
+		wantOK bool
+	}{
+		{[]byte("throttled=0x0\n"), 0x0, true},
+		{[]byte("throttled=0x50005"), 0x50005, true},
+		{[]byte("throttled=0x10000\n"), 0x10000, true},
+		{[]byte("unexpected\n"), 0, false},
+		{[]byte("throttled=nothex\n"), 0, false},
+		{[]byte(""), 0, false},
+	}
+	for _, tc := range cases {
+		got, ok := parseThrottled(tc.input)
+		if ok != tc.wantOK || got != tc.want {
+			t.Errorf("input=%q: got (%#x, %v), want (%#x, %v)", tc.input, got, ok, tc.want, tc.wantOK)
+		}
+	}
+}
+
 func TestParseDisplayPower(t *testing.T) {
 	cases := []struct {
 		input   []byte
