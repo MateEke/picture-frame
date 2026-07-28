@@ -1,19 +1,63 @@
 package httpapi
 
 import (
+	"context"
 	"errors"
 	"net"
 	"testing"
 	"time"
 
+	"github.com/MateEke/picture-frame/internal/hostmetrics"
 	"github.com/MateEke/picture-frame/internal/version"
 )
+
+type fakeMetrics struct{ m hostmetrics.Metrics }
+
+func (f fakeMetrics) Read(context.Context) hostmetrics.Metrics { return f.m }
+
+func TestSystemInfoIncludesHostMetrics(t *testing.T) {
+	boot := time.Now().Add(-90 * time.Minute)
+	s := &server{hostMetrics: fakeMetrics{m: hostmetrics.Metrics{
+		CPUTempC: 50, HasCPUTemp: true,
+		MemUsedPct: 20, HasMem: true,
+		BootTime: boot, HasBootTime: true,
+		Undervoltage: false, HasThrottle: true,
+	}}}
+	info := s.systemInfo(context.Background())
+	if info.CPUTempC == nil || *info.CPUTempC != 50 {
+		t.Errorf("cpu temp: %v", info.CPUTempC)
+	}
+	if info.MemUsedPct == nil || *info.MemUsedPct != 20 {
+		t.Errorf("mem: %v", info.MemUsedPct)
+	}
+	if info.Undervoltage == nil || *info.Undervoltage {
+		t.Errorf("undervoltage: %v", info.Undervoltage)
+	}
+	if _, err := time.ParseDuration(info.SystemUptime); err != nil {
+		t.Errorf("system uptime %q not a duration: %v", info.SystemUptime, err)
+	}
+}
+
+func TestSystemInfoNilReaderOmitsHostMetrics(t *testing.T) {
+	info := (&server{}).systemInfo(context.Background())
+	if info.CPUTempC != nil || info.MemUsedPct != nil || info.Undervoltage != nil || info.SystemUptime != "" {
+		t.Errorf("nil reader should leave host fields empty: %+v", info)
+	}
+}
+
+func TestSystemInfoOmitsAbsentHostMetrics(t *testing.T) {
+	// A reader that returns an empty snapshot (non-Pi) leaves every host field nil.
+	info := (&server{hostMetrics: fakeMetrics{}}).systemInfo(context.Background())
+	if info.CPUTempC != nil || info.MemUsedPct != nil || info.Undervoltage != nil || info.SystemUptime != "" {
+		t.Errorf("absent metrics should stay nil: %+v", info)
+	}
+}
 
 func TestSystemInfoReportsVersionAndUptime(t *testing.T) {
 	orig := processStart
 	t.Cleanup(func() { processStart = orig })
 	processStart = time.Now().Add(-90 * time.Second)
-	info := systemInfo()
+	info := (&server{}).systemInfo(context.Background())
 
 	if info.Version != version.Version {
 		t.Errorf("version: got %q, want %q", info.Version, version.Version)
@@ -31,7 +75,7 @@ func TestSystemInfoHostnameError(t *testing.T) {
 	t.Cleanup(func() { osHostname = orig })
 	osHostname = func() (string, error) { return "", errors.New("boom") }
 
-	if got := systemInfo().Hostname; got != "" {
+	if got := (&server{}).systemInfo(context.Background()).Hostname; got != "" {
 		t.Errorf("hostname: got %q, want empty on error", got)
 	}
 }
@@ -41,7 +85,7 @@ func TestSystemInfoInterfaceAddrsError(t *testing.T) {
 	t.Cleanup(func() { interfaceAddrs = orig })
 	interfaceAddrs = func() ([]net.Addr, error) { return nil, errors.New("boom") }
 
-	if got := systemInfo().IP; got != "" {
+	if got := (&server{}).systemInfo(context.Background()).IP; got != "" {
 		t.Errorf("ip: got %q, want empty on error", got)
 	}
 }
@@ -58,7 +102,7 @@ func TestSystemInfoPicksFirstIPv4(t *testing.T) {
 		}, nil
 	}
 
-	if got := systemInfo().IP; got != "192.168.1.42" {
+	if got := (&server{}).systemInfo(context.Background()).IP; got != "192.168.1.42" {
 		t.Errorf("ip: got %q, want 192.168.1.42", got)
 	}
 }

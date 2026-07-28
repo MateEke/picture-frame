@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -43,6 +44,28 @@ func (v *Vcgencmd) set(ctx context.Context, want string) error {
 		return fmt.Errorf("vcgencmd display_power %s: display remained %s", want, got)
 	}
 	return nil
+}
+
+// Throttled reports the get_throttled bitmask; ok=false when vcgencmd is unavailable.
+func (v *Vcgencmd) Throttled(ctx context.Context) (uint64, bool) {
+	out, err := exec.CommandContext(ctx, "vcgencmd", "get_throttled").CombinedOutput()
+	if err != nil {
+		return 0, false
+	}
+	return parseThrottled(out)
+}
+
+// parseThrottled extracts the bitmask from vcgencmd output ("throttled=0xNNNN").
+func parseThrottled(out []byte) (uint64, bool) {
+	hex, ok := strings.CutPrefix(strings.TrimSpace(string(out)), "throttled=")
+	if !ok {
+		return 0, false
+	}
+	bits, err := strconv.ParseUint(strings.TrimPrefix(hex, "0x"), 16, 64)
+	if err != nil {
+		return 0, false
+	}
+	return bits, true
 }
 
 // parseDisplayPower extracts the numeric state from vcgencmd output ("display_power=N").

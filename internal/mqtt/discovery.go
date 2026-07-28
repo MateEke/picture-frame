@@ -15,6 +15,17 @@ type Settings struct {
 	DiscoveryPrefix string
 	DeviceName      string // HA device friendly name; defaults to a title-cased NodeID
 	StaleAfter      time.Duration
+	Device          DeviceMeta // hardware/software metadata for the HA device card
+	Undervoltage    bool       // advertise the undervoltage entity (vcgencmd available)
+}
+
+// DeviceMeta is the optional hardware/software metadata shown on the HA device card.
+type DeviceMeta struct {
+	Manufacturer     string
+	Model            string
+	HwVersion        string
+	SwVersion        string
+	ConfigurationURL string
 }
 
 // SensorSpec is one sensor and the kinds it emits, used to build HA entities
@@ -45,6 +56,12 @@ func (s Settings) switchSetTopic() string   { return s.BaseTopic + "/switch/scre
 func (s Settings) screenPowerStateTopic() string {
 	return s.BaseTopic + "/binary_sensor/screen_power/state"
 }
+func (s Settings) cpuTempStateTopic() string { return s.BaseTopic + "/sensor/cpu_temperature/state" }
+func (s Settings) memoryStateTopic() string  { return s.BaseTopic + "/sensor/memory_usage/state" }
+func (s Settings) uptimeStateTopic() string  { return s.BaseTopic + "/sensor/uptime/state" }
+func (s Settings) undervoltageStateTopic() string {
+	return s.BaseTopic + "/binary_sensor/undervoltage/state"
+}
 func (s Settings) sensorAvailTopic(id string) string {
 	return s.BaseTopic + "/sensor/" + id + "/availability"
 }
@@ -73,8 +90,13 @@ func component(kind string) string {
 
 // haDevice groups all entities under one HA device.
 type haDevice struct {
-	Identifiers []string `json:"identifiers"`
-	Name        string   `json:"name"`
+	Identifiers      []string `json:"identifiers"`
+	Name             string   `json:"name"`
+	Manufacturer     string   `json:"manufacturer,omitempty"`
+	Model            string   `json:"model,omitempty"`
+	HwVersion        string   `json:"hw_version,omitempty"`
+	SwVersion        string   `json:"sw_version,omitempty"`
+	ConfigurationURL string   `json:"configuration_url,omitempty"`
 }
 
 type haAvailability struct {
@@ -93,6 +115,7 @@ type discoveryConfig struct {
 	UnitOfMeasurement string           `json:"unit_of_measurement,omitempty"`
 	PayloadOn         string           `json:"payload_on,omitempty"`
 	PayloadOff        string           `json:"payload_off,omitempty"`
+	EntityCategory    string           `json:"entity_category,omitempty"`
 	Availability      []haAvailability `json:"availability"`
 	AvailabilityMode  string           `json:"availability_mode"`
 	Device            haDevice         `json:"device"`
@@ -107,7 +130,15 @@ type message struct {
 
 // discoveryMessages builds the discovery config for every entity and the switch.
 func (s Settings) discoveryMessages(specs []SensorSpec) []message {
-	dev := haDevice{Identifiers: []string{s.NodeID}, Name: s.deviceName()}
+	dev := haDevice{
+		Identifiers:      []string{s.NodeID},
+		Name:             s.deviceName(),
+		Manufacturer:     s.Device.Manufacturer,
+		Model:            s.Device.Model,
+		HwVersion:        s.Device.HwVersion,
+		SwVersion:        s.Device.SwVersion,
+		ConfigurationURL: s.Device.ConfigurationURL,
+	}
 	var msgs []message
 	for _, spec := range specs {
 		for _, kind := range spec.Kinds {
@@ -115,6 +146,46 @@ func (s Settings) discoveryMessages(specs []SensorSpec) []message {
 		}
 	}
 	msgs = append(msgs, s.switchDiscovery(dev), s.screenPowerDiscovery(dev))
+	msgs = append(msgs, s.hostMetricDiscoveries(dev)...)
+	return msgs
+}
+
+// hostMetricDiscoveries advertises the Pi telemetry, plus undervoltage when vcgencmd
+// is available. Bridge availability alone gates them: a live frame means live values.
+func (s Settings) hostMetricDiscoveries(dev haDevice) []message {
+	const diag = "diagnostic"
+	avail := []haAvailability{{Topic: s.bridgeAvailTopic()}}
+
+	temp := discoveryConfig{
+		UniqueID: s.NodeID + "_cpu_temperature", Name: "CPU Temperature",
+		StateTopic: s.cpuTempStateTopic(), DeviceClass: "temperature",
+		UnitOfMeasurement: sensorUnits["temperature"], StateClass: "measurement",
+		EntityCategory: diag, Availability: avail, AvailabilityMode: "all", Device: dev,
+	}
+	mem := discoveryConfig{
+		UniqueID: s.NodeID + "_memory_usage", Name: "Memory Usage",
+		StateTopic: s.memoryStateTopic(), UnitOfMeasurement: "%", StateClass: "measurement",
+		EntityCategory: diag, Availability: avail, AvailabilityMode: "all", Device: dev,
+	}
+	uptime := discoveryConfig{
+		UniqueID: s.NodeID + "_uptime", Name: "Uptime",
+		StateTopic: s.uptimeStateTopic(), DeviceClass: "timestamp", // boot time; HA renders "x days"
+		EntityCategory: diag, Availability: avail, AvailabilityMode: "all", Device: dev,
+	}
+	msgs := []message{
+		discoveryMessage(s.discoveryTopic("sensor", "cpu_temperature"), temp),
+		discoveryMessage(s.discoveryTopic("sensor", "memory_usage"), mem),
+		discoveryMessage(s.discoveryTopic("sensor", "uptime"), uptime),
+	}
+	if s.Undervoltage {
+		uv := discoveryConfig{
+			UniqueID: s.NodeID + "_undervoltage", Name: "Undervoltage",
+			StateTopic: s.undervoltageStateTopic(), DeviceClass: "problem",
+			PayloadOn: payloadOn, PayloadOff: payloadOff,
+			EntityCategory: diag, Availability: avail, AvailabilityMode: "all", Device: dev,
+		}
+		msgs = append(msgs, discoveryMessage(s.discoveryTopic("binary_sensor", "undervoltage"), uv))
+	}
 	return msgs
 }
 

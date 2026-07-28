@@ -202,8 +202,10 @@ func run() error {
 		watchUpdateCommit(ctx, log, kioskWatch)
 	}
 
+	hostReader := newHostReader()
+
 	// MQTT must come before sources (which register subs) and before Connect.
-	mqttHub, pubDone := setupMQTT(ctx, log, cfg, bus, screen)
+	mqttHub, pubDone := setupMQTT(ctx, log, cfg, bus, screen, hostReader)
 
 	sources := buildSources(log, cfg, mqttHub)
 	roles := config.SensorRoles(cfg.Sensors)
@@ -254,6 +256,7 @@ func run() error {
 			RunningConfig: *cfg,
 			LiveConfig:    liveCfg,
 			Restart:       restartFn,
+			HostMetrics:   hostReader,
 		}),
 	}
 

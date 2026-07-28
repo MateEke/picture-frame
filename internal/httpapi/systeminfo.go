@@ -22,11 +22,15 @@ var (
 
 // SystemInfoBody is a point-in-time snapshot for the dashboard system card.
 type SystemInfoBody struct {
-	Version  string `json:"version" doc:"Build version"`
-	Platform string `json:"platform" doc:"Build target, e.g. linux_armv6"`
-	Uptime   string `json:"uptime" doc:"Process uptime as a Go duration, e.g. 3h12m0s"`
-	Hostname string `json:"hostname" doc:"OS hostname"`
-	IP       string `json:"ip" doc:"Primary non-loopback IPv4, empty if none"`
+	Version      string   `json:"version" doc:"Build version"`
+	Platform     string   `json:"platform" doc:"Build target, e.g. linux_armv6"`
+	Uptime       string   `json:"uptime" doc:"Process uptime as a Go duration, e.g. 3h12m0s"`
+	Hostname     string   `json:"hostname" doc:"OS hostname"`
+	IP           string   `json:"ip" doc:"Primary non-loopback IPv4, empty if none"`
+	CPUTempC     *float64 `json:"cpuTempC,omitempty" doc:"CPU temperature in Celsius"`
+	MemUsedPct   *float64 `json:"memUsedPct,omitempty" doc:"Used memory percent"`
+	SystemUptime string   `json:"systemUptime,omitempty" doc:"System uptime since boot as a Go duration"`
+	Undervoltage *bool    `json:"undervoltage,omitempty" doc:"True if undervoltage detected"`
 }
 
 type getSystemInfoOutput struct {
@@ -39,24 +43,44 @@ func (s *server) registerSystemInfoRoutes(api huma.API) {
 		Method:      http.MethodGet,
 		Path:        "/api/system/info",
 		Summary:     "Report version, uptime, hostname and primary IP",
-	}, func(_ context.Context, _ *struct{}) (*getSystemInfoOutput, error) {
-		return &getSystemInfoOutput{Body: systemInfo()}, nil
+	}, func(ctx context.Context, _ *struct{}) (*getSystemInfoOutput, error) {
+		return &getSystemInfoOutput{Body: s.systemInfo(ctx)}, nil
 	})
 }
 
-func systemInfo() SystemInfoBody {
+func (s *server) systemInfo(ctx context.Context) SystemInfoBody {
 	host, _ := osHostname()
 	var ip string
 	if addrs, err := interfaceAddrs(); err == nil {
 		ip = primaryIPv4(addrs)
 	}
-	return SystemInfoBody{
+	body := SystemInfoBody{
 		Version:  version.Version,
 		Platform: version.Platform,
 		Uptime:   time.Since(processStart).Round(time.Second).String(),
 		Hostname: host,
 		IP:       ip,
 	}
+	if s.hostMetrics == nil {
+		return body
+	}
+	m := s.hostMetrics.Read(ctx)
+	if m.HasCPUTemp {
+		v := m.CPUTempC
+		body.CPUTempC = &v
+	}
+	if m.HasMem {
+		v := m.MemUsedPct
+		body.MemUsedPct = &v
+	}
+	if m.HasBootTime {
+		body.SystemUptime = time.Since(m.BootTime).Round(time.Second).String()
+	}
+	if m.HasThrottle {
+		v := m.Undervoltage
+		body.Undervoltage = &v
+	}
+	return body
 }
 
 func primaryIPv4(addrs []net.Addr) string {

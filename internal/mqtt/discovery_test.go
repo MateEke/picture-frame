@@ -1,6 +1,7 @@
 package mqtt
 
 import (
+	"bytes"
 	"encoding/json"
 	"testing"
 	"time"
@@ -45,9 +46,9 @@ func decodeConfig(t *testing.T, m message) discoveryConfig {
 
 func TestDiscoveryMessageCount(t *testing.T) {
 	msgs := testSettings().discoveryMessages(testSpecs())
-	// 3 sensor entities + 1 switch + 1 screen-power binary_sensor.
-	if len(msgs) != 5 {
-		t.Fatalf("got %d messages, want 5", len(msgs))
+	// 3 sensor entities + 1 switch + 1 screen-power + 3 always-on host metrics.
+	if len(msgs) != 8 {
+		t.Fatalf("got %d messages, want 8", len(msgs))
 	}
 	for _, m := range msgs {
 		if m.qos != 1 || !m.retain {
@@ -189,6 +190,83 @@ func TestTitleCase(t *testing.T) {
 	for in, want := range cases {
 		if got := titleCase(in); got != want {
 			t.Errorf("titleCase(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestDeviceBlockCarriesMetadata(t *testing.T) {
+	s := testSettings()
+	s.Device = DeviceMeta{
+		Manufacturer:     "Raspberry Pi Ltd",
+		Model:            "Raspberry Pi Zero 2 W Rev 1.0",
+		HwVersion:        "Rev 1.0",
+		SwVersion:        "1.4.2",
+		ConfigurationURL: "http://10.0.2.21:8080",
+	}
+	msgs := s.discoveryMessages(testSpecs())
+	cfg := decodeConfig(t, findMessage(t, msgs, s.discoveryTopic("switch", "screen")))
+	if cfg.Device.Manufacturer != "Raspberry Pi Ltd" || cfg.Device.Model != "Raspberry Pi Zero 2 W Rev 1.0" {
+		t.Errorf("device metadata missing: %+v", cfg.Device)
+	}
+	if cfg.Device.HwVersion != "Rev 1.0" || cfg.Device.SwVersion != "1.4.2" {
+		t.Errorf("hw/sw version missing: %+v", cfg.Device)
+	}
+	if cfg.Device.ConfigurationURL != "http://10.0.2.21:8080" {
+		t.Errorf("configuration_url missing: %+v", cfg.Device)
+	}
+}
+
+func TestDeviceBlockOmitsEmptyMetadata(t *testing.T) {
+	s := testSettings() // no Device set
+	raw := findMessage(t, s.discoveryMessages(testSpecs()), s.discoveryTopic("switch", "screen")).payload
+	if bytes.Contains(raw, []byte("manufacturer")) || bytes.Contains(raw, []byte("configuration_url")) {
+		t.Errorf("empty metadata must be omitted from JSON: %s", raw)
+	}
+}
+
+func TestHostMetricDiscovery(t *testing.T) {
+	s := testSettings()
+	s.Undervoltage = true
+	msgs := s.discoveryMessages(testSpecs())
+
+	temp := decodeConfig(t, findMessage(t, msgs, s.discoveryTopic("sensor", "cpu_temperature")))
+	if temp.DeviceClass != "temperature" || temp.UnitOfMeasurement != "°C" || temp.EntityCategory != "diagnostic" {
+		t.Errorf("cpu_temperature config wrong: %+v", temp)
+	}
+	if temp.StateTopic != "picture-frame/sensor/cpu_temperature/state" {
+		t.Errorf("cpu_temperature state_topic: %q", temp.StateTopic)
+	}
+	mem := decodeConfig(t, findMessage(t, msgs, s.discoveryTopic("sensor", "memory_usage")))
+	if mem.UnitOfMeasurement != "%" || mem.StateClass != "measurement" || mem.EntityCategory != "diagnostic" {
+		t.Errorf("memory_usage config wrong: %+v", mem)
+	}
+	up := decodeConfig(t, findMessage(t, msgs, s.discoveryTopic("sensor", "uptime")))
+	if up.DeviceClass != "timestamp" || up.StateClass != "" {
+		t.Errorf("uptime config wrong: %+v", up)
+	}
+	uv := decodeConfig(t, findMessage(t, msgs, s.discoveryTopic("binary_sensor", "undervoltage")))
+	if uv.DeviceClass != "problem" || uv.PayloadOn != payloadOn || uv.PayloadOff != payloadOff {
+		t.Errorf("undervoltage config wrong: %+v", uv)
+	}
+	// Host metrics gate on bridge availability only (no per-sensor freshness topic).
+	if len(uv.Availability) != 1 || uv.Availability[0].Topic != s.bridgeAvailTopic() {
+		t.Errorf("undervoltage availability wrong: %+v", uv.Availability)
+	}
+}
+
+func TestUndervoltageAdvertisedOnlyWhenAvailable(t *testing.T) {
+	off := testSettings().discoveryMessages(testSpecs())
+	if len(off) != 8 {
+		t.Fatalf("without undervoltage: got %d messages, want 8", len(off))
+	}
+	s := testSettings()
+	s.Undervoltage = true
+	if on := s.discoveryMessages(testSpecs()); len(on) != 9 {
+		t.Fatalf("with undervoltage: got %d messages, want 9", len(on))
+	}
+	for _, m := range off {
+		if m.topic == testSettings().discoveryTopic("binary_sensor", "undervoltage") {
+			t.Fatal("undervoltage must not be advertised when throttle is unavailable")
 		}
 	}
 }

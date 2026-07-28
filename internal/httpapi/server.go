@@ -18,6 +18,7 @@ import (
 
 	"github.com/MateEke/picture-frame/internal/auth"
 	"github.com/MateEke/picture-frame/internal/config"
+	"github.com/MateEke/picture-frame/internal/hostmetrics"
 	"github.com/MateEke/picture-frame/internal/library"
 	"github.com/MateEke/picture-frame/internal/state"
 	"github.com/MateEke/picture-frame/web"
@@ -101,10 +102,16 @@ type Config struct {
 	SysfsBase string
 
 	// Config editing
-	Store         *config.Store // persisted config state; nil in tests that don't exercise config
-	RunningConfig config.Config // initial snapshot of what live subsystems reflect (== saved at startup)
-	LiveConfig    LiveConfig    // nil in dev/tests; applies Tier-1 changes in-process
-	Restart       func() error  // nil in dev/tests; triggers an in-place re-exec.
+	Store         *config.Store     // persisted config state; nil in tests that don't exercise config
+	RunningConfig config.Config     // initial snapshot of what live subsystems reflect (== saved at startup)
+	LiveConfig    LiveConfig        // nil in dev/tests; applies Tier-1 changes in-process
+	Restart       func() error      // nil in dev/tests; triggers an in-place re-exec.
+	HostMetrics   HostMetricsReader // nil in tests; supplies Pi telemetry for the system card
+}
+
+// HostMetricsReader supplies Pi telemetry for the dashboard system card.
+type HostMetricsReader interface {
+	Read(ctx context.Context) hostmetrics.Metrics
 }
 
 type server struct {
@@ -125,6 +132,7 @@ type server struct {
 	wifiMgr       WiFiManager
 	sysfsBase     string
 	weatherActive bool
+	hostMetrics   HostMetricsReader
 	auth          *auth.Authenticator
 	authMu        sync.Mutex // serializes bcrypt work; see checkPasswordGated
 
@@ -168,6 +176,7 @@ func NewServer(cfg Config) http.Handler {
 		wifiMgr:       cfg.WiFi,
 		sysfsBase:     sysfsBase,
 		weatherActive: cfg.WeatherActive,
+		hostMetrics:   cfg.HostMetrics,
 		auth:          auth.New(),
 		store:         cfg.Store,
 		running:       cfg.RunningConfig,

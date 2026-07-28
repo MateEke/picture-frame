@@ -54,6 +54,8 @@ The system card reports the device's basics.
 - **Version.** The running version. Click it to open the About dialog, which shows the platform,
   offers a **Check for updates** button, and lists the third-party license notices.
 - **Uptime**, **hostname**, and **IP address** of the device.
+- **CPU temp**, **memory** use, **system uptime** since the Pi last booted, and **power**, which
+  reads OK unless the Pi reports undervoltage.
 - **Restart.** Restarts the program in place, without rebooting the Pi. Use it to apply the few
   settings that ask for a restart (see [Configuration basics](/getting-started/configuration/)).
 

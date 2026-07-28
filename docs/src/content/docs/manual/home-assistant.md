@@ -31,12 +31,15 @@ Assistant, and readings can come from any source on the broker. Once a broker is
 
 ## What it exposes
 
-With the bridge on, Home Assistant discovers one device carrying:
+With the bridge on, Home Assistant discovers one device, labelled with the Pi's model and the
+running frame version, carrying:
 
 - each Bluetooth sensor's readings, temperature and humidity as sensors, motion as a binary
   sensor;
 - a **Screen** switch, to turn the panel on or off from Home Assistant;
-- a read-only **screen-power** sensor, showing whether the panel is actually lit.
+- a read-only **screen-power** sensor, showing whether the panel is actually lit;
+- Raspberry Pi diagnostics: **CPU temperature**, **memory usage**, and **uptime** sensors, plus
+  an **undervoltage** problem sensor that flags an inadequate power supply.
 
 Only Bluetooth sensors are bridged. Mock sensors are a development aid, and MQTT sensor readings
 already come from the broker, so re-publishing them would loop.

@@ -472,6 +472,10 @@ export type SystemInfoBody = {
      */
     readonly $schema?: string;
     /**
+     * CPU temperature in Celsius
+     */
+    cpuTempC?: number;
+    /**
      * OS hostname
      */
     hostname: string;
@@ -480,9 +484,21 @@ export type SystemInfoBody = {
      */
     ip: string;
     /**
+     * Used memory percent
+     */
+    memUsedPct?: number;
+    /**
      * Build target, e.g. linux_armv6
      */
     platform: string;
+    /**
+     * System uptime since boot as a Go duration
+     */
+    systemUptime?: string;
+    /**
+     * True if undervoltage detected
+     */
+    undervoltage?: boolean;
     /**
      * Process uptime as a Go duration, e.g. 3h12m0s
      */
@@ -807,6 +823,10 @@ export type SystemDevicesBodyWritable = {
 
 export type SystemInfoBodyWritable = {
     /**
+     * CPU temperature in Celsius
+     */
+    cpuTempC?: number;
+    /**
      * OS hostname
      */
     hostname: string;
@@ -815,9 +835,21 @@ export type SystemInfoBodyWritable = {
      */
     ip: string;
     /**
+     * Used memory percent
+     */
+    memUsedPct?: number;
+    /**
      * Build target, e.g. linux_armv6
      */
     platform: string;
+    /**
+     * System uptime since boot as a Go duration
+     */
+    systemUptime?: string;
+    /**
+     * True if undervoltage detected
+     */
+    undervoltage?: boolean;
     /**
      * Process uptime as a Go duration, e.g. 3h12m0s
      */
