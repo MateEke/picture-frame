@@ -1,14 +1,14 @@
 ---
-title: Wi-Fi
+title: Network
 description: Connect the frame to a network, and recover it with a built-in hotspot when the network it knew is gone.
 ---
 
-The Wi-Fi page shows the frame's current connection, scans for networks nearby, and connects to
-or forgets them. It also runs a hotspot fallback that rescues a frame which can no longer reach a
-known network, the situation you hit after moving it or changing your Wi-Fi. Find it under
-**Wi-Fi** in the admin interface.
+The Network page shows the frame's current connection, wired or wireless, scans for networks
+nearby, and connects to or forgets them. It also runs a hotspot fallback that rescues a frame which
+can no longer reach a known network, the situation you hit after moving it or changing your Wi-Fi.
+Find it under **Network** in the admin interface.
 
-![The Wi-Fi page: the current connection, saved and available networks, and the hotspot fallback](../../../assets/screenshots/wifi.png)
+![The Network page: the current connection, saved and available networks, and the hotspot fallback](../../../assets/screenshots/network.png)
 
 ## Current connection
 

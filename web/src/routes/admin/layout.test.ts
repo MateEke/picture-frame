@@ -43,9 +43,9 @@ describe('admin layout load', () => {
 	it('redirects to login with an encoded next when required but unauthenticated', async () => {
 		mockLoadAuthStatus.mockResolvedValue({ required: true, authenticated: false });
 
-		await expect(load(event('/admin/wifi', '?tab=ap'))).rejects.toMatchObject({
+		await expect(load(event('/admin/network', '?tab=ap'))).rejects.toMatchObject({
 			status: 307,
-			location: `/login?next=${encodeURIComponent('/admin/wifi?tab=ap')}`
+			location: `/login?next=${encodeURIComponent('/admin/network?tab=ap')}`
 		});
 	});
 });

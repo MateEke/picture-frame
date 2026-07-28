@@ -123,7 +123,7 @@ interface so you know what happened.
 
 Wi-Fi recovery works on the same principle: lose the known network and the frame raises
 its own hotspot with a captive portal, so you can point it at a new one from your phone. See
-[Wi-Fi](/manual/wifi/) and [Software updates](/manual/updates/) for how both look in use.
+[Network](/manual/network/) and [Software updates](/manual/updates/) for how both look in use.
 
 The frame runs on hardware from that first Pi Zero W up to a Pi 3. Most of what is above came from
 getting it to behave on the small end of that range.

@@ -12,7 +12,7 @@ test.describe('dashboard', () => {
 	});
 
 	test('wifi tile shows the mock connection', async ({ dashboard }) => {
-		await expect(dashboard.tileWifi).toContainText('Home-WiFi');
+		await expect(dashboard.tileNetwork).toContainText('Home-WiFi');
 	});
 
 	test('sensor readings render from SSE', async ({ dashboard }) => {
@@ -45,8 +45,8 @@ test.describe('dashboard', () => {
 		await dashboard.tileLibrary.click();
 		await expect(page).toHaveURL(/\/admin\/images$/);
 		await dashboard.goto();
-		await dashboard.tileWifi.click();
-		await expect(page).toHaveURL(/\/admin\/wifi$/);
+		await dashboard.tileNetwork.click();
+		await expect(page).toHaveURL(/\/admin\/network$/);
 	});
 
 	test('now playing card shows the current image', async ({ dashboard }) => {

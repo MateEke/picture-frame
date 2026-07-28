@@ -54,6 +54,6 @@ export class WifiPage {
 	}
 
 	async goto(): Promise<void> {
-		await this.page.goto('/admin/wifi');
+		await this.page.goto('/admin/network');
 	}
 }

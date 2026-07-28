@@ -184,7 +184,7 @@
 </script>
 
 <div class="space-y-6">
-	<h1 class="h2">WiFi</h1>
+	<h1 class="h2">Network</h1>
 
 	{#if status === null}
 		<div class="card bg-surface-100-900 p-6">

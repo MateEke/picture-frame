@@ -2,7 +2,7 @@ import type { Locator, Page } from '@playwright/test';
 
 export class DashboardPage {
 	readonly heading: Locator;
-	readonly tileWifi: Locator;
+	readonly tileNetwork: Locator;
 	readonly tileWeather: Locator;
 	readonly tileLibrary: Locator;
 	readonly sensorReadings: Locator;
@@ -39,7 +39,7 @@ export class DashboardPage {
 
 	constructor(private readonly page: Page) {
 		this.heading = page.getByTestId('dashboard-heading');
-		this.tileWifi = page.getByTestId('tile-wifi');
+		this.tileNetwork = page.getByTestId('tile-network');
 		this.tileWeather = page.getByTestId('tile-weather');
 		this.tileLibrary = page.getByTestId('tile-library');
 		this.sensorReadings = page.getByTestId('sensor-reading');

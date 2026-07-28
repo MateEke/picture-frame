@@ -181,7 +181,7 @@ Outbound Home Assistant auto-discovery.
 
 ## `[wifi]`
 
-See [Wi-Fi](/manual/wifi/).
+See [Network](/manual/network/).
 
 | Key                     | Type    | Default        | Description                                                        |
 | ----------------------- | ------- | -------------- | ------------------------------------------------------------------ |

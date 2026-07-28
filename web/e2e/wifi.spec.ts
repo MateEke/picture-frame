@@ -137,6 +137,6 @@ test.describe('ethernet connection', () => {
 
 	test('dashboard network tile shows Ethernet, not Disconnected', async ({ dashboard }) => {
 		await dashboard.goto();
-		await expect(dashboard.tileWifi).toContainText('Ethernet');
+		await expect(dashboard.tileNetwork).toContainText('Ethernet');
 	});
 });

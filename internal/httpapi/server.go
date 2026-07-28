@@ -194,10 +194,17 @@ func NewServer(cfg Config) http.Handler {
 
 	s.registerRoutes(api)
 
-	// OS captive-portal probe URLs, redirect to /admin/wifi when AP is active.
+	// OS captive-portal probe URLs, redirect to /admin/network when AP is active.
 	for _, path := range captiveProbes {
 		r.Get(path, s.handleCaptiveProbe)
 	}
+
+	// Legacy path; 302 not 301 so a stale bookmark can't outlive a future move.
+	redirectLegacyWiFi := func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, "/admin/network", http.StatusFound)
+	}
+	r.Get("/admin/wifi", redirectLegacyWiFi)
+	r.Head("/admin/wifi", redirectLegacyWiFi) // chi Get doesn't match HEAD; it'd 200 off the SPA
 
 	if cfg.Production {
 		cfg.Log.Info("serving embedded build (production mode)")
