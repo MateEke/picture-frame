@@ -30,7 +30,27 @@ type Client interface {
 	Connect() error
 	Disconnect()
 	Publish(topic string, qos byte, retain bool, payload []byte) error
-	Subscribe(topic string, qos byte, handler func(payload []byte)) error
+	Subscribe(topic string, qos byte, handler func(payload []byte, retained bool)) error
+}
+
+// IP is read per tick because DHCP can move it under a running frame.
+type HostReader interface {
+	Hostname() string
+	IP() string
+}
+
+type PowerController interface {
+	Reboot(ctx context.Context) error
+	PowerOff(ctx context.Context) error
+}
+
+// Deps groups the Publisher's collaborators to keep New's signature short.
+type Deps struct {
+	Bus     *state.Bus
+	Screen  Screen
+	Metrics MetricsReader
+	Host    HostReader
+	Power   PowerController
 }
 
 // Screen is the manual screen-control surface; implemented by *display.Screen.
@@ -48,6 +68,8 @@ type Publisher struct {
 	bus     *state.Bus
 	screen  Screen
 	metrics MetricsReader
+	host    HostReader
+	power   PowerController
 	set     Settings
 	specs   []SensorSpec
 	disc    []message
@@ -67,7 +89,7 @@ type Publisher struct {
 
 // New registers with the Hub at construction so a connect that beats Run still
 // queues a republish.
-func New(log *slog.Logger, hub *Hub, bus *state.Bus, screen Screen, metrics MetricsReader, set Settings, specs []SensorSpec) *Publisher {
+func New(log *slog.Logger, hub *Hub, deps Deps, set Settings, specs []SensorSpec) *Publisher {
 	known := make(map[string]bool, len(specs))
 	for _, s := range specs {
 		known[s.ID] = true
@@ -75,9 +97,11 @@ func New(log *slog.Logger, hub *Hub, bus *state.Bus, screen Screen, metrics Metr
 	p := &Publisher{
 		log:         log,
 		hub:         hub,
-		bus:         bus,
-		screen:      screen,
-		metrics:     metrics,
+		bus:         deps.Bus,
+		screen:      deps.Screen,
+		metrics:     deps.Metrics,
+		host:        deps.Host,
+		power:       deps.Power,
 		set:         set,
 		specs:       specs,
 		disc:        set.discoveryMessages(specs),
@@ -94,7 +118,37 @@ func New(log *slog.Logger, hub *Hub, bus *state.Bus, screen Screen, metrics Metr
 		}
 	})
 	hub.Subscribe(set.switchSetTopic(), 1, p.handleCommand)
+	p.subscribePower()
 	return p
+}
+
+// Wires only the buttons logind permits, so a press on a stale entity cannot
+// reach an action that would fail anyway.
+func (p *Publisher) subscribePower() {
+	if p.power == nil {
+		return
+	}
+	if p.set.CanReboot {
+		p.hub.Subscribe(p.set.rebootCommandTopic(), 1, p.livePress("reboot", p.power.Reboot))
+	}
+	if p.set.CanPowerOff {
+		p.hub.Subscribe(p.set.shutdownCommandTopic(), 1, p.livePress("shutdown", p.power.PowerOff))
+	}
+}
+
+// Retained presses are ignored: a retained payload is redelivered on every
+// reconnect, which for reboot means an unbootable frame.
+func (p *Publisher) livePress(name string, action func(context.Context) error) func([]byte, bool) {
+	return func(_ []byte, retained bool) {
+		if retained {
+			p.log.Warn("mqtt: ignoring retained power command", "button", name)
+			return
+		}
+		p.log.Info("mqtt: power button pressed", "button", name)
+		if err := action(context.Background()); err != nil {
+			p.log.Error("mqtt: power action failed", "button", name, "err", err)
+		}
+	}
 }
 
 // Run mirrors bus events to MQTT until ctx is cancelled. Bridge-offline is
@@ -144,6 +198,10 @@ func (p *Publisher) republish() {
 	p.publish(p.set.bridgeAvailTopic(), availOnline, 1, true)
 	p.publishSwitch(p.screen.Auto())
 	p.publishScreenPower(p.screen.State())
+	// Static, so a connect is the only time it needs publishing.
+	if p.set.Hostname != "" {
+		p.publish(p.set.hostnameStateTopic(), p.set.Hostname, 1, true)
+	}
 	for _, spec := range p.specs {
 		p.publish(p.set.sensorAvailTopic(spec.ID), availabilityWord(p.online[spec.ID]), 1, true)
 	}
@@ -197,7 +255,7 @@ func (p *Publisher) markStale(id string) {
 
 // handleCommand actuates the screen; the resulting KindScreen bus event echoes
 // the new state back to the switch topic, so HA updates exactly once.
-func (p *Publisher) handleCommand(payload []byte) {
+func (p *Publisher) handleCommand(payload []byte, _ bool) {
 	switch strings.ToUpper(strings.TrimSpace(string(payload))) {
 	case payloadOn:
 		if err := p.screen.On(context.Background()); err != nil {
@@ -244,6 +302,12 @@ func (p *Publisher) publishMetrics(ctx context.Context) {
 	}
 	if m.HasThrottle {
 		p.publish(p.set.undervoltageStateTopic(), boolWord(m.Undervoltage), 1, true)
+	}
+	// Skip an empty IP rather than blank a good value during a link drop.
+	if p.host != nil {
+		if ip := p.host.IP(); ip != "" {
+			p.publish(p.set.ipStateTopic(), ip, 1, true)
+		}
 	}
 }
 

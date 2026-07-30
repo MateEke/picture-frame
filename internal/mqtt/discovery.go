@@ -17,6 +17,9 @@ type Settings struct {
 	StaleAfter      time.Duration
 	Device          DeviceMeta // hardware/software metadata for the HA device card
 	Undervoltage    bool       // advertise the undervoltage entity (vcgencmd available)
+	Hostname        string     // OS hostname for the diagnostic sensor
+	CanReboot       bool       // logind permits reboot (polkit rule present)
+	CanPowerOff     bool       // logind permits power-off (polkit rule present)
 }
 
 // DeviceMeta is the optional hardware/software metadata shown on the HA device card.
@@ -37,10 +40,11 @@ type SensorSpec struct {
 }
 
 const (
-	availOnline  = "online"
-	availOffline = "offline"
-	payloadOn    = "ON"
-	payloadOff   = "OFF"
+	availOnline        = "online"
+	availOffline       = "offline"
+	payloadOn          = "ON"
+	payloadOff         = "OFF"
+	diagnosticCategory = "diagnostic"
 )
 
 // BridgeAvailabilityTopic is the bridge availability topic; callers set it as
@@ -62,6 +66,17 @@ func (s Settings) uptimeStateTopic() string  { return s.BaseTopic + "/sensor/upt
 func (s Settings) undervoltageStateTopic() string {
 	return s.BaseTopic + "/binary_sensor/undervoltage/state"
 }
+func (s Settings) hostnameStateTopic() string { return s.BaseTopic + "/sensor/hostname/state" }
+func (s Settings) ipStateTopic() string       { return s.BaseTopic + "/sensor/ip_address/state" }
+
+func (s Settings) rebootCommandTopic() string {
+	return s.BaseTopic + "/button/reboot/set"
+}
+
+func (s Settings) shutdownCommandTopic() string {
+	return s.BaseTopic + "/button/shutdown/set"
+}
+
 func (s Settings) sensorAvailTopic(id string) string {
 	return s.BaseTopic + "/sensor/" + id + "/availability"
 }
@@ -108,8 +123,9 @@ type haAvailability struct {
 type discoveryConfig struct {
 	UniqueID          string           `json:"unique_id"`
 	Name              string           `json:"name"`
-	StateTopic        string           `json:"state_topic"`
+	StateTopic        string           `json:"state_topic,omitempty"` // omitted for command-only buttons
 	CommandTopic      string           `json:"command_topic,omitempty"`
+	Icon              string           `json:"icon,omitempty"`
 	DeviceClass       string           `json:"device_class,omitempty"`
 	StateClass        string           `json:"state_class,omitempty"`
 	UnitOfMeasurement string           `json:"unit_of_measurement,omitempty"`
@@ -147,30 +163,78 @@ func (s Settings) discoveryMessages(specs []SensorSpec) []message {
 	}
 	msgs = append(msgs, s.switchDiscovery(dev), s.screenPowerDiscovery(dev))
 	msgs = append(msgs, s.hostMetricDiscoveries(dev)...)
+	msgs = append(msgs, s.hostInfoDiscoveries(dev)...)
+	msgs = append(msgs, s.powerDiscoveries(dev)...)
 	return msgs
+}
+
+// Hostname and IP are the two facts you need to reach the frame, and HA's device
+// card has nowhere to show them.
+func (s Settings) hostInfoDiscoveries(dev haDevice) []message {
+	avail := []haAvailability{{Topic: s.bridgeAvailTopic()}}
+	host := discoveryConfig{
+		UniqueID: s.NodeID + "_hostname", Name: "Hostname",
+		StateTopic: s.hostnameStateTopic(), Icon: "mdi:server",
+		EntityCategory: diagnosticCategory, Availability: avail, AvailabilityMode: "all", Device: dev,
+	}
+	ip := discoveryConfig{
+		UniqueID: s.NodeID + "_ip_address", Name: "IP Address",
+		StateTopic: s.ipStateTopic(), Icon: "mdi:ip-network",
+		EntityCategory: diagnosticCategory, Availability: avail, AvailabilityMode: "all", Device: dev,
+	}
+	return []message{
+		discoveryMessage(s.discoveryTopic("sensor", "hostname"), host),
+		discoveryMessage(s.discoveryTopic("sensor", "ip_address"), ip),
+	}
+}
+
+func (s Settings) powerDiscoveries(dev haDevice) []message {
+	avail := []haAvailability{{Topic: s.bridgeAvailTopic()}}
+	reboot := discoveryConfig{
+		UniqueID: s.NodeID + "_reboot", Name: "Reboot",
+		CommandTopic: s.rebootCommandTopic(), DeviceClass: "restart", Icon: "mdi:restart",
+		Availability: avail, AvailabilityMode: "all", Device: dev,
+	}
+	shutdown := discoveryConfig{
+		UniqueID: s.NodeID + "_shutdown", Name: "Shutdown",
+		CommandTopic: s.shutdownCommandTopic(), Icon: "mdi:power",
+		Availability: avail, AvailabilityMode: "all", Device: dev,
+	}
+	return []message{
+		buttonMessage(s.discoveryTopic("button", "reboot"), reboot, s.CanReboot),
+		buttonMessage(s.discoveryTopic("button", "shutdown"), shutdown, s.CanPowerOff),
+	}
+}
+
+// An empty retained payload makes HA drop the entity, so a frame that loses the
+// polkit rule stops advertising a button that could only fail.
+func buttonMessage(topic string, cfg discoveryConfig, permitted bool) message {
+	if !permitted {
+		return message{topic: topic, payload: nil, qos: 1, retain: true}
+	}
+	return discoveryMessage(topic, cfg)
 }
 
 // hostMetricDiscoveries advertises the Pi telemetry, plus undervoltage when vcgencmd
 // is available. Bridge availability alone gates them: a live frame means live values.
 func (s Settings) hostMetricDiscoveries(dev haDevice) []message {
-	const diag = "diagnostic"
 	avail := []haAvailability{{Topic: s.bridgeAvailTopic()}}
 
 	temp := discoveryConfig{
 		UniqueID: s.NodeID + "_cpu_temperature", Name: "CPU Temperature",
 		StateTopic: s.cpuTempStateTopic(), DeviceClass: "temperature",
 		UnitOfMeasurement: sensorUnits["temperature"], StateClass: "measurement",
-		EntityCategory: diag, Availability: avail, AvailabilityMode: "all", Device: dev,
+		EntityCategory: diagnosticCategory, Availability: avail, AvailabilityMode: "all", Device: dev,
 	}
 	mem := discoveryConfig{
 		UniqueID: s.NodeID + "_memory_usage", Name: "Memory Usage",
 		StateTopic: s.memoryStateTopic(), UnitOfMeasurement: "%", StateClass: "measurement",
-		EntityCategory: diag, Availability: avail, AvailabilityMode: "all", Device: dev,
+		EntityCategory: diagnosticCategory, Availability: avail, AvailabilityMode: "all", Device: dev,
 	}
 	uptime := discoveryConfig{
 		UniqueID: s.NodeID + "_uptime", Name: "Uptime",
 		StateTopic: s.uptimeStateTopic(), DeviceClass: "timestamp", // boot time; HA renders "x days"
-		EntityCategory: diag, Availability: avail, AvailabilityMode: "all", Device: dev,
+		EntityCategory: diagnosticCategory, Availability: avail, AvailabilityMode: "all", Device: dev,
 	}
 	msgs := []message{
 		discoveryMessage(s.discoveryTopic("sensor", "cpu_temperature"), temp),
@@ -182,7 +246,7 @@ func (s Settings) hostMetricDiscoveries(dev haDevice) []message {
 			UniqueID: s.NodeID + "_undervoltage", Name: "Undervoltage",
 			StateTopic: s.undervoltageStateTopic(), DeviceClass: "problem",
 			PayloadOn: payloadOn, PayloadOff: payloadOff,
-			EntityCategory: diag, Availability: avail, AvailabilityMode: "all", Device: dev,
+			EntityCategory: diagnosticCategory, Availability: avail, AvailabilityMode: "all", Device: dev,
 		}
 		msgs = append(msgs, discoveryMessage(s.discoveryTopic("binary_sensor", "undervoltage"), uv))
 	}

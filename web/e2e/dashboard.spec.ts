@@ -74,3 +74,66 @@ test.describe('dashboard', () => {
 		await expect(dashboard.tileWeather).toContainText('18.5'); // SSE reconnected
 	});
 });
+
+test.describe('host power controls', () => {
+	test.beforeEach(async ({ dashboard }) => {
+		await dashboard.goto();
+		await expect(dashboard.heading).toBeVisible();
+	});
+
+	test('reboot asks for confirmation and can be cancelled', async ({ dashboard }) => {
+		await dashboard.reboot.click();
+		await expect(dashboard.rebootDialog).toBeVisible();
+		await expect(dashboard.rebootDialog).toContainText('whole device restarts');
+		await dashboard.rebootDialog.getByRole('button', { name: 'Cancel' }).click();
+		await expect(dashboard.rebootDialog).toBeHidden();
+	});
+
+	// Shutdown is unrecoverable, so the wording has to say so plainly.
+	test('shutdown warns that the frame will not come back on its own', async ({ dashboard }) => {
+		await dashboard.shutdown.click();
+		await expect(dashboard.shutdownDialog).toBeVisible();
+		await expect(dashboard.shutdownDialog).toContainText('physically power it on again');
+		await dashboard.shutdownDialog.getByRole('button', { name: 'Cancel' }).click();
+		await expect(dashboard.shutdownDialog).toBeHidden();
+	});
+
+	// The dev mock never touches the host; this only proves the request lands.
+	test('confirming shutdown reports progress', async ({ dashboard }) => {
+		await dashboard.shutdown.click();
+		await dashboard.shutdownConfirm.click();
+		await expect(dashboard.shutdownDialog).toContainText('Powering off');
+	});
+
+	// A real reboot answers /healthz for seconds while systemd stops units, so the
+	// dialog must not reload on the first success. The dev mock never goes down,
+	// which is the worst case: it must keep waiting rather than reload.
+	test('waiting for a reboot does not reload while the server still answers', async ({
+		page,
+		dashboard
+	}) => {
+		let reloads = 0;
+		page.on('load', () => reloads++);
+
+		await dashboard.reboot.click();
+		await dashboard.rebootConfirm.click();
+		await expect(dashboard.rebootDialog).toContainText('Waiting for the frame');
+
+		await page.waitForTimeout(5000); // two poll cycles
+		await expect(dashboard.rebootDialog).toContainText('Waiting for the frame');
+		expect(reloads).toBe(0);
+	});
+});
+
+// Own server: the dev mock reports no polkit rule.
+test.describe('host power denied', () => {
+	test.use({ serverOptions: { powerDenied: true } });
+
+	test('reboot and shutdown are hidden, restart still works', async ({ dashboard }) => {
+		await dashboard.goto();
+		await expect(dashboard.heading).toBeVisible();
+		await expect(dashboard.reboot).toBeHidden();
+		await expect(dashboard.shutdown).toBeHidden();
+		await expect(dashboard.restart).toBeVisible();
+	});
+});

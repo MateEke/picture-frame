@@ -19,6 +19,12 @@ export class DashboardPage {
 	readonly restartDialog: Locator;
 	readonly restartCancel: Locator;
 	readonly restartConfirm: Locator;
+	readonly reboot: Locator;
+	readonly shutdown: Locator;
+	readonly rebootDialog: Locator;
+	readonly rebootConfirm: Locator;
+	readonly shutdownDialog: Locator;
+	readonly shutdownConfirm: Locator;
 	readonly version: Locator;
 	readonly updatePanel: Locator;
 	readonly updateNow: Locator;
@@ -56,6 +62,12 @@ export class DashboardPage {
 		this.restartDialog = page.getByTestId('restart-dialog');
 		this.restartCancel = page.getByTestId('restart-cancel');
 		this.restartConfirm = page.getByTestId('restart-confirm');
+		this.reboot = page.getByTestId('dashboard-reboot');
+		this.shutdown = page.getByTestId('dashboard-shutdown');
+		this.rebootDialog = page.getByTestId('power-dialog-reboot');
+		this.rebootConfirm = page.getByTestId('power-confirm-reboot');
+		this.shutdownDialog = page.getByTestId('power-dialog-shutdown');
+		this.shutdownConfirm = page.getByTestId('power-confirm-shutdown');
 		this.version = page.getByTestId('dashboard-version');
 		this.updatePanel = page.getByTestId('update-panel');
 		this.updateNow = page.getByTestId('update-now');

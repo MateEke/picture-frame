@@ -59,6 +59,19 @@ The system card reports the device's basics.
   reads OK unless the Pi reports undervoltage.
 - **Restart.** Restarts the program in place, without rebooting the Pi. Use it to apply the few
   settings that ask for a restart (see [Configuration basics](/getting-started/configuration/)).
+- **Reboot.** Restarts the whole device. Slower than a restart, and the right choice when the Pi
+  itself is misbehaving rather than the frame program.
+- **Shut down.** Powers the device off. It stays off until someone powers it on again, so use it
+  before unplugging the frame rather than pulling the cord on a running system.
+
+Each of the three asks for confirmation first. The same two device actions are available from
+[Home Assistant](/manual/home-assistant/).
+
+:::note[Installed before version 1.2.3?]
+Reboot and shut down need permission from the device that software updates alone do not deliver.
+If the buttons are missing, rerun the install script from
+[Install](/getting-started/install/); it keeps your settings and photos.
+:::
 
 ## Software updates
 

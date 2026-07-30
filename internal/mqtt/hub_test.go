@@ -30,7 +30,7 @@ func TestHubSubscribeAfterConnectIssuesImmediately(t *testing.T) {
 	hub := NewHub(testutil.NopLogger(), client)
 
 	hub.onConnect()
-	hub.Subscribe("late/topic", 1, func([]byte) {})
+	hub.Subscribe("late/topic", 1, func([]byte, bool) {})
 	if client.subs["late/topic"] == nil {
 		t.Fatal("subscription after connect should be issued to the broker synchronously")
 	}
@@ -42,7 +42,7 @@ func TestHubSubscribeAfterConnectLogsButRecordsOnBrokerError(t *testing.T) {
 	hub.onConnect()
 
 	client.subErr = errors.New("rejected")
-	hub.Subscribe("retry/topic", 1, func([]byte) {})
+	hub.Subscribe("retry/topic", 1, func([]byte, bool) {})
 
 	client.subErr = nil
 	client.subs = nil
@@ -57,20 +57,20 @@ func TestHubSubscribeReplayedOnEveryConnect(t *testing.T) {
 	hub := NewHub(testutil.NopLogger(), client)
 
 	var calls int32
-	hub.Subscribe("topic/a", 1, func([]byte) { atomic.AddInt32(&calls, 1) })
+	hub.Subscribe("topic/a", 1, func([]byte, bool) { atomic.AddInt32(&calls, 1) })
 
 	hub.onConnect()
 	if client.subs["topic/a"] == nil {
 		t.Fatal("subscription not replayed on first connect")
 	}
-	client.subs["topic/a"]([]byte("x"))
+	client.subs["topic/a"]([]byte("x"), false)
 
 	client.subs = nil // simulate broker forgetting on reconnect
 	hub.onConnect()
 	if client.subs["topic/a"] == nil {
 		t.Fatal("subscription not replayed on reconnect")
 	}
-	client.subs["topic/a"]([]byte("y"))
+	client.subs["topic/a"]([]byte("y"), false)
 
 	if atomic.LoadInt32(&calls) != 2 {
 		t.Errorf("handler call count = %d, want 2", calls)
@@ -140,7 +140,7 @@ func TestHubConnectionLostClearsConnectedFlag(t *testing.T) {
 	client.onConnectionLost(errors.New("broker reset"))
 
 	client.subs = nil
-	hub.Subscribe("offline/topic", 0, func([]byte) {})
+	hub.Subscribe("offline/topic", 0, func([]byte, bool) {})
 	if client.subs != nil {
 		t.Errorf("Subscribe should not call client.Subscribe while disconnected, got %v", client.subs)
 	}

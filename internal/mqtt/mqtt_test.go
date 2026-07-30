@@ -26,7 +26,7 @@ type fakeClient struct {
 	pubs             []pubRec
 	onConnect        func()
 	onConnectionLost func(err error)
-	subs             map[string]func([]byte)
+	subs             map[string]func([]byte, bool)
 	connectFails     int // transient failures before the next Connect succeeds
 	subErr           error
 	pubErr           error
@@ -66,14 +66,14 @@ func (c *fakeClient) Publish(topic string, qos byte, retain bool, payload []byte
 	return nil
 }
 
-func (c *fakeClient) Subscribe(topic string, _ byte, h func([]byte)) error {
+func (c *fakeClient) Subscribe(topic string, _ byte, h func([]byte, bool)) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.subErr != nil {
 		return c.subErr
 	}
 	if c.subs == nil {
-		c.subs = make(map[string]func([]byte))
+		c.subs = make(map[string]func([]byte, bool))
 	}
 	c.subs[topic] = h
 	return nil
@@ -144,19 +144,19 @@ func (f fakeReader) Read(context.Context) hostmetrics.Metrics { return f.m }
 
 func newTestPublisher(client *fakeClient, screen Screen) *Publisher {
 	hub := NewHub(testutil.NopLogger(), client)
-	return New(testutil.NopLogger(), hub, state.NewBus(), screen, fakeReader{}, testSettings(), testSpecs())
+	return New(testutil.NopLogger(), hub, Deps{Bus: state.NewBus(), Screen: screen, Metrics: fakeReader{}}, testSettings(), testSpecs())
 }
 
 // newTestPublisherWithHub returns both for tests that drive the connection explicitly.
 func newTestPublisherWithHub(client *fakeClient, screen Screen, bus *state.Bus) (*Publisher, *Hub) {
 	hub := NewHub(testutil.NopLogger(), client)
-	return New(testutil.NopLogger(), hub, bus, screen, fakeReader{}, testSettings(), testSpecs()), hub
+	return New(testutil.NopLogger(), hub, Deps{Bus: bus, Screen: screen, Metrics: fakeReader{}}, testSettings(), testSpecs()), hub
 }
 
 // newTestPublisherWithReader drives the metrics poller with a specific snapshot.
 func newTestPublisherWithReader(client *fakeClient, bus *state.Bus, m hostmetrics.Metrics) (*Publisher, *Hub) {
 	hub := NewHub(testutil.NopLogger(), client)
-	return New(testutil.NopLogger(), hub, bus, &fakeScreen{bus: bus}, fakeReader{m: m}, testSettings(), testSpecs()), hub
+	return New(testutil.NopLogger(), hub, Deps{Bus: bus, Screen: &fakeScreen{bus: bus}, Metrics: fakeReader{m: m}}, testSettings(), testSpecs()), hub
 }
 
 func sensorEvent(id, kind string, value float64) state.Event {
@@ -432,7 +432,7 @@ func TestMarkFreshStaleAfterDisabledSkipsTimer(t *testing.T) {
 	set := testSettings()
 	set.StaleAfter = 0
 	hub := NewHub(testutil.NopLogger(), client)
-	p := New(testutil.NopLogger(), hub, state.NewBus(), &fakeScreen{}, fakeReader{}, set, testSpecs())
+	p := New(testutil.NopLogger(), hub, Deps{Bus: state.NewBus(), Screen: &fakeScreen{}, Metrics: fakeReader{}}, set, testSpecs())
 	stale := make(chan string, 1)
 
 	p.markFresh(context.Background(), "living_room", stale)
@@ -484,17 +484,17 @@ func TestHandleCommand(t *testing.T) {
 	screen := &fakeScreen{bus: bus}
 	client := &fakeClient{}
 	hub := NewHub(testutil.NopLogger(), client)
-	p := New(testutil.NopLogger(), hub, bus, screen, fakeReader{}, testSettings(), testSpecs())
+	p := New(testutil.NopLogger(), hub, Deps{Bus: bus, Screen: screen, Metrics: fakeReader{}}, testSettings(), testSpecs())
 
-	p.handleCommand([]byte("ON"))
+	p.handleCommand([]byte("ON"), false)
 	if screen.ons != 1 {
 		t.Errorf("On calls: %d, want 1", screen.ons)
 	}
-	p.handleCommand([]byte(" off ")) // trimmed + case-insensitive
+	p.handleCommand([]byte(" off "), false) // trimmed + case-insensitive
 	if screen.offs != 1 {
 		t.Errorf("Off calls: %d, want 1", screen.offs)
 	}
-	p.handleCommand([]byte("garbage")) // ignored, no panic
+	p.handleCommand([]byte("garbage"), false) // ignored, no panic
 	if screen.ons != 1 || screen.offs != 1 {
 		t.Errorf("unknown command must not actuate: ons=%d offs=%d", screen.ons, screen.offs)
 	}
@@ -504,10 +504,10 @@ func TestHandleCommandScreenErrorIsLogged(t *testing.T) {
 	bus := state.NewBus()
 	screen := &fakeScreen{bus: bus, err: errors.New("vcgencmd failed")}
 	hub := NewHub(testutil.NopLogger(), &fakeClient{})
-	p := New(testutil.NopLogger(), hub, bus, screen, fakeReader{}, testSettings(), testSpecs())
+	p := New(testutil.NopLogger(), hub, Deps{Bus: bus, Screen: screen, Metrics: fakeReader{}}, testSettings(), testSpecs())
 
-	p.handleCommand([]byte("ON"))
-	p.handleCommand([]byte("OFF"))
+	p.handleCommand([]byte("ON"), false)
+	p.handleCommand([]byte("OFF"), false)
 	if screen.ons != 0 || screen.offs != 0 {
 		t.Errorf("failed actuation must not count: ons=%d offs=%d", screen.ons, screen.offs)
 	}
@@ -628,5 +628,212 @@ func TestFormatValueFullPrecision(t *testing.T) {
 	}
 	if got := formatValue("motion", 0); got != payloadOff {
 		t.Errorf("motion 0: got %q, want %q", got, payloadOff)
+	}
+}
+
+// ip is settable to model DHCP moves; the Publisher reads it from its own goroutine.
+type fakeHost struct {
+	mu   sync.Mutex
+	name string
+	ip   string
+}
+
+func (h *fakeHost) Hostname() string { return h.name }
+
+func (h *fakeHost) IP() string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.ip
+}
+
+func (h *fakeHost) setIP(ip string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.ip = ip
+}
+
+type fakePower struct {
+	mu       sync.Mutex
+	reboots  int
+	poweroff int
+	err      error
+}
+
+func (p *fakePower) Reboot(context.Context) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.err != nil {
+		return p.err
+	}
+	p.reboots++
+	return nil
+}
+
+func (p *fakePower) PowerOff(context.Context) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.err != nil {
+		return p.err
+	}
+	p.poweroff++
+	return nil
+}
+
+func (p *fakePower) counts() (int, int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.reboots, p.poweroff
+}
+
+func newPowerPublisher(client *fakeClient, pw PowerController, set Settings) (*Publisher, *Hub) {
+	bus := state.NewBus()
+	hub := NewHub(testutil.NopLogger(), client)
+	deps := Deps{Bus: bus, Screen: &fakeScreen{bus: bus}, Metrics: fakeReader{}, Power: pw}
+	return New(testutil.NopLogger(), hub, deps, set, testSpecs()), hub
+}
+
+func powerSettings() Settings {
+	s := testSettings()
+	s.CanReboot, s.CanPowerOff = true, true
+	return s
+}
+
+func TestPublishesHostnameOnConnect(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		client := &fakeClient{}
+		bus := state.NewBus()
+		hub := NewHub(testutil.NopLogger(), client)
+		set := testSettings()
+		set.Hostname = "pictureframe-751f"
+		deps := Deps{Bus: bus, Screen: &fakeScreen{bus: bus}, Metrics: fakeReader{}, Host: &fakeHost{name: set.Hostname}}
+		p := New(testutil.NopLogger(), hub, deps, set, testSpecs())
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go p.Run(ctx)
+		go hub.Connect(ctx)
+		synctest.Wait()
+
+		if v, _ := client.lastPayload("picture-frame/sensor/hostname/state"); v != "pictureframe-751f" {
+			t.Errorf("hostname: got %q, want pictureframe-751f", v)
+		}
+	})
+}
+
+func TestPublishesIPOnMetricsTick(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		client := &fakeClient{}
+		bus := state.NewBus()
+		hub := NewHub(testutil.NopLogger(), client)
+		host := &fakeHost{name: "frame", ip: "10.0.2.11"}
+		deps := Deps{Bus: bus, Screen: &fakeScreen{bus: bus}, Metrics: fakeReader{}, Host: host}
+		p := New(testutil.NopLogger(), hub, deps, testSettings(), testSpecs())
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go p.Run(ctx)
+		go hub.Connect(ctx)
+		synctest.Wait()
+
+		if v, _ := client.lastPayload("picture-frame/sensor/ip_address/state"); v != "10.0.2.11" {
+			t.Errorf("ip: got %q, want 10.0.2.11", v)
+		}
+
+		// A DHCP move must reach HA on the next tick.
+		host.setIP("10.0.2.99")
+		time.Sleep(hostMetricsInterval + time.Second)
+		synctest.Wait()
+		if v, _ := client.lastPayload("picture-frame/sensor/ip_address/state"); v != "10.0.2.99" {
+			t.Errorf("ip after move: got %q, want 10.0.2.99", v)
+		}
+	})
+}
+
+// A blank IP means the link is down, not that the address is gone.
+func TestBlankIPIsNotPublished(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		client := &fakeClient{}
+		bus := state.NewBus()
+		hub := NewHub(testutil.NopLogger(), client)
+		deps := Deps{Bus: bus, Screen: &fakeScreen{bus: bus}, Metrics: fakeReader{}, Host: &fakeHost{}}
+		p := New(testutil.NopLogger(), hub, deps, testSettings(), testSpecs())
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go p.Run(ctx)
+		go hub.Connect(ctx)
+		synctest.Wait()
+
+		if _, ok := client.lastPayload("picture-frame/sensor/ip_address/state"); ok {
+			t.Error("empty IP must not be published")
+		}
+	})
+}
+
+func TestPowerButtonPressInvokesAction(t *testing.T) {
+	client := &fakeClient{}
+	pw := &fakePower{}
+	_, hub := newPowerPublisher(client, pw, powerSettings())
+	hub.Connect(context.Background())
+
+	client.subs["picture-frame/button/reboot/set"]([]byte("PRESS"), false)
+	client.subs["picture-frame/button/shutdown/set"]([]byte("PRESS"), false)
+
+	if r, o := pw.counts(); r != 1 || o != 1 {
+		t.Errorf("want one of each, got reboot=%d poweroff=%d", r, o)
+	}
+}
+
+// Honouring a retained press would leave the frame rebooting forever.
+func TestRetainedPowerPressIsIgnored(t *testing.T) {
+	client := &fakeClient{}
+	pw := &fakePower{}
+	_, hub := newPowerPublisher(client, pw, powerSettings())
+	hub.Connect(context.Background())
+
+	client.subs["picture-frame/button/reboot/set"]([]byte("PRESS"), true)
+	client.subs["picture-frame/button/shutdown/set"]([]byte("PRESS"), true)
+
+	if r, o := pw.counts(); r != 0 || o != 0 {
+		t.Errorf("retained press must not actuate, got reboot=%d poweroff=%d", r, o)
+	}
+}
+
+func TestPowerCommandsNotSubscribedWhenDenied(t *testing.T) {
+	client := &fakeClient{}
+	_, hub := newPowerPublisher(client, &fakePower{}, testSettings())
+	hub.Connect(context.Background())
+
+	if client.subs["picture-frame/button/reboot/set"] != nil {
+		t.Error("reboot must not be subscribed when logind denies it")
+	}
+	if client.subs["picture-frame/button/shutdown/set"] != nil {
+		t.Error("shutdown must not be subscribed when logind denies it")
+	}
+}
+
+func TestPowerCommandsNotSubscribedWithoutController(t *testing.T) {
+	client := &fakeClient{}
+	bus := state.NewBus()
+	hub := NewHub(testutil.NopLogger(), client)
+	deps := Deps{Bus: bus, Screen: &fakeScreen{bus: bus}, Metrics: fakeReader{}}
+	New(testutil.NopLogger(), hub, deps, powerSettings(), testSpecs())
+	hub.Connect(context.Background())
+
+	if client.subs["picture-frame/button/reboot/set"] != nil {
+		t.Error("no controller means no power subscription")
+	}
+}
+
+func TestPowerActionErrorIsLogged(t *testing.T) {
+	client := &fakeClient{}
+	pw := &fakePower{err: errors.New("logind refused")}
+	_, hub := newPowerPublisher(client, pw, powerSettings())
+	hub.Connect(context.Background())
+
+	client.subs["picture-frame/button/reboot/set"]([]byte("PRESS"), false) // must not panic
+
+	if r, _ := pw.counts(); r != 0 {
+		t.Errorf("failed action must not count: %d", r)
 	}
 }

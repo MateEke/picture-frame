@@ -16,7 +16,7 @@ import (
 
 // Hub is the subset of *mqtt.Hub the subscriber needs.
 type Hub interface {
-	Subscribe(topic string, qos byte, handler func([]byte))
+	Subscribe(topic string, qos byte, handler func(payload []byte, retained bool))
 }
 
 const defaultQoS byte = 0
@@ -50,7 +50,9 @@ func New(log *slog.Logger, cfg config.SensorConfig, hub Hub) (*Source, error) {
 		jsonField: cfg.JSONField,
 		internal:  make(chan sensors.Reading, 8),
 	}
-	hub.Subscribe(cfg.Topic, defaultQoS, func(payload []byte) {
+	// Retained readings are welcome here: they seed a value before the sensor
+	// next reports.
+	hub.Subscribe(cfg.Topic, defaultQoS, func(payload []byte, _ bool) {
 		r, ok := s.decode(payload)
 		if !ok {
 			return

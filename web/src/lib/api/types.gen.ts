@@ -472,6 +472,14 @@ export type SystemInfoBody = {
      */
     readonly $schema?: string;
     /**
+     * Host power-off is permitted (polkit rule present)
+     */
+    canPowerOff: boolean;
+    /**
+     * Host reboot is permitted (polkit rule present)
+     */
+    canReboot: boolean;
+    /**
      * CPU temperature in Celsius
      */
     cpuTempC?: number;
@@ -822,6 +830,14 @@ export type SystemDevicesBodyWritable = {
 };
 
 export type SystemInfoBodyWritable = {
+    /**
+     * Host power-off is permitted (polkit rule present)
+     */
+    canPowerOff: boolean;
+    /**
+     * Host reboot is permitted (polkit rule present)
+     */
+    canReboot: boolean;
     /**
      * CPU temperature in Celsius
      */
@@ -1494,6 +1510,29 @@ export type GetLicensesResponses = {
 
 export type GetLicensesResponse = GetLicensesResponses[keyof GetLicensesResponses];
 
+export type SystemRebootData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/system/reboot';
+};
+
+export type SystemRebootErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type SystemRebootError = SystemRebootErrors[keyof SystemRebootErrors];
+
+export type SystemRebootResponses = {
+    /**
+     * Accepted
+     */
+    202: unknown;
+};
+
 export type SystemRestartData = {
     body?: never;
     path?: never;
@@ -1511,6 +1550,29 @@ export type SystemRestartErrors = {
 export type SystemRestartError = SystemRestartErrors[keyof SystemRestartErrors];
 
 export type SystemRestartResponses = {
+    /**
+     * Accepted
+     */
+    202: unknown;
+};
+
+export type SystemShutdownData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/system/shutdown';
+};
+
+export type SystemShutdownErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type SystemShutdownError = SystemShutdownErrors[keyof SystemShutdownErrors];
+
+export type SystemShutdownResponses = {
     /**
      * Accepted
      */

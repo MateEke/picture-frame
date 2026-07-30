@@ -13,6 +13,8 @@
 		MonitorIcon,
 		ServerIcon,
 		RotateCcwIcon,
+		RotateCwIcon,
+		PowerIcon,
 		InfoIcon
 	} from '@lucide/svelte';
 	import { resolve } from '$app/paths';
@@ -27,6 +29,8 @@
 	import AboutModal from './components/AboutModal.svelte';
 	import UpdatePanel from './components/UpdatePanel.svelte';
 	import RestartConfirmDialog from './settings/components/RestartConfirmDialog.svelte';
+	import PowerConfirmDialog from './components/PowerConfirmDialog.svelte';
+	import type { PowerAction } from '$lib/power';
 
 	let { data }: PageProps = $props();
 	const sse = getSSEContext();
@@ -44,6 +48,11 @@
 	let toggleScreenBusy = $state(false);
 	let showRestartDialog = $state(false);
 	let showAbout = $state(false);
+	let powerAction: PowerAction | null = $state(null);
+	// False unless the polkit rule permits the action, so a frame installed before
+	// the rule shipped shows nothing to press.
+	const canReboot = $derived(data.system?.canReboot ?? false);
+	const canPowerOff = $derived(data.system?.canPowerOff ?? false);
 
 	const version = $derived(data.system?.version ?? data.update?.current ?? '—');
 
@@ -105,6 +114,10 @@
 <div class="mx-auto max-w-3xl space-y-6">
 	{#if showRestartDialog}
 		<RestartConfirmDialog oncancel={() => (showRestartDialog = false)} />
+	{/if}
+
+	{#if powerAction}
+		<PowerConfirmDialog action={powerAction} onclose={() => (powerAction = null)} />
 	{/if}
 
 	<AboutModal
@@ -226,14 +239,36 @@
 				<ServerIcon class="text-primary-500 size-5" />
 				<h2 class="h4">System</h2>
 			</div>
-			<button
-				class="btn btn-sm preset-tonal-surface flex items-center gap-1.5"
-				data-testid="dashboard-restart"
-				onclick={() => (showRestartDialog = true)}
-			>
-				<RotateCcwIcon class="text-error-500 size-4" />
-				Restart
-			</button>
+			<div class="flex flex-wrap items-center justify-end gap-2">
+				<button
+					class="btn btn-sm preset-tonal-surface flex items-center gap-1.5"
+					data-testid="dashboard-restart"
+					onclick={() => (showRestartDialog = true)}
+				>
+					<RotateCcwIcon class="text-error-500 size-4" />
+					Restart
+				</button>
+				{#if canReboot}
+					<button
+						class="btn btn-sm preset-tonal-surface flex items-center gap-1.5"
+						data-testid="dashboard-reboot"
+						onclick={() => (powerAction = 'reboot')}
+					>
+						<RotateCwIcon class="text-error-500 size-4" />
+						Reboot
+					</button>
+				{/if}
+				{#if canPowerOff}
+					<button
+						class="btn btn-sm preset-tonal-surface flex items-center gap-1.5"
+						data-testid="dashboard-shutdown"
+						onclick={() => (powerAction = 'shutdown')}
+					>
+						<PowerIcon class="text-error-500 size-4" />
+						Shut down
+					</button>
+				{/if}
+			</div>
 		</div>
 
 		<dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4">

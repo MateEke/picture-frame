@@ -30,6 +30,8 @@ export type ServerOptions = {
 	minimalOverlay?: boolean;
 	/** ROTATION_MOCK=unsupported → rotation select disabled with the install hint. */
 	rotationUnsupported?: boolean;
+	/** POWER_MOCK=denied → no polkit rule, so reboot/shutdown stay hidden. */
+	powerDenied?: boolean;
 	/** Slideshow dwell, e.g. "60s" to keep auto-advance out of an assertion. */
 	slideshowInterval?: string;
 };
@@ -82,6 +84,7 @@ async function spawnOnce(opts: ServerOptions): Promise<PfServer> {
 	if (opts.updateOutcome) env.UPDATER_MOCK_OUTCOME = opts.updateOutcome;
 	if (opts.updateOffline) env.UPDATER_MOCK_OFFLINE = '1';
 	if (opts.rotationUnsupported) env.ROTATION_MOCK = 'unsupported';
+	if (opts.powerDenied) env.POWER_MOCK = 'denied';
 
 	const proc = spawn(
 		binaryPath(),

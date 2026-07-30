@@ -387,10 +387,13 @@ set_hostname() {
 }
 
 install_polkit() {
-    log "installing polkit rule"
-    local dst="/etc/polkit-1/rules.d/50-pictureframe-networkmanager.rules"
-    sed "s/@@USER@@/$SERVICE_USER/g" "$SRC_DIR/polkit/50-pictureframe-networkmanager.rules" | write_file "$dst"
-    run_cmd chmod 644 "$dst"
+    log "installing polkit rules"
+    local rule dst
+    for rule in 50-pictureframe-networkmanager 50-pictureframe-power; do
+        dst="/etc/polkit-1/rules.d/$rule.rules"
+        sed "s/@@USER@@/$SERVICE_USER/g" "$SRC_DIR/polkit/$rule.rules" | write_file "$dst"
+        run_cmd chmod 644 "$dst"
+    done
 }
 
 install_units() {
@@ -628,6 +631,7 @@ uninstall() {
     run_cmd nmcli connection delete hotspot 2>/dev/null || true
     run_cmd rm -f /etc/NetworkManager/dnsmasq-shared.d/captive-portal.conf
     run_cmd rm -f /etc/polkit-1/rules.d/50-pictureframe-networkmanager.rules
+    run_cmd rm -f /etc/polkit-1/rules.d/50-pictureframe-power.rules
     local f
     for f in /boot/firmware/cmdline.txt /boot/cmdline.txt /boot/firmware/config.txt /boot/config.txt; do
         if [ -f "$f.pictureframe.bak" ]; then

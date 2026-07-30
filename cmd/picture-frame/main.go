@@ -203,9 +203,10 @@ func run() error {
 	}
 
 	hostReader := newHostReader()
+	powerMgr := newPowerManager(ctx, log, production)
 
 	// MQTT must come before sources (which register subs) and before Connect.
-	mqttHub, pubDone := setupMQTT(ctx, log, cfg, bus, screen, hostReader)
+	mqttHub, pubDone := setupMQTT(ctx, log, cfg, bus, screen, hostReader, powerMgr)
 
 	sources := buildSources(log, cfg, mqttHub)
 	roles := config.SensorRoles(cfg.Sensors)
@@ -257,6 +258,7 @@ func run() error {
 			LiveConfig:    liveCfg,
 			Restart:       restartFn,
 			HostMetrics:   hostReader,
+			Power:         powerMgr,
 		}),
 	}
 

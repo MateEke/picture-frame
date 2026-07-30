@@ -45,6 +45,15 @@ layout (a modeset flash plus view-placement errors).
   userspace fixes apply live, while kernel fixes wait for the next power cycle rather than forcing a
   Zero through a multi-minute, screen-flashing reboot. This is separate from the app's own
   self-updater (`[updater]` in `config.toml`).
+- **Host power (polkit).** Reboot and shutdown go through systemd-logind over D-Bus, so the backend
+  needs no capability of its own: PID 1 does the work. But systemd's shipped login1 policy grants
+  those actions unconditionally only to an *active local session*, and a `User=` system service has
+  no logind session at all, so polkit falls through to `auth_admin_keep` and denies it with no auth
+  agent to ask. `polkit/50-pictureframe-power.rules` grants the four `login1` actions to the service
+  user (`-ignore-inhibit` deliberately excluded). Without the file, `CanReboot`/`CanPowerOff` answer
+  `challenge`, the backend reports the actions unsupported, and neither the HA buttons nor the admin
+  UI buttons appear. **An in-place self-update does not install this file** — upgrading frames must
+  re-run install.sh to get the buttons.
 - **Persisted intent.** The backend stores the manual on/off state in
   `@@INSTALL_DIR@@/screen-state` (flag `-screen-state`) so a manually-off screen stays off across a
   backend restart.
