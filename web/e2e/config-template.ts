@@ -11,6 +11,8 @@ export type ConfigOptions = {
 	timezone?: string;
 	/** Drop all sensors and weather so the overlay can go fully empty. */
 	minimalOverlay?: boolean;
+	/** Slideshow dwell; defaults to the fast 2s the other specs rely on. */
+	slideshowInterval?: string;
 };
 
 // Sentinel labels the kiosk spec asserts on.
@@ -34,7 +36,7 @@ export function renderConfig(opts: ConfigOptions): string {
 blank_after = "20m"
 ${displayExtra}`;
 	const slideshow = `[slideshow]
-interval   = "2s"
+interval   = "${opts.slideshowInterval ?? '2s'}"
 images_dir = "${opts.imagesDir}"`;
 
 	if (opts.minimalOverlay) {

@@ -183,6 +183,10 @@ func (s *server) handleServeImage(_ context.Context, input *ServeImageInput) (*h
 }
 
 func (s *server) registerSlideshowRoutes(api huma.API) {
+	// The on-device kiosk drives these from its tap zones over loopback.
+	s.kioskExempt("/api/slideshow/next")
+	s.kioskExempt("/api/slideshow/prev")
+
 	huma.Register(api, huma.Operation{
 		OperationID:   "slideshow-next",
 		Method:        http.MethodPost,
@@ -192,6 +196,19 @@ func (s *server) registerSlideshowRoutes(api huma.API) {
 	}, func(_ context.Context, _ *struct{}) (*struct{}, error) {
 		if s.slideshow != nil {
 			s.slideshow.Next()
+		}
+		return nil, nil
+	})
+
+	huma.Register(api, huma.Operation{
+		OperationID:   "slideshow-prev",
+		Method:        http.MethodPost,
+		Path:          "/api/slideshow/prev",
+		Summary:       "Return slideshow to the previous image",
+		DefaultStatus: http.StatusNoContent,
+	}, func(_ context.Context, _ *struct{}) (*struct{}, error) {
+		if s.slideshow != nil {
+			s.slideshow.Prev()
 		}
 		return nil, nil
 	})

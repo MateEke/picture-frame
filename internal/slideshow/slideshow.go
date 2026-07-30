@@ -22,6 +22,7 @@ type Slideshow struct {
 	mu       sync.Mutex
 	interval time.Duration
 	advance  chan struct{}
+	back     chan struct{}
 	restart  chan struct{}
 }
 
@@ -33,6 +34,7 @@ func New(log *slog.Logger, lib *library.Library, planner *slideplan.Planner, bus
 		bus:      bus,
 		interval: interval,
 		advance:  make(chan struct{}, 1),
+		back:     make(chan struct{}, 1),
 		restart:  make(chan struct{}, 1),
 	}
 }
@@ -83,11 +85,19 @@ func (s *Slideshow) Next() {
 	}
 }
 
+// Prev steps back immediately and resets the timer. Safe from any goroutine.
+func (s *Slideshow) Prev() {
+	select {
+	case s.back <- struct{}{}:
+	default:
+	}
+}
+
 // Run publishes the current slide immediately (so SSE clients don't wait for
 // the first tick), then advances on the interval. The ticker is paused while
-// the library is empty and resumed via the advance channel.
+// the library is empty and resumed by an advance or a step back.
 func (s *Slideshow) Run(ctx context.Context) {
-	if slide := s.servable(s.planner.Current()); slide != nil {
+	if slide := s.servable(s.planner.Current(), s.planner.Next); slide != nil {
 		s.publish(slide)
 	}
 
@@ -111,7 +121,7 @@ func (s *Slideshow) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-tickerC:
-			if slide := s.servable(s.planner.Next()); slide != nil {
+			if slide := s.servable(s.planner.Next(), s.planner.Next); slide != nil {
 				s.publish(slide)
 				continue
 			}
@@ -119,12 +129,13 @@ func (s *Slideshow) Run(ctx context.Context) {
 			ticker.Stop()
 			tickerC = nil
 		case <-s.advance:
-			s.mu.Lock()
-			interval = s.interval
-			s.mu.Unlock()
-			ticker.Reset(interval)
-			tickerC = ticker.C
-			if slide := s.servable(s.planner.Next()); slide != nil {
+			tickerC = s.restartDwell(ticker)
+			if slide := s.servable(s.planner.Next(), s.planner.Next); slide != nil {
+				s.publish(slide)
+			}
+		case <-s.back:
+			tickerC = s.restartDwell(ticker)
+			if slide := s.servable(s.planner.Prev(), s.planner.Prev); slide != nil {
 				s.publish(slide)
 			}
 		case <-s.restart:
@@ -132,7 +143,7 @@ func (s *Slideshow) Run(ctx context.Context) {
 			s.mu.Lock()
 			interval = s.interval
 			s.mu.Unlock()
-			if slide := s.servable(s.planner.Current()); slide != nil {
+			if slide := s.servable(s.planner.Current(), s.planner.Next); slide != nil {
 				ticker.Reset(interval)
 				tickerC = ticker.C
 				s.publish(slide)
@@ -144,12 +155,22 @@ func (s *Slideshow) Run(ctx context.Context) {
 	}
 }
 
+// restartDwell gives the new slide a full interval and unpauses the ticker.
+func (s *Slideshow) restartDwell(ticker *time.Ticker) <-chan time.Time {
+	s.mu.Lock()
+	interval := s.interval
+	s.mu.Unlock()
+	ticker.Reset(interval)
+	return ticker.C
+}
+
 // servable skips slides referencing an image deleted since the plan was built so
-// the kiosk never 404s; skipping a whole plan forces a wrap, which rebuilds from
-// the current library. Empty library yields nil to pause.
-func (s *Slideshow) servable(slide *slideplan.Slide) *slideplan.Slide {
+// the kiosk never 404s. The step follows the direction of travel, so a back tap
+// keeps moving back. Skipping a whole plan forces a wrap, which rebuilds from the
+// current library. Empty library yields nil to pause.
+func (s *Slideshow) servable(slide *slideplan.Slide, step func() *slideplan.Slide) *slideplan.Slide {
 	for i, limit := 0, s.planner.SlideCount()+1; slide != nil && i < limit && !s.allPresent(slide); i++ {
-		slide = s.planner.Next()
+		slide = step()
 	}
 	return slide
 }

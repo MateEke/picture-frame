@@ -508,3 +508,30 @@ func TestAuthBodyLimitRejectsOversized(t *testing.T) {
 		}
 	}
 }
+
+func postCode(t *testing.T, srv http.Handler, path, remoteAddr, token string) int {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, path, nil)
+	req.RemoteAddr = remoteAddr
+	if token != "" {
+		addSession(req, token)
+	}
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	return rec.Code
+}
+
+func TestKioskTouchRoutesGating(t *testing.T) {
+	srv := authServer(t, hashFor(t, "pw"), nil)
+
+	for _, path := range []string{"/api/slideshow/next", "/api/slideshow/prev", "/api/screen/wake"} {
+		t.Run(path, func(t *testing.T) {
+			if code := postCode(t, srv, path, "127.0.0.1:5000", ""); code == http.StatusUnauthorized {
+				t.Errorf("loopback %s = 401, want the kiosk exemption to allow it", path)
+			}
+			if code := postCode(t, srv, path, "192.168.1.5:5000", ""); code != http.StatusUnauthorized {
+				t.Errorf("remote %s = %d, want 401", path, code)
+			}
+		})
+	}
+}

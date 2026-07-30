@@ -75,3 +75,21 @@ func TestScreenReconcileCorrectsDrift(t *testing.T) {
 		t.Error("reconcile should have corrected drift back to on")
 	}
 }
+
+func TestScreenWakeDelegatesToPolicy(t *testing.T) {
+	ctrl := &display.Mock{}
+	ctrl.SetOn(true)
+	pol := newPolicy(ctrl, state.NewBus(), nil, 0)
+	screen := display.NewScreen(pol)
+
+	ctx := context.Background()
+	if err := screen.Off(ctx); err != nil {
+		t.Fatalf("Off: %v", err)
+	}
+	if err := screen.Wake(ctx); err != nil {
+		t.Fatalf("Wake: %v", err)
+	}
+	if !screen.State() || !screen.Auto() {
+		t.Errorf("after Wake: State=%v Auto=%v, want true true", screen.State(), screen.Auto())
+	}
+}

@@ -3,6 +3,7 @@ package display_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -716,5 +717,149 @@ func assertScreenEvent(t *testing.T, ch <-chan state.Event, wantOn, wantAuto boo
 		case <-timeout:
 			t.Fatalf("expected a KindScreen{On:%v, Auto:%v} event", wantOn, wantAuto)
 		}
+	}
+}
+
+func TestPolicyWakeFromIdleBlank(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		ctrl := &display.Mock{}
+		ctrl.SetOn(true)
+		store := &mockStore{}
+		pol := newPolicy(ctrl, state.NewBus(), store, testBlankAfter)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go pol.Run(ctx)
+
+		idle()
+		if ctrl.IsOn() {
+			t.Fatal("expected the idle blank to turn the panel off")
+		}
+
+		if err := pol.Wake(ctx); err != nil {
+			t.Fatalf("Wake: %v", err)
+		}
+		if !ctrl.IsOn() {
+			t.Error("expected Wake to turn the panel on")
+		}
+		if len(store.saved) != 0 {
+			t.Errorf("idle blank is not an intent change, want no writes, got %v", store.saved)
+		}
+	})
+}
+
+func TestPolicyWakeFromManualOff(t *testing.T) {
+	ctrl := &display.Mock{}
+	ctrl.SetOn(true)
+	store := &mockStore{}
+	pol := newPolicy(ctrl, state.NewBus(), store, 0)
+
+	ctx := context.Background()
+	if err := pol.SetManual(ctx, false); err != nil {
+		t.Fatalf("SetManual: %v", err)
+	}
+
+	if err := pol.Wake(ctx); err != nil {
+		t.Fatalf("Wake: %v", err)
+	}
+	if !ctrl.IsOn() {
+		t.Error("expected Wake to override the manual off")
+	}
+	if !pol.Auto() {
+		t.Error("expected Wake to clear the manual-off intent")
+	}
+	if !slices.Equal(store.saved, []bool{true, false}) {
+		t.Errorf("intent writes = %v, want [true false]", store.saved)
+	}
+}
+
+func TestPolicyWakeWhileOnOnlyResetsTheTimer(t *testing.T) {
+	ctrl := &display.Mock{}
+	ctrl.SetOn(true)
+	store := &mockStore{}
+	bus := state.NewBus()
+	pol := newPolicy(ctrl, bus, store, 0)
+
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	onBefore, offBefore := ctrl.Calls()
+	if err := pol.Wake(context.Background()); err != nil {
+		t.Fatalf("Wake: %v", err)
+	}
+
+	onAfter, offAfter := ctrl.Calls()
+	if onAfter != onBefore || offAfter != offBefore {
+		t.Errorf("controller calls moved: on %d->%d, off %d->%d", onBefore, onAfter, offBefore, offAfter)
+	}
+	if len(store.saved) != 0 {
+		t.Errorf("want no intent write on a lit panel, got %v", store.saved)
+	}
+	select {
+	case e := <-ch:
+		t.Fatalf("want no publish on a lit panel, got %v", e)
+	case <-time.After(50 * time.Millisecond):
+	}
+}
+
+// Drift: panel dark while both flags say on, as a failed Reconcile leaves it.
+func TestPolicyWakeRecoversFromDrift(t *testing.T) {
+	ctrl := &display.Mock{}
+	ctrl.SetOn(false)
+	ctrl.OnErr = errors.New("compositor busy")
+	pol := newPolicy(ctrl, state.NewBus(), nil, 0)
+
+	ctx := context.Background()
+	pol.Reconcile(ctx) // reads the dark panel, fails to correct it
+	ctrl.OnErr = nil
+
+	if err := pol.Wake(ctx); err != nil {
+		t.Fatalf("Wake: %v", err)
+	}
+	if !ctrl.IsOn() {
+		t.Error("expected Wake to light a drifted-off panel")
+	}
+}
+
+func TestPolicyWakeControllerErrorRollsBack(t *testing.T) {
+	ctrl := &display.Mock{}
+	ctrl.SetOn(true)
+	store := &mockStore{}
+	pol := newPolicy(ctrl, state.NewBus(), store, 0)
+
+	ctx := context.Background()
+	if err := pol.SetManual(ctx, false); err != nil {
+		t.Fatalf("SetManual: %v", err)
+	}
+	ctrl.OnErr = errors.New("wlopm failed")
+
+	if err := pol.Wake(ctx); err == nil {
+		t.Fatal("expected Wake to return the controller error")
+	}
+	if pol.Auto() {
+		t.Error("expected the manual-off intent to survive a failed Wake")
+	}
+	if len(store.saved) != 1 {
+		t.Errorf("want no intent write on a failed Wake, got %v", store.saved)
+	}
+}
+
+func TestPolicyWakeSurvivesAFailedIntentWrite(t *testing.T) {
+	ctrl := &display.Mock{}
+	ctrl.SetOn(true)
+	store := &mockStore{}
+	pol := newPolicy(ctrl, state.NewBus(), store, 0)
+
+	ctx := context.Background()
+	if err := pol.SetManual(ctx, false); err != nil {
+		t.Fatalf("SetManual: %v", err)
+	}
+	store.saveErr = errors.New("read-only filesystem")
+
+	if err := pol.Wake(ctx); err != nil {
+		t.Fatalf("a failed intent write should not fail the wake: %v", err)
+	}
+	if !ctrl.IsOn() {
+		t.Error("expected the panel on despite the failed write")
 	}
 }

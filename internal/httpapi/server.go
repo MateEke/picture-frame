@@ -29,6 +29,8 @@ import (
 type ScreenController interface {
 	On(ctx context.Context) error
 	Off(ctx context.Context) error
+	// Wake is On for a kiosk touch, but free on a lit panel: no write, no publish.
+	Wake(ctx context.Context) error
 	State() bool
 	Auto() bool
 	// Reconcile re-asserts desired power; the SSE handler calls it on connect
@@ -47,6 +49,7 @@ type RotationController interface {
 // SlideshowController allows the HTTP layer to drive slideshow playback.
 type SlideshowController interface {
 	Next()
+	Prev()
 	RestartCycle()
 }
 

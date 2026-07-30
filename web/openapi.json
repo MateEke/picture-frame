@@ -2082,6 +2082,27 @@
         "summary": "Set screen state"
       }
     },
+    "/api/screen/wake": {
+      "post": {
+        "operationId": "screen-wake",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Wake the screen after a kiosk touch"
+      }
+    },
     "/api/slideshow/next": {
       "post": {
         "operationId": "slideshow-next",
@@ -2101,6 +2122,27 @@
           }
         },
         "summary": "Advance slideshow to next image"
+      }
+    },
+    "/api/slideshow/prev": {
+      "post": {
+        "operationId": "slideshow-prev",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Return slideshow to the previous image"
       }
     },
     "/api/system/devices": {

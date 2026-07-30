@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type ServerSentEventsResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { ApplyUpdateData, ApplyUpdateErrors, ApplyUpdateResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthSetPasswordData, AuthSetPasswordErrors, AuthSetPasswordResponses, AuthStatusData, AuthStatusErrors, AuthStatusResponses, CheckUpdateData, CheckUpdateErrors, CheckUpdateResponses, ConfigureApData, ConfigureApErrors, ConfigureApResponses, DeleteImageData, DeleteImageErrors, DeleteImageResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, GetConfigData, GetConfigErrors, GetConfigMetaData, GetConfigMetaErrors, GetConfigMetaResponses, GetConfigResponses, GetLibraryData, GetLibraryErrors, GetLibraryResponses, GetLicensesData, GetLicensesErrors, GetLicensesResponses, GetScreenData, GetScreenErrors, GetScreenResponses, GetSystemDevicesData, GetSystemDevicesErrors, GetSystemDevicesResponses, GetSystemInfoData, GetSystemInfoErrors, GetSystemInfoResponses, GetUpdateData, GetUpdateErrors, GetUpdateResponses, GetWifiNetworksData, GetWifiNetworksErrors, GetWifiNetworksResponses, GetWifiStatusData, GetWifiStatusErrors, GetWifiStatusResponses, HealthzData, HealthzErrors, HealthzResponses, HeartbeatData, HeartbeatErrors, HeartbeatResponses, ListImagesData, ListImagesErrors, ListImagesResponses, PutConfigData, PutConfigErrors, PutConfigResponses, ServeImageData, ServeImageErrors, ServeImageResponses, SetImageOrderData, SetImageOrderErrors, SetImageOrderResponses, SetScreenData, SetScreenErrors, SetScreenResponses, SlideshowNextData, SlideshowNextErrors, SlideshowNextResponses, SyncLibraryData, SyncLibraryErrors, SyncLibraryResponses, SystemRestartData, SystemRestartErrors, SystemRestartResponses, UploadImageData, UploadImageErrors, UploadImageResponses, WifiConnectData, WifiConnectErrors, WifiConnectResponses, WifiForgetData, WifiForgetErrors, WifiForgetResponses } from './types.gen';
+import type { ApplyUpdateData, ApplyUpdateErrors, ApplyUpdateResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthSetPasswordData, AuthSetPasswordErrors, AuthSetPasswordResponses, AuthStatusData, AuthStatusErrors, AuthStatusResponses, CheckUpdateData, CheckUpdateErrors, CheckUpdateResponses, ConfigureApData, ConfigureApErrors, ConfigureApResponses, DeleteImageData, DeleteImageErrors, DeleteImageResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, GetConfigData, GetConfigErrors, GetConfigMetaData, GetConfigMetaErrors, GetConfigMetaResponses, GetConfigResponses, GetLibraryData, GetLibraryErrors, GetLibraryResponses, GetLicensesData, GetLicensesErrors, GetLicensesResponses, GetScreenData, GetScreenErrors, GetScreenResponses, GetSystemDevicesData, GetSystemDevicesErrors, GetSystemDevicesResponses, GetSystemInfoData, GetSystemInfoErrors, GetSystemInfoResponses, GetUpdateData, GetUpdateErrors, GetUpdateResponses, GetWifiNetworksData, GetWifiNetworksErrors, GetWifiNetworksResponses, GetWifiStatusData, GetWifiStatusErrors, GetWifiStatusResponses, HealthzData, HealthzErrors, HealthzResponses, HeartbeatData, HeartbeatErrors, HeartbeatResponses, ListImagesData, ListImagesErrors, ListImagesResponses, PutConfigData, PutConfigErrors, PutConfigResponses, ScreenWakeData, ScreenWakeErrors, ScreenWakeResponses, ServeImageData, ServeImageErrors, ServeImageResponses, SetImageOrderData, SetImageOrderErrors, SetImageOrderResponses, SetScreenData, SetScreenErrors, SetScreenResponses, SlideshowNextData, SlideshowNextErrors, SlideshowNextResponses, SlideshowPrevData, SlideshowPrevErrors, SlideshowPrevResponses, SyncLibraryData, SyncLibraryErrors, SyncLibraryResponses, SystemRestartData, SystemRestartErrors, SystemRestartResponses, UploadImageData, UploadImageErrors, UploadImageResponses, WifiConnectData, WifiConnectErrors, WifiConnectResponses, WifiForgetData, WifiForgetErrors, WifiForgetResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -142,9 +142,19 @@ export const apiSetScreen = <ThrowOnError extends boolean = false>(options: Opti
 });
 
 /**
+ * Wake the screen after a kiosk touch
+ */
+export const apiScreenWake = <ThrowOnError extends boolean = false>(options?: Options<ScreenWakeData, ThrowOnError>): RequestResult<ScreenWakeResponses, ScreenWakeErrors, ThrowOnError> => (options?.client ?? client).post<ScreenWakeResponses, ScreenWakeErrors, ThrowOnError>({ url: '/api/screen/wake', ...options });
+
+/**
  * Advance slideshow to next image
  */
 export const apiSlideshowNext = <ThrowOnError extends boolean = false>(options?: Options<SlideshowNextData, ThrowOnError>): RequestResult<SlideshowNextResponses, SlideshowNextErrors, ThrowOnError> => (options?.client ?? client).post<SlideshowNextResponses, SlideshowNextErrors, ThrowOnError>({ url: '/api/slideshow/next', ...options });
+
+/**
+ * Return slideshow to the previous image
+ */
+export const apiSlideshowPrev = <ThrowOnError extends boolean = false>(options?: Options<SlideshowPrevData, ThrowOnError>): RequestResult<SlideshowPrevResponses, SlideshowPrevErrors, ThrowOnError> => (options?.client ?? client).post<SlideshowPrevResponses, SlideshowPrevErrors, ThrowOnError>({ url: '/api/slideshow/prev', ...options });
 
 /**
  * Enumerate Bluetooth adapters and display outputs from sysfs
