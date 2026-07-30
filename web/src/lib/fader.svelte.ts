@@ -12,6 +12,11 @@ export class Fader {
 	private stallMs: number;
 	private stallTimer: ReturnType<typeof setTimeout> | null = null;
 
+	/** True while a crossfade is in flight. */
+	get busy(): boolean {
+		return this.loading;
+	}
+
 	constructor(switchDelayMs = 1000, stallMs = DEFAULT_STALL_MS) {
 		this.switchDelayMs = switchDelayMs;
 		this.stallMs = stallMs;

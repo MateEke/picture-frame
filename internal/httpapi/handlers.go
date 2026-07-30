@@ -63,6 +63,22 @@ func (s *server) registerScreenRoutes(api huma.API) {
 		}
 		return nil, nil
 	})
+
+	// Exempt so the kiosk can post it per tap. Wake-only: off stays gated.
+	s.kioskExempt("/api/screen/wake")
+	huma.Register(api, huma.Operation{
+		OperationID:   "screen-wake",
+		Method:        http.MethodPost,
+		Path:          "/api/screen/wake",
+		Summary:       "Wake the screen after a kiosk touch",
+		DefaultStatus: http.StatusNoContent,
+	}, func(ctx context.Context, _ *struct{}) (*struct{}, error) {
+		if err := s.screen.Wake(ctx); err != nil {
+			s.log.Error("screen wake failed", "err", err)
+			return nil, huma.Error500InternalServerError("failed to wake screen")
+		}
+		return nil, nil
+	})
 }
 
 // --- Heartbeat ---

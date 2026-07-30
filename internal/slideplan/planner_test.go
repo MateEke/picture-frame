@@ -253,3 +253,75 @@ func TestPlannerConcurrent(_ *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestPlannerPrevStepsBack(t *testing.T) {
+	src := &fakeSource{order: []string{"a", "b", "c"}}
+	p := newPlanner(src)
+	p.SetScreenAspect(landscape)
+
+	p.Current() // [a]
+	p.Next()    // [b]
+	got := p.Prev()
+	if got == nil || len(got.Names) != 1 || got.Names[0] != "a" {
+		t.Fatalf("Prev = %v, want [a]", got)
+	}
+}
+
+func TestPlannerPrevWrapsToLastSlide(t *testing.T) {
+	src := &fakeSource{order: []string{"a", "b", "c"}}
+	p := newPlanner(src)
+	p.SetScreenAspect(landscape)
+
+	p.Current() // [a], cursor at the start
+	got := p.Prev()
+	if got == nil || len(got.Names) != 1 || got.Names[0] != "c" {
+		t.Fatalf("Prev at the start = %v, want [c]", got)
+	}
+}
+
+func TestPlannerPrevDoesNotStartANewCycle(t *testing.T) {
+	src := &fakeSource{order: []string{"a", "b"}, cycles: [][]string{{"L1"}}}
+	p := newPlanner(src)
+	p.SetScreenAspect(landscape)
+
+	p.Current()
+	got := p.Prev()
+	if got == nil || got.Names[0] != "b" {
+		t.Fatalf("Prev = %v, want [b] from the current cycle", got)
+	}
+}
+
+func TestPlannerPrevEmptyPlan(t *testing.T) {
+	src := &fakeSource{order: nil}
+	p := newPlanner(src)
+	p.SetScreenAspect(landscape)
+
+	if got := p.Prev(); got != nil {
+		t.Fatalf("Prev on an empty plan = %v, want nil", got)
+	}
+}
+
+func TestPlannerPrevRebuildTakesPrecedence(t *testing.T) {
+	src := &fakeSource{order: []string{"a", "b", "c"}}
+	p := newPlanner(src)
+	p.SetScreenAspect(landscape)
+
+	p.Current() // [a]
+	p.Next()    // [b]
+	p.Invalidate()
+	got := p.Prev()
+	if got == nil || got.Names[0] != "b" {
+		t.Fatalf("Prev after Invalidate = %v, want the retained cursor [b]", got)
+	}
+}
+
+func TestPlannerSlideCount(t *testing.T) {
+	src := &fakeSource{order: []string{"a", "b", "c"}}
+	p := newPlanner(src)
+	p.SetScreenAspect(landscape)
+
+	p.Current() // build the plan
+	if got := p.SlideCount(); got != 3 {
+		t.Errorf("SlideCount = %d, want 3", got)
+	}
+}

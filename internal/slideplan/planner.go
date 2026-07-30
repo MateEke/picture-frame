@@ -109,6 +109,27 @@ func (p *Planner) Next() *Slide {
 	return &s
 }
 
+// Prev steps the cursor back, wrapping to the plan's last slide at the start
+// (nil when empty). It never starts a new cycle. A pending rebuild wins, as in Next.
+func (p *Planner) Prev() *Slide {
+	rebuilt := p.ensure()
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if len(p.slides) == 0 {
+		return nil
+	}
+	if !rebuilt {
+		if p.idx == 0 {
+			p.idx = len(p.slides) - 1
+		} else {
+			p.idx--
+		}
+	}
+	s := p.slides[p.idx]
+	return &s
+}
+
 // SetScreenAspect updates the screen aspect ratio (width/height); it marks the
 // plan dirty and reports true only when the value changes.
 func (p *Planner) SetScreenAspect(aspect float64) bool {

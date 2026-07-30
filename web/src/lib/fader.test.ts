@@ -264,6 +264,17 @@ describe('Fader', () => {
 		expect(f.bottomSrc).toBe('/img/1');
 	});
 
+	it('reports busy while a crossfade is in flight', () => {
+		const f = new Fader(0);
+		expect(f.busy).toBe(false);
+
+		f.show('/img/1'); // first image: nothing to fade from
+		expect(f.busy).toBe(false);
+
+		f.show('/img/2');
+		expect(f.busy).toBe(true);
+	});
+
 	it('stop() disarms the stall timer', () => {
 		const f = new Fader(1000, 30_000);
 		f.show('/img/1');

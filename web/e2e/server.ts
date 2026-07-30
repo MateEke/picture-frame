@@ -30,6 +30,8 @@ export type ServerOptions = {
 	minimalOverlay?: boolean;
 	/** ROTATION_MOCK=unsupported → rotation select disabled with the install hint. */
 	rotationUnsupported?: boolean;
+	/** Slideshow dwell, e.g. "60s" to keep auto-advance out of an assertion. */
+	slideshowInterval?: string;
 };
 
 export type PfServer = {
@@ -68,7 +70,8 @@ async function spawnOnce(opts: ServerOptions): Promise<PfServer> {
 			immich: opts.immich,
 			hideClockDate: opts.hideClockDate,
 			timezone: opts.timezone,
-			minimalOverlay: opts.minimalOverlay
+			minimalOverlay: opts.minimalOverlay,
+			slideshowInterval: opts.slideshowInterval
 		})
 	);
 

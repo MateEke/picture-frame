@@ -1,7 +1,9 @@
 package slideshow_test
 
 import (
+	"context"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/MateEke/picture-frame/internal/library"
@@ -304,4 +306,167 @@ func TestRunResumesAfterAddToEmptyLibrary(t *testing.T) {
 	if name != "a.jpg" {
 		t.Errorf("expected a.jpg after add+Next, got %s", name)
 	}
+}
+
+func TestPrevStepsBack(t *testing.T) {
+	lib := library.New([]library.Image{{Name: "a.jpg"}, {Name: "b.jpg"}, {Name: "c.jpg"}}, false)
+	ss, bus := newSlideshow(lib)
+
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	go ss.Run(t.Context())
+
+	receiveImage(t, ch, time.Second) // initial "a.jpg"
+	ss.Next()
+	receiveImage(t, ch, time.Second) // "b.jpg"
+	ss.Prev()
+	if name := receiveImage(t, ch, time.Second); name != "a.jpg" {
+		t.Errorf("expected a.jpg after Prev(), got %s", name)
+	}
+}
+
+func TestPrevAtStartWrapsToLastSlide(t *testing.T) {
+	lib := library.New([]library.Image{{Name: "a.jpg"}, {Name: "b.jpg"}}, false)
+	ss, bus := newSlideshow(lib)
+
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	go ss.Run(t.Context())
+
+	receiveImage(t, ch, time.Second) // initial "a.jpg", cursor at the start
+	ss.Prev()
+	if name := receiveImage(t, ch, time.Second); name != "b.jpg" {
+		t.Errorf("expected the wrap to b.jpg, got %s", name)
+	}
+}
+
+func TestPrevDoesNotPublishWhenEmpty(t *testing.T) {
+	lib := library.New(nil, false)
+	ss, bus := newSlideshow(lib)
+
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	go ss.Run(t.Context())
+
+	ss.Prev()
+	select {
+	case e := <-ch:
+		t.Fatalf("expected no event for empty library, got %v", e)
+	case <-time.After(50 * time.Millisecond):
+	}
+}
+
+// A back tap must skip backwards, not forward past where we started.
+func TestPrevSkipsDeletedImageBackwards(t *testing.T) {
+	lib := library.New([]library.Image{{Name: "a.jpg"}, {Name: "b.jpg"}, {Name: "c.jpg"}}, false)
+	ss, bus := newSlideshow(lib)
+
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	go ss.Run(t.Context())
+
+	receiveImage(t, ch, time.Second) // initial "a.jpg"
+	ss.Next()
+	receiveImage(t, ch, time.Second) // "b.jpg"
+	ss.Next()
+	receiveImage(t, ch, time.Second) // "c.jpg"
+
+	lib.Remove("b.jpg") // delete out from under the cached plan
+	ss.Prev()
+	if name := receiveImage(t, ch, time.Second); name != "a.jpg" {
+		t.Errorf("expected b.jpg to be skipped backwards, got %s", name)
+	}
+}
+
+func TestPrevWithEveryOtherImageDeletedTerminates(t *testing.T) {
+	lib := library.New([]library.Image{
+		{Name: "a.jpg"}, {Name: "b.jpg"}, {Name: "c.jpg"}, {Name: "d.jpg"},
+	}, false)
+	ss, bus := newSlideshow(lib)
+
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	go ss.Run(t.Context())
+
+	receiveImage(t, ch, time.Second) // initial "a.jpg"
+	for _, name := range []string{"b.jpg", "c.jpg", "d.jpg"} {
+		lib.Remove(name)
+	}
+	ss.Prev()
+	if name := receiveImage(t, ch, time.Second); name != "a.jpg" {
+		t.Errorf("expected the surviving a.jpg, got %s", name)
+	}
+}
+
+func TestPrevResetsTheDwellTimer(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		lib := library.New([]library.Image{{Name: "a.jpg"}, {Name: "b.jpg"}, {Name: "c.jpg"}}, false)
+		bus := state.NewBus()
+		ss := slideshow.New(testutil.NopLogger(), lib, newPlannerFor(lib, unknownRatios), bus, time.Minute)
+
+		ch, unsub := bus.Subscribe()
+		defer unsub()
+
+		// Cancel inside the bubble: t.Context() would outlive it.
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go ss.Run(ctx)
+
+		receiveImage(t, ch, time.Second) // initial "a.jpg"
+		time.Sleep(50 * time.Second)
+		synctest.Wait()
+		ss.Prev()
+		receiveImage(t, ch, time.Second) // wrap to "c.jpg"
+
+		// The old tick would have fired at 60s. A reset pushes it to 110s.
+		time.Sleep(30 * time.Second)
+		synctest.Wait()
+		select {
+		case e := <-ch:
+			t.Fatalf("timer was not reset, got %v", e)
+		default:
+		}
+	})
+}
+
+func TestRestartCycleWithEmptyLibraryPauses(t *testing.T) {
+	lib := library.New(nil, false)
+	ss, bus := newSlideshow(lib)
+
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	go ss.Run(t.Context())
+
+	ss.RestartCycle()
+	select {
+	case e := <-ch:
+		t.Fatalf("expected no event for an empty library, got %v", e)
+	case <-time.After(50 * time.Millisecond):
+	}
+}
+
+// Every image gone: only the skip budget can stop the walk.
+func TestPrevWithEveryImageDeletedTerminates(t *testing.T) {
+	lib := library.New([]library.Image{{Name: "a.jpg"}, {Name: "b.jpg"}, {Name: "c.jpg"}}, false)
+	ss, bus := newSlideshow(lib)
+
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	go ss.Run(t.Context())
+
+	receiveImage(t, ch, time.Second) // initial "a.jpg"
+	for _, name := range []string{"a.jpg", "b.jpg", "c.jpg"} {
+		lib.Remove(name)
+	}
+	ss.Prev()
+
+	// Which deleted slide it gives up on is not the point, only that it gives up.
+	receiveImage(t, ch, time.Second)
 }

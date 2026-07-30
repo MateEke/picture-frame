@@ -12,6 +12,9 @@ export class KioskPage {
 	readonly labelOutside: Locator;
 	readonly labelHumidity: Locator;
 	readonly weatherIcon: Locator;
+	readonly touchNav: Locator;
+	readonly tapPrev: Locator;
+	readonly tapNext: Locator;
 
 	constructor(private readonly page: Page) {
 		this.imgBottom = page.getByTestId('kiosk-img-bottom');
@@ -24,6 +27,9 @@ export class KioskPage {
 		this.labelOutside = page.getByTestId('kiosk-label-outside');
 		this.labelHumidity = page.getByTestId('kiosk-label-humidity');
 		this.weatherIcon = page.getByTestId('kiosk-weather-icon');
+		this.touchNav = page.getByTestId('kiosk-touch-nav');
+		this.tapPrev = page.getByTestId('kiosk-tap-prev');
+		this.tapNext = page.getByTestId('kiosk-tap-next');
 	}
 
 	async goto(): Promise<void> {
@@ -37,6 +43,18 @@ export class KioskPage {
 
 	currentImageSrc(): Promise<string | null> {
 		return this.imgBottom.getAttribute('src');
+	}
+
+	/** Resolves once the page's SSE state reflects the panel being off. */
+	async waitForScreenOff(): Promise<void> {
+		await expect(this.touchNav).toHaveAttribute('data-screen-off', 'true');
+	}
+
+	/** Clicks at the given fractions across and down the viewport. */
+	async tapAt(xFraction: number, yFraction: number): Promise<void> {
+		const size = this.page.viewportSize();
+		if (!size) throw new Error('no viewport size');
+		await this.page.mouse.click(size.width * xFraction, size.height * yFraction);
 	}
 
 	/** Waits for the settled bottom-layer src to differ from `from`. */

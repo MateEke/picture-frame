@@ -26,6 +26,7 @@ type mockScreen struct {
 	auto       bool
 	onErr      error
 	offErr     error
+	wakes      atomic.Int32
 	reconciles atomic.Int32
 }
 
@@ -42,6 +43,15 @@ func (m *mockScreen) Off(context.Context) error {
 		return m.offErr
 	}
 	m.on, m.auto = false, false
+	return nil
+}
+
+func (m *mockScreen) Wake(context.Context) error {
+	if m.onErr != nil {
+		return m.onErr
+	}
+	m.wakes.Add(1)
+	m.on, m.auto = true, true
 	return nil
 }
 
@@ -442,5 +452,33 @@ func TestSPACacheHeaders(t *testing.T) {
 				t.Errorf("%s: Cache-Control %q, want %q", tc.path, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestScreenWakeEndpoint(t *testing.T) {
+	handler, screen := newTestServer(t)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/screen/wake", nil)
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNoContent)
+	}
+	if screen.wakes.Load() != 1 {
+		t.Errorf("wake calls = %d, want 1", screen.wakes.Load())
+	}
+}
+
+func TestScreenWakeEndpointControllerError(t *testing.T) {
+	handler, screen := newTestServer(t)
+	screen.onErr = errors.New("wlopm failed")
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/screen/wake", nil)
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
 	}
 }

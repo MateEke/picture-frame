@@ -1,11 +1,17 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { getSSEContext } from '$lib/sse.svelte';
 	import { Fader } from '$lib/fader.svelte';
+	import { isOnDeviceKiosk } from '$lib/slideNav';
 	import Slide from '$lib/Slide.svelte';
+	import TouchNav from './TouchNav.svelte';
 	import { onDestroy, untrack } from 'svelte';
 
 	const sse = getSSEContext();
 	const fader = new Fader();
+
+	// A remote viewer must not advance or wake the frame.
+	const onDevice = browser && isOnDeviceKiosk(location.hostname);
 
 	// The Fader keys on a single opaque src; join the slide's names into one
 	// ('|' is safe in filenames) and splitKey reverses it.
@@ -49,3 +55,7 @@
 	onAllLoad={() => fader.onTopLoad()}
 	onError={() => fader.onTopError()}
 />
+
+{#if onDevice}
+	<TouchNav isBusy={() => fader.busy} />
+{/if}

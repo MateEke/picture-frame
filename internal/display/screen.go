@@ -18,6 +18,9 @@ func (s *Screen) On(ctx context.Context) error { return s.policy.SetManual(ctx, 
 // Off turns the display off and suppresses motion auto-wake until On.
 func (s *Screen) Off(ctx context.Context) error { return s.policy.SetManual(ctx, false) }
 
+// Wake turns the display on after a kiosk touch and restarts the idle countdown.
+func (s *Screen) Wake(ctx context.Context) error { return s.policy.Wake(ctx) }
+
 // State reports last-known panel power from the policy (no hardware read).
 func (s *Screen) State() bool { return s.policy.State() }
 

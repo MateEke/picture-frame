@@ -37,10 +37,12 @@ import (
 
 type fakeSlideshow struct {
 	calls    atomic.Int32
+	prevs    atomic.Int32
 	restarts atomic.Int32
 }
 
 func (f *fakeSlideshow) Next()         { f.calls.Add(1) }
+func (f *fakeSlideshow) Prev()         { f.prevs.Add(1) }
 func (f *fakeSlideshow) RestartCycle() { f.restarts.Add(1) }
 
 type imageHarness struct {
@@ -866,5 +868,36 @@ func TestDeleteFileNotInLibraryKeepsFile(t *testing.T) {
 	}
 	if _, err := h.root.Stat("orphan.jpg"); err != nil {
 		t.Errorf("orphan file should survive the 404: %v", err)
+	}
+}
+
+func TestSlideshowPrevEndpoint(t *testing.T) {
+	h := newImageServer(t)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/slideshow/prev", nil)
+	h.handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNoContent)
+	}
+	if h.slideshow.prevs.Load() != 1 {
+		t.Errorf("prev calls = %d, want 1", h.slideshow.prevs.Load())
+	}
+}
+
+func TestSlideshowPrevWithoutControllerIsNoOp(t *testing.T) {
+	srv := httpapi.NewServer(httpapi.Config{
+		Log:         testutil.NopLogger(),
+		Bus:         state.NewBus(),
+		KioskBeater: &fakeBeater{},
+	})
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/slideshow/prev", nil)
+	srv.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNoContent)
 	}
 }

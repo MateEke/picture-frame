@@ -1344,6 +1344,31 @@ export type SetScreenResponses = {
 
 export type SetScreenResponse = SetScreenResponses[keyof SetScreenResponses];
 
+export type ScreenWakeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/screen/wake';
+};
+
+export type ScreenWakeErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type ScreenWakeError = ScreenWakeErrors[keyof ScreenWakeErrors];
+
+export type ScreenWakeResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type ScreenWakeResponse = ScreenWakeResponses[keyof ScreenWakeResponses];
+
 export type SlideshowNextData = {
     body?: never;
     path?: never;
@@ -1368,6 +1393,31 @@ export type SlideshowNextResponses = {
 };
 
 export type SlideshowNextResponse = SlideshowNextResponses[keyof SlideshowNextResponses];
+
+export type SlideshowPrevData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/slideshow/prev';
+};
+
+export type SlideshowPrevErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type SlideshowPrevError = SlideshowPrevErrors[keyof SlideshowPrevErrors];
+
+export type SlideshowPrevResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type SlideshowPrevResponse = SlideshowPrevResponses[keyof SlideshowPrevResponses];
 
 export type GetSystemDevicesData = {
     body?: never;

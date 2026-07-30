@@ -170,6 +170,35 @@ func (p *Policy) SetManual(ctx context.Context, on bool) error {
 	return nil
 }
 
+// Wake turns the panel on for a kiosk touch, overriding a manual off, and
+// restarts the idle countdown. On a lit panel it is only the timer reset.
+func (p *Policy) Wake(ctx context.Context) error {
+	p.mu.Lock()
+	prevManual, prevIdle, prevMotion, prevOn := p.manualOff, p.idleBlank, p.lastMotion, p.on
+	p.manualOff, p.idleBlank, p.lastMotion = false, false, time.Now()
+	if err := p.applyLocked(context.WithoutCancel(ctx)); err != nil {
+		p.manualOff, p.idleBlank, p.lastMotion = prevManual, prevIdle, prevMotion
+		p.mu.Unlock()
+		return err
+	}
+	intentChanged := prevManual != p.manualOff
+	if intentChanged && p.store != nil {
+		if err := p.store.SaveManualOff(p.manualOff); err != nil {
+			p.log.Warn("policy: failed to persist screen intent", "err", err)
+		}
+	}
+	powerMoved := p.on != prevOn
+	if powerMoved {
+		p.log.Info("policy: display on (touch)")
+	}
+	on, auto := p.on, !p.manualOff
+	p.mu.Unlock()
+	if powerMoved || intentChanged {
+		p.publish(on, auto)
+	}
+	return nil
+}
+
 // Auto reports whether motion auto-wake is active (false after a manual Off).
 func (p *Policy) Auto() bool {
 	p.mu.Lock()

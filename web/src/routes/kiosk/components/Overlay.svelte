@@ -60,7 +60,7 @@
 {#if showOverlay}
 	<div
 		data-testid="kiosk-overlay"
-		class="fixed inset-x-0 bottom-0 flex items-end justify-between bg-linear-to-b from-transparent to-black/30 px-15 pt-33 pb-12 text-kiosk-fg text-shadow-lg/30 portrait:flex-col portrait:items-start portrait:gap-12"
+		class="pointer-events-none fixed inset-x-0 bottom-0 flex items-end justify-between bg-linear-to-b from-transparent to-black/30 px-15 pt-33 pb-12 text-kiosk-fg text-shadow-lg/30 portrait:flex-col portrait:items-start portrait:gap-12"
 	>
 		{#if !hideClockDate}
 			<div>

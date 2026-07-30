@@ -34,6 +34,19 @@ A reading shows only when its source is configured, and one that has stopped arr
 to `--`. When nothing is left to show, no readings, no weather, and the clock and date hidden, the
 whole bottom overlay disappears and the photo fills the screen on its own.
 
+## Touching the screen
+
+Touch the left half of the screen for the previous photo, the right half for the next. Either one
+restarts the timer, so the new photo gets a full interval before the slideshow moves on.
+
+Photos change with the usual crossfade, so a touch takes a few seconds to settle. Touches during
+the fade do nothing.
+
+Touching a dark screen lights it up again on the same photo. That holds whether the screen went
+dark by itself when the room emptied or you switched it off from the [Dashboard](/manual/dashboard/)
+or [Home Assistant](/manual/home-assistant/). Switching it back on this way also restores the
+motion wake.
+
 ## When the screen sleeps
 
 With a motion sensor, the frame turns the screen off when the room empties and wakes it when you
