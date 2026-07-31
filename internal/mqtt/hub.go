@@ -28,7 +28,7 @@ type Hub struct {
 
 type subscription struct {
 	qos     byte
-	handler func([]byte)
+	handler func(payload []byte, retained bool)
 }
 
 // NewHub wires Hub into client callbacks; consumers go through Hub from here on.
@@ -53,7 +53,7 @@ func (h *Hub) AddOnConnect(f func()) {
 
 // Subscribe records a persistent subscription, replayed on every (re)connect;
 // also issued synchronously when called on an already-connected Hub.
-func (h *Hub) Subscribe(topic string, qos byte, handler func([]byte)) {
+func (h *Hub) Subscribe(topic string, qos byte, handler func(payload []byte, retained bool)) {
 	h.mu.Lock()
 	h.subs[topic] = subscription{qos: qos, handler: handler}
 	h.mu.Unlock()

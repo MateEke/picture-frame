@@ -89,10 +89,11 @@ func (p *Paho) Publish(topic string, qos byte, retain bool, payload []byte) erro
 	return t.Error()
 }
 
-// Subscribe registers handler for topic, passing through only the payload.
-func (p *Paho) Subscribe(topic string, qos byte, handler func(payload []byte)) error {
+// Subscribe registers handler for topic. The retained flag is passed through so
+// command handlers can refuse a stale press replayed on every reconnect.
+func (p *Paho) Subscribe(topic string, qos byte, handler func(payload []byte, retained bool)) error {
 	t := p.client.Subscribe(topic, qos, func(_ paho.Client, m paho.Message) {
-		handler(m.Payload())
+		handler(m.Payload(), m.Retained())
 	})
 	if !t.WaitTimeout(opTimeout) {
 		return fmt.Errorf("mqtt subscribe to %s timed out", topic)

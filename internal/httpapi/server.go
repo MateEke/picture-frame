@@ -20,6 +20,7 @@ import (
 	"github.com/MateEke/picture-frame/internal/config"
 	"github.com/MateEke/picture-frame/internal/hostmetrics"
 	"github.com/MateEke/picture-frame/internal/library"
+	"github.com/MateEke/picture-frame/internal/power"
 	"github.com/MateEke/picture-frame/internal/state"
 	"github.com/MateEke/picture-frame/web"
 )
@@ -110,11 +111,20 @@ type Config struct {
 	LiveConfig    LiveConfig        // nil in dev/tests; applies Tier-1 changes in-process
 	Restart       func() error      // nil in dev/tests; triggers an in-place re-exec.
 	HostMetrics   HostMetricsReader // nil in tests; supplies Pi telemetry for the system card
+	Power         PowerController   // nil in tests; reboots or powers off the host
 }
 
 // HostMetricsReader supplies Pi telemetry for the dashboard system card.
 type HostMetricsReader interface {
 	Read(ctx context.Context) hostmetrics.Metrics
+}
+
+// PowerController reboots or powers off the host. Capabilities reports what the
+// polkit policy actually permits, so the UI can hide what would only fail.
+type PowerController interface {
+	Reboot(ctx context.Context) error
+	PowerOff(ctx context.Context) error
+	Capabilities() power.Capabilities
 }
 
 type server struct {
@@ -136,6 +146,7 @@ type server struct {
 	sysfsBase     string
 	weatherActive bool
 	hostMetrics   HostMetricsReader
+	power         PowerController
 	auth          *auth.Authenticator
 	authMu        sync.Mutex // serializes bcrypt work; see checkPasswordGated
 
@@ -180,6 +191,7 @@ func NewServer(cfg Config) http.Handler {
 		sysfsBase:     sysfsBase,
 		weatherActive: cfg.WeatherActive,
 		hostMetrics:   cfg.HostMetrics,
+		power:         cfg.Power,
 		auth:          auth.New(),
 		store:         cfg.Store,
 		running:       cfg.RunningConfig,
@@ -232,6 +244,7 @@ func (s *server) registerRoutes(api huma.API) {
 	s.registerConfigRoutes(api)
 	s.registerDeviceRoutes(api)
 	s.registerSystemInfoRoutes(api)
+	s.registerPowerRoutes(api)
 	s.registerUpdateRoutes(api)
 	s.registerAuthRoutes(api)
 }

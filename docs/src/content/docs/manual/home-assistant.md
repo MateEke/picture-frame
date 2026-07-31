@@ -79,4 +79,35 @@ you can add its entities to dashboards, or fold them into automations: blank the
 leave, wake it when you are back, or use the frame's motion and climate readings elsewhere in
 your home.
 
+Alongside the screen switch and the sensors you configured, the bridge publishes the frame's own
+diagnostics: CPU temperature, memory use, uptime, hostname, IP address, and undervoltage on Pi
+hardware. Version, model, and board revision appear on the device card itself.
+
+## Reboot and shutdown
+
+The frame can also expose two buttons that act on the Raspberry Pi itself:
+
+| Button       | What it does                                                                       |
+| ------------ | ---------------------------------------------------------------------------------- |
+| **Reboot**   | Restarts the whole device. Photos resume once it is back, usually within a minute. |
+| **Shutdown** | Powers the device off. It stays off until someone powers it on again.              |
+
+Both are ordinary Home Assistant buttons, so an automation can call them: power the frame down
+while you are away, or reboot it on a schedule.
+
+:::caution[Shutdown is one-way]
+Nothing on the frame can undo a shutdown. The device stays off until its power is physically
+cycled or switched back on. On a PoE switch you can restore power from the switch; otherwise it
+means walking over to it.
+:::
+
+Home Assistant fires a button the instant it is pressed, with no confirmation. The same two
+controls sit on the admin dashboard's System card, where they ask first.
+
+:::note[Installed before version 1.2.3?]
+The buttons are published only when the Pi grants the frame permission to reboot and power off,
+which software updates alone do not deliver. If they are missing, rerun the install script from
+[Install](/getting-started/install/); it keeps your settings and photos.
+:::
+
 Every setting on this page maps to a key in the [configuration reference](/reference/configuration/).

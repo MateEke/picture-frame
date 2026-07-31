@@ -31,6 +31,8 @@ type SystemInfoBody struct {
 	MemUsedPct   *float64 `json:"memUsedPct,omitempty" doc:"Used memory percent"`
 	SystemUptime string   `json:"systemUptime,omitempty" doc:"System uptime since boot as a Go duration"`
 	Undervoltage *bool    `json:"undervoltage,omitempty" doc:"True if undervoltage detected"`
+	CanReboot    bool     `json:"canReboot" doc:"Host reboot is permitted (polkit rule present)"`
+	CanPowerOff  bool     `json:"canPowerOff" doc:"Host power-off is permitted (polkit rule present)"`
 }
 
 type getSystemInfoOutput struct {
@@ -54,12 +56,15 @@ func (s *server) systemInfo(ctx context.Context) SystemInfoBody {
 	if addrs, err := interfaceAddrs(); err == nil {
 		ip = primaryIPv4(addrs)
 	}
+	caps := s.powerCapabilities()
 	body := SystemInfoBody{
-		Version:  version.Version,
-		Platform: version.Platform,
-		Uptime:   time.Since(processStart).Round(time.Second).String(),
-		Hostname: host,
-		IP:       ip,
+		Version:     version.Version,
+		Platform:    version.Platform,
+		Uptime:      time.Since(processStart).Round(time.Second).String(),
+		Hostname:    host,
+		IP:          ip,
+		CanReboot:   caps.Reboot,
+		CanPowerOff: caps.PowerOff,
 	}
 	if s.hostMetrics == nil {
 		return body

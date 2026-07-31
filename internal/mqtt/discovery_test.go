@@ -46,9 +46,10 @@ func decodeConfig(t *testing.T, m message) discoveryConfig {
 
 func TestDiscoveryMessageCount(t *testing.T) {
 	msgs := testSettings().discoveryMessages(testSpecs())
-	// 3 sensor entities + 1 switch + 1 screen-power + 3 always-on host metrics.
-	if len(msgs) != 8 {
-		t.Fatalf("got %d messages, want 8", len(msgs))
+	// 3 sensor entities + 1 switch + 1 screen-power + 3 always-on host metrics
+	// + hostname + IP + 2 power buttons (cleared, but still published).
+	if len(msgs) != 12 {
+		t.Fatalf("got %d messages, want 12", len(msgs))
 	}
 	for _, m := range msgs {
 		if m.qos != 1 || !m.retain {
@@ -256,17 +257,83 @@ func TestHostMetricDiscovery(t *testing.T) {
 
 func TestUndervoltageAdvertisedOnlyWhenAvailable(t *testing.T) {
 	off := testSettings().discoveryMessages(testSpecs())
-	if len(off) != 8 {
-		t.Fatalf("without undervoltage: got %d messages, want 8", len(off))
+	if len(off) != 12 {
+		t.Fatalf("without undervoltage: got %d messages, want 12", len(off))
 	}
 	s := testSettings()
 	s.Undervoltage = true
-	if on := s.discoveryMessages(testSpecs()); len(on) != 9 {
-		t.Fatalf("with undervoltage: got %d messages, want 9", len(on))
+	if on := s.discoveryMessages(testSpecs()); len(on) != 13 {
+		t.Fatalf("with undervoltage: got %d messages, want 13", len(on))
 	}
 	for _, m := range off {
 		if m.topic == testSettings().discoveryTopic("binary_sensor", "undervoltage") {
 			t.Fatal("undervoltage must not be advertised when throttle is unavailable")
 		}
+	}
+}
+
+func TestHostInfoDiscovery(t *testing.T) {
+	s := testSettings()
+	msgs := s.discoveryMessages(testSpecs())
+
+	host := decodeConfig(t, findMessage(t, msgs, s.discoveryTopic("sensor", "hostname")))
+	if host.StateTopic != s.hostnameStateTopic() || host.EntityCategory != diagnosticCategory {
+		t.Errorf("hostname config wrong: %+v", host)
+	}
+	ip := decodeConfig(t, findMessage(t, msgs, s.discoveryTopic("sensor", "ip_address")))
+	if ip.StateTopic != s.ipStateTopic() || ip.Icon != "mdi:ip-network" {
+		t.Errorf("ip config wrong: %+v", ip)
+	}
+	// A state class would make HA try to graph a string.
+	if host.StateClass != "" || ip.StateClass != "" {
+		t.Errorf("host info sensors must not set a state class: %q %q", host.StateClass, ip.StateClass)
+	}
+}
+
+func TestPowerButtonsAdvertisedWhenPermitted(t *testing.T) {
+	s := testSettings()
+	s.CanReboot, s.CanPowerOff = true, true
+	msgs := s.discoveryMessages(testSpecs())
+
+	reboot := decodeConfig(t, findMessage(t, msgs, s.discoveryTopic("button", "reboot")))
+	if reboot.CommandTopic != s.rebootCommandTopic() || reboot.DeviceClass != "restart" {
+		t.Errorf("reboot config wrong: %+v", reboot)
+	}
+	shutdown := decodeConfig(t, findMessage(t, msgs, s.discoveryTopic("button", "shutdown")))
+	if shutdown.CommandTopic != s.shutdownCommandTopic() || shutdown.Icon != "mdi:power" {
+		t.Errorf("shutdown config wrong: %+v", shutdown)
+	}
+	// HA rejects a button config carrying a state topic.
+	if reboot.StateTopic != "" || shutdown.StateTopic != "" {
+		t.Errorf("buttons must not declare a state topic: %q %q", reboot.StateTopic, shutdown.StateTopic)
+	}
+}
+
+// An empty retained payload is how HA is told to drop an entity.
+func TestPowerButtonsClearedWhenDenied(t *testing.T) {
+	s := testSettings()
+	msgs := s.discoveryMessages(testSpecs())
+
+	for _, object := range []string{"reboot", "shutdown"} {
+		m := findMessage(t, msgs, s.discoveryTopic("button", object))
+		if len(m.payload) != 0 {
+			t.Errorf("%s: want empty clearing payload, got %q", object, m.payload)
+		}
+		if !m.retain {
+			t.Errorf("%s: clearing payload must be retained to erase the stored config", object)
+		}
+	}
+}
+
+func TestPowerButtonsAdvertisedIndependently(t *testing.T) {
+	s := testSettings()
+	s.CanReboot = true
+	msgs := s.discoveryMessages(testSpecs())
+
+	if m := findMessage(t, msgs, s.discoveryTopic("button", "reboot")); len(m.payload) == 0 {
+		t.Error("reboot permitted but not advertised")
+	}
+	if m := findMessage(t, msgs, s.discoveryTopic("button", "shutdown")); len(m.payload) != 0 {
+		t.Error("shutdown denied but still advertised")
 	}
 }

@@ -535,3 +535,18 @@ func TestKioskTouchRoutesGating(t *testing.T) {
 		})
 	}
 }
+
+// The most destructive thing the API exposes: never reachable without a session,
+// and never kiosk-exempt.
+func TestPowerRoutesAreGated(t *testing.T) {
+	srv := authServer(t, hashFor(t, "pw"), nil)
+	for _, path := range []string{"/api/system/reboot", "/api/system/shutdown"} {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, path, nil)
+		req.RemoteAddr = "127.0.0.1:54321" // loopback must not buy an exemption
+		srv.ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("%s: got %d, want 401", path, rec.Code)
+		}
+	}
+}

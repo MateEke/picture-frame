@@ -1,0 +1,22 @@
+// Let the picture-frame service user reboot and power off the host.
+//
+// systemd's login1 policy grants these unconditionally only to an active local
+// session. The backend is a User= system service with no logind session, so
+// polkit falls through to auth_admin_keep and denies it with no agent to ask.
+// Without this file CanReboot/CanPowerOff answer "challenge" and no button appears.
+//
+// The -multiple-sessions variants are needed whenever another user has a session,
+// i.e. while someone is SSH'd in. -ignore-inhibit is deliberately not granted.
+//
+// @@USER@@ is substituted by install.sh.
+polkit.addRule(function(action, subject) {
+    var allowed = {
+        "org.freedesktop.login1.reboot": true,
+        "org.freedesktop.login1.reboot-multiple-sessions": true,
+        "org.freedesktop.login1.power-off": true,
+        "org.freedesktop.login1.power-off-multiple-sessions": true
+    };
+    if (allowed[action.id] && subject.user == "@@USER@@") {
+        return polkit.Result.YES;
+    }
+});

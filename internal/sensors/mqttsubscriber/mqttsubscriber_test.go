@@ -18,10 +18,10 @@ type fakeHub struct {
 	mu      sync.Mutex
 	topic   string
 	qos     byte
-	handler func([]byte)
+	handler func([]byte, bool)
 }
 
-func (h *fakeHub) Subscribe(topic string, qos byte, handler func([]byte)) {
+func (h *fakeHub) Subscribe(topic string, qos byte, handler func([]byte, bool)) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.topic, h.qos, h.handler = topic, qos, handler
@@ -32,7 +32,7 @@ func (h *fakeHub) deliver(payload []byte) {
 	hh := h.handler
 	h.mu.Unlock()
 	if hh != nil {
-		hh(payload)
+		hh(payload, false)
 	}
 }
 

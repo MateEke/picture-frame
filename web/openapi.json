@@ -1194,6 +1194,14 @@
             "readOnly": true,
             "type": "string"
           },
+          "canPowerOff": {
+            "description": "Host power-off is permitted (polkit rule present)",
+            "type": "boolean"
+          },
+          "canReboot": {
+            "description": "Host reboot is permitted (polkit rule present)",
+            "type": "boolean"
+          },
           "cpuTempC": {
             "description": "CPU temperature in Celsius",
             "format": "double",
@@ -1238,7 +1246,9 @@
           "platform",
           "uptime",
           "hostname",
-          "ip"
+          "ip",
+          "canReboot",
+          "canPowerOff"
         ],
         "type": "object"
       },
@@ -2237,6 +2247,27 @@
         "summary": "Third-party dependency notices (plain text)"
       }
     },
+    "/api/system/reboot": {
+      "post": {
+        "operationId": "system-reboot",
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Reboot the host (requires the picture-frame polkit rule)"
+      }
+    },
     "/api/system/restart": {
       "post": {
         "operationId": "system-restart",
@@ -2256,6 +2287,27 @@
           }
         },
         "summary": "Reload the frame backend in place (re-exec; systemd sees no crash)"
+      }
+    },
+    "/api/system/shutdown": {
+      "post": {
+        "operationId": "system-shutdown",
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Power off the host (requires the picture-frame polkit rule)"
       }
     },
     "/api/system/update": {
