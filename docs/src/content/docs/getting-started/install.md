@@ -25,7 +25,8 @@ That's the whole thing. The installer:
 - optionally configures a Wi-Fi recovery hotspot and an admin password
 
 It's safe to re-run: it re-applies the system setup but never overwrites an existing
-`config.toml`.
+`config.toml`. A re-run also brings the installed release up to date, so the system setup it
+applies always matches the version it just installed.
 
 ## What it asks
 

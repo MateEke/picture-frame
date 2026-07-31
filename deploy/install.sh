@@ -5,6 +5,8 @@ set -euo pipefail
 REPO="MateEke/picture-frame"
 # Trust anchor; must match deploy/minisign.pub and the updater's embedded key.
 MINISIGN_PUBKEY="RWSn8v6e9fllWNQOZr6w2z8ic5NXGHtKMWxjxrjuu3SWj8BpoWxQLtHl"
+# Records which release's payload sits in INSTALL_DIR (binary + deploy/ templates).
+PAYLOAD_MARKER=".release"
 
 DRY_RUN=0
 NON_INTERACTIVE=0
@@ -293,19 +295,27 @@ extract_release() {
     run_cmd mkdir -p "$INSTALL_DIR"
     # Unwrapped: unreachable under --dry-run (fetch_and_verify returns early).
     tar -xzf "$WORKDIR/$TARBALL" -C "$INSTALL_DIR"
+    printf '%s\n' "$RELEASE_TAG" > "$INSTALL_DIR/$PAYLOAD_MARKER"
     run_cmd chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
 }
 
+# Marker, not binary version: the self-updater swaps the binary without refreshing deploy/,
+# whose templates this script then reads.
+payload_is_current() {
+    [ -x "$INSTALL_DIR/picture-frame" ] || return 1
+    [ "$(cat "$INSTALL_DIR/$PAYLOAD_MARKER" 2>/dev/null || true)" = "$RELEASE_TAG" ]
+}
+
 fetch_and_verify() {
-    if [ -x "$INSTALL_DIR/picture-frame" ] && [ "$VERSION" = "latest" ]; then
-        log "existing binary at $INSTALL_DIR/picture-frame, skipping download (use --version to force)"
-        return
-    fi
     if [ "$DRY_RUN" -eq 1 ]; then
         log "[dry-run] would resolve/download/verify/extract release '$VERSION' for $ARCH"
         return
     fi
     resolve_release
+    if payload_is_current; then
+        log "$RELEASE_TAG already extracted at $INSTALL_DIR, skipping download"
+        return
+    fi
     download_release
     verify_release
     extract_release
