@@ -82,9 +82,10 @@ type Publisher struct {
 
 	// Touched only by the Run goroutine (readings, stale timers, and the
 	// reconnect signal are all funnelled through its select), so no locking.
-	timers   map[string]*time.Timer // per-sensor staleness timers
-	online   map[string]bool        // availability currently published, per sensor
-	lastSeen map[string]time.Time   // last reading time; guards the stale check
+	timers    map[string]*time.Timer // per-sensor staleness timers
+	online    map[string]bool        // availability currently published, per sensor
+	lastSeen  map[string]time.Time   // last reading time; guards the stale check
+	lastTouch time.Time              // zero until the first tap
 }
 
 // New registers with the Hub at construction so a connect that beats Run still
@@ -202,6 +203,7 @@ func (p *Publisher) republish() {
 	if p.set.Hostname != "" {
 		p.publish(p.set.hostnameStateTopic(), p.set.Hostname, 1, true)
 	}
+	p.publishLastTouch() // a broker restart drops retained state
 	for _, spec := range p.specs {
 		p.publish(p.set.sensorAvailTopic(spec.ID), availabilityWord(p.online[spec.ID]), 1, true)
 	}
@@ -219,6 +221,10 @@ func (p *Publisher) handleEvent(ctx context.Context, e state.Event, stale chan<-
 		// Auto drives the intent switch; On drives the live-power binary_sensor.
 		p.publishSwitch(pl.Auto)
 		p.publishScreenPower(pl.On)
+	case state.TouchPayload:
+		// On the tap, not the metrics tick, so automations fire at once.
+		p.lastTouch = pl.At
+		p.publishLastTouch()
 	}
 }
 
@@ -285,6 +291,14 @@ func (p *Publisher) publishSwitch(on bool) {
 
 func (p *Publisher) publishScreenPower(on bool) {
 	p.publish(p.set.screenPowerStateTopic(), boolWord(on), 1, true)
+}
+
+// Silent before the first tap, so HA shows unknown rather than a made-up time.
+func (p *Publisher) publishLastTouch() {
+	if p.lastTouch.IsZero() {
+		return
+	}
+	p.publish(p.set.lastTouchStateTopic(), p.lastTouch.UTC().Format(time.RFC3339), 1, true)
 }
 
 // publishMetrics mirrors each present field to its state topic, skipping absent ones.

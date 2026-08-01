@@ -72,7 +72,9 @@ func (s *server) registerScreenRoutes(api huma.API) {
 		Path:          "/api/screen/wake",
 		Summary:       "Wake the screen after a kiosk touch",
 		DefaultStatus: http.StatusNoContent,
+		Middlewares:   huma.Middlewares{markKioskOrigin},
 	}, func(ctx context.Context, _ *struct{}) (*struct{}, error) {
+		s.recordTouch(ctx)
 		if err := s.screen.Wake(ctx); err != nil {
 			s.log.Error("screen wake failed", "err", err)
 			return nil, huma.Error500InternalServerError("failed to wake screen")
@@ -81,20 +83,42 @@ func (s *server) registerScreenRoutes(api huma.API) {
 	})
 }
 
+// --- Kiosk origin ---
+
+type ctxKey int
+
+const kioskOriginKey ctxKey = iota
+
+// The frame's own screen: loopback with no forwarding headers, since a phone
+// behind a reverse proxy is loopback too.
+func markKioskOrigin(ctx huma.Context, next func(huma.Context)) {
+	onDevice := isLoopback(ctx.RemoteAddr()) &&
+		ctx.Header("X-Forwarded-For") == "" && ctx.Header("X-Real-IP") == ""
+	next(huma.WithValue(ctx, kioskOriginKey, onDevice))
+}
+
+// False on routes without markKioskOrigin.
+func onDeviceKiosk(ctx context.Context) bool {
+	onDevice, _ := ctx.Value(kioskOriginKey).(bool)
+	return onDevice
+}
+
+// The admin UI drives the same routes, so only on-device taps count.
+func (s *server) recordTouch(ctx context.Context) {
+	if !onDeviceKiosk(ctx) {
+		return
+	}
+	s.bus.Publish(state.Event{Kind: state.KindTouch, Payload: state.TouchPayload{At: time.Now()}})
+}
+
 // --- Heartbeat ---
 
 type heartbeatInput struct {
 	// Reporting frontend's build; the update commit gate fires only when the new build beats.
 	Version string `query:"version"`
-	// Screen aspect (width/height) for split-screen pairing; see authoritativeKiosk.
-	Aspect        float64 `query:"aspect"`
-	XForwardedFor string  `header:"X-Forwarded-For"`
-	XRealIP       string  `header:"X-Real-IP"`
+	// Screen aspect (width/height) for split-screen pairing; see markKioskOrigin.
+	Aspect float64 `query:"aspect"`
 }
-
-type ctxKey int
-
-const loopbackKey ctxKey = iota
 
 func (s *server) registerHeartbeatRoutes(api huma.API) {
 	s.kioskExempt("/api/heartbeat")
@@ -104,13 +128,9 @@ func (s *server) registerHeartbeatRoutes(api huma.API) {
 		Path:          "/api/heartbeat",
 		Summary:       "Record kiosk heartbeat",
 		DefaultStatus: http.StatusNoContent,
-		Middlewares: huma.Middlewares{
-			func(ctx huma.Context, next func(huma.Context)) {
-				next(huma.WithValue(ctx, loopbackKey, isLoopback(ctx.RemoteAddr())))
-			},
-		},
+		Middlewares:   huma.Middlewares{markKioskOrigin},
 	}, func(ctx context.Context, input *heartbeatInput) (*struct{}, error) {
-		if s.planner != nil && input.Aspect > 0 && input.Aspect < 100 && authoritativeKiosk(ctx, input) {
+		if s.planner != nil && input.Aspect > 0 && input.Aspect < 100 && onDeviceKiosk(ctx) {
 			if s.planner.SetScreenAspect(input.Aspect) {
 				s.bus.Publish(state.Event{
 					Kind:    state.KindScreenAspect,
@@ -125,14 +145,6 @@ func (s *server) registerHeartbeatRoutes(api huma.API) {
 		s.kioskBeater.Beat(input.Version)
 		return nil, nil
 	})
-}
-
-// authoritativeKiosk is the on-device kiosk: a loopback peer with no forwarding
-// header. A phone reaching the frame through a reverse proxy is loopback too but
-// carries X-Forwarded-For, so it stays passive and can't hijack pairing.
-func authoritativeKiosk(ctx context.Context, input *heartbeatInput) bool {
-	loopback, _ := ctx.Value(loopbackKey).(bool)
-	return loopback && input.XForwardedFor == "" && input.XRealIP == ""
 }
 
 // --- Library ---

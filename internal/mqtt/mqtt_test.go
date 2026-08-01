@@ -837,3 +837,65 @@ func TestPowerActionErrorIsLogged(t *testing.T) {
 		t.Errorf("failed action must not count: %d", r)
 	}
 }
+
+func TestTouchEventPublishesTimestampImmediately(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		client := &fakeClient{}
+		bus := state.NewBus()
+		p, hub := newTestPublisherWithHub(client, &fakeScreen{bus: bus}, bus)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go p.Run(ctx)
+		go hub.Connect(ctx)
+		synctest.Wait()
+
+		touched := time.Now()
+		bus.Publish(state.Event{Kind: state.KindTouch, Payload: state.TouchPayload{At: touched}})
+		synctest.Wait()
+
+		want := touched.UTC().Format(time.RFC3339)
+		if v, _ := client.lastPayload("picture-frame/sensor/last_touch/state"); v != want {
+			t.Errorf("last touch: got %q, want %q", v, want)
+		}
+	})
+}
+
+func TestTouchIsRepublishedAfterReconnect(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		client := &fakeClient{}
+		bus := state.NewBus()
+		p, hub := newTestPublisherWithHub(client, &fakeScreen{bus: bus}, bus)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go p.Run(ctx)
+		go hub.Connect(ctx)
+		synctest.Wait()
+
+		touched := time.Now()
+		bus.Publish(state.Event{Kind: state.KindTouch, Payload: state.TouchPayload{At: touched}})
+		synctest.Wait()
+
+		before := client.countTopic("picture-frame/sensor/last_touch/state")
+		client.onConnectionLost(errors.New("broker restarted"))
+		synctest.Wait()
+		client.onConnect() // paho reconnects on its own
+		synctest.Wait()
+
+		if after := client.countTopic("picture-frame/sensor/last_touch/state"); after <= before {
+			t.Errorf("reconnect must restore the retained touch: before=%d after=%d", before, after)
+		}
+		if v, _ := client.lastPayload("picture-frame/sensor/last_touch/state"); v != touched.UTC().Format(time.RFC3339) {
+			t.Errorf("republished touch: got %q, want %q", v, touched.UTC().Format(time.RFC3339))
+		}
+	})
+}
+
+func TestUntouchedFramePublishesNoTouchState(t *testing.T) {
+	client := &fakeClient{}
+	p := newTestPublisher(client, &fakeScreen{auto: true, on: true})
+	p.republish()
+
+	if _, ok := client.lastPayload("picture-frame/sensor/last_touch/state"); ok {
+		t.Error("a frame that was never touched must not publish a touch timestamp")
+	}
+}

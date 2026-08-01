@@ -291,3 +291,24 @@ func TestSSERotatorReconcilesBeforeScreen(t *testing.T) {
 		t.Errorf("reconcile order = %v, want [rotator screen]", got)
 	}
 }
+
+// An unregistered payload makes huma log "unknown event type" to stderr per tap.
+func TestSSEStreamsTouchEvent(t *testing.T) {
+	srv, bus := newSSEServer(t)
+
+	resp, err := http.Get(srv.URL + "/events")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		bus.Publish(state.Event{Kind: state.KindTouch, Payload: state.TouchPayload{At: time.Now()}})
+	}()
+
+	line := readSSELine(t, resp.Body, 2*time.Second)
+	if !strings.Contains(line, "event: touch") {
+		t.Errorf("expected event: touch line, got: %q", line)
+	}
+}
