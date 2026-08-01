@@ -52,6 +52,13 @@ type ScreenAspectPayload struct {
 
 func (ScreenAspectPayload) busPayload() {}
 
+// TouchPayload carries the moment the on-device kiosk was last tapped.
+type TouchPayload struct {
+	At time.Time `json:"at"`
+}
+
+func (TouchPayload) busPayload() {}
+
 // KioskPayload carries the kiosk overlay's render inputs.
 type KioskPayload struct {
 	Version       string      `json:"version"` // running build; the kiosk reloads when it changes (post-update)

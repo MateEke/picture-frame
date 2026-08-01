@@ -1252,6 +1252,19 @@
         ],
         "type": "object"
       },
+      "TouchPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at"
+        ],
+        "type": "object"
+      },
       "UpdateStatusResponse": {
         "additionalProperties": false,
         "properties": {
@@ -1801,20 +1814,6 @@
             "schema": {
               "format": "double",
               "type": "number"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-Forwarded-For",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-Real-IP",
-            "schema": {
-              "type": "string"
             }
           }
         ],
@@ -2733,6 +2732,32 @@
                           "event"
                         ],
                         "title": "Event sensor",
+                        "type": "object"
+                      },
+                      {
+                        "properties": {
+                          "data": {
+                            "$ref": "#/components/schemas/TouchPayload"
+                          },
+                          "event": {
+                            "const": "touch",
+                            "description": "The event name.",
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "The event ID.",
+                            "type": "integer"
+                          },
+                          "retry": {
+                            "description": "The retry time in milliseconds.",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "event"
+                        ],
+                        "title": "Event touch",
                         "type": "object"
                       },
                       {

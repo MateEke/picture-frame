@@ -517,6 +517,10 @@ export type SystemInfoBody = {
     version: string;
 };
 
+export type TouchPayload = {
+    at: string;
+};
+
 export type UpdateStatusResponse = {
     /**
      * A URL to the JSON Schema for this object.
@@ -1125,10 +1129,6 @@ export type GetConfigMetaResponse = GetConfigMetaResponses[keyof GetConfigMetaRe
 
 export type HeartbeatData = {
     body?: never;
-    headers?: {
-        'X-Forwarded-For'?: string;
-        'X-Real-IP'?: string;
-    };
     path?: never;
     query?: {
         version?: string;
@@ -1890,6 +1890,20 @@ export type EventsResponses = {
          * The event name.
          */
         event: 'sensor';
+        /**
+         * The event ID.
+         */
+        id?: number;
+        /**
+         * The retry time in milliseconds.
+         */
+        retry?: number;
+    } | {
+        data: TouchPayload;
+        /**
+         * The event name.
+         */
+        event: 'touch';
         /**
          * The event ID.
          */

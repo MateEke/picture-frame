@@ -39,7 +39,9 @@ running frame version, carrying:
 - a **Screen** switch, to turn the panel on or off from Home Assistant;
 - a read-only **screen-power** sensor, showing whether the panel is actually lit;
 - Raspberry Pi diagnostics: **CPU temperature**, **memory usage**, and **uptime** sensors, plus
-  an **undervoltage** problem sensor that flags an inadequate power supply.
+  an **undervoltage** problem sensor that flags an inadequate power supply;
+- a **last touch** timestamp, updated when someone taps the frame's own screen. Clicks in the
+  admin interface don't count.
 
 Only Bluetooth sensors are bridged. Mock sensors are a development aid, and MQTT sensor readings
 already come from the broker, so re-publishing them would loop.
@@ -80,8 +82,8 @@ leave, wake it when you are back, or use the frame's motion and climate readings
 your home.
 
 Alongside the screen switch and the sensors you configured, the bridge publishes the frame's own
-diagnostics: CPU temperature, memory use, uptime, hostname, IP address, and undervoltage on Pi
-hardware. Version, model, and board revision appear on the device card itself.
+diagnostics: CPU temperature, memory use, uptime, last touch, hostname, IP address, and
+undervoltage on Pi hardware. Version, model, and board revision appear on the device card itself.
 
 ## Reboot and shutdown
 

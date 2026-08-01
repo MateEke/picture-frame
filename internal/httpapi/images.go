@@ -193,7 +193,9 @@ func (s *server) registerSlideshowRoutes(api huma.API) {
 		Path:          "/api/slideshow/next",
 		Summary:       "Advance slideshow to next image",
 		DefaultStatus: http.StatusNoContent,
-	}, func(_ context.Context, _ *struct{}) (*struct{}, error) {
+		Middlewares:   huma.Middlewares{markKioskOrigin},
+	}, func(ctx context.Context, _ *struct{}) (*struct{}, error) {
+		s.recordTouch(ctx)
 		if s.slideshow != nil {
 			s.slideshow.Next()
 		}
@@ -206,7 +208,9 @@ func (s *server) registerSlideshowRoutes(api huma.API) {
 		Path:          "/api/slideshow/prev",
 		Summary:       "Return slideshow to the previous image",
 		DefaultStatus: http.StatusNoContent,
-	}, func(_ context.Context, _ *struct{}) (*struct{}, error) {
+		Middlewares:   huma.Middlewares{markKioskOrigin},
+	}, func(ctx context.Context, _ *struct{}) (*struct{}, error) {
+		s.recordTouch(ctx)
 		if s.slideshow != nil {
 			s.slideshow.Prev()
 		}

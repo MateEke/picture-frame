@@ -482,3 +482,97 @@ func TestScreenWakeEndpointControllerError(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
 	}
 }
+
+// Exposes the bus so tap-origin tests can observe touch events.
+func newTouchTestServer(t *testing.T) (http.Handler, *state.Bus) {
+	t.Helper()
+	bus := state.NewBus()
+	srv := httpapi.NewServer(httpapi.Config{
+		Log:       testutil.NopLogger(),
+		Screen:    &mockScreen{},
+		Bus:       bus,
+		Slideshow: &fakeSlideshow{},
+	})
+	return srv, bus
+}
+
+func touchedWithin(t *testing.T, ch <-chan state.Event) bool {
+	t.Helper()
+	for {
+		select {
+		case e := <-ch:
+			if _, ok := e.Payload.(state.TouchPayload); ok {
+				return true
+			}
+		case <-time.After(100 * time.Millisecond):
+			return false
+		}
+	}
+}
+
+func TestKioskTapPublishesTouch(t *testing.T) {
+	for _, path := range []string{"/api/screen/wake", "/api/slideshow/next", "/api/slideshow/prev"} {
+		t.Run(path, func(t *testing.T) {
+			handler, bus := newTouchTestServer(t)
+			ch, unsub := bus.Subscribe()
+			defer unsub()
+
+			req := httptest.NewRequest(http.MethodPost, path, nil)
+			req.RemoteAddr = "127.0.0.1:54321"
+			handler.ServeHTTP(httptest.NewRecorder(), req)
+
+			if !touchedWithin(t, ch) {
+				t.Errorf("%s from the on-device kiosk should publish a touch event", path)
+			}
+		})
+	}
+}
+
+func TestRemoteRequestPublishesNoTouch(t *testing.T) {
+	handler, bus := newTouchTestServer(t)
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/slideshow/next", nil) // RemoteAddr is 192.0.2.1
+	handler.ServeHTTP(httptest.NewRecorder(), req)
+
+	if touchedWithin(t, ch) {
+		t.Error("a remote admin advancing the slideshow is not a screen touch")
+	}
+}
+
+func TestProxiedRequestPublishesNoTouch(t *testing.T) {
+	handler, bus := newTouchTestServer(t)
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	// A phone behind a reverse proxy: loopback peer, but forwarded.
+	req := httptest.NewRequest(http.MethodPost, "/api/slideshow/next", nil)
+	req.RemoteAddr = "127.0.0.1:54321"
+	req.Header.Set("X-Forwarded-For", "10.0.0.5")
+	handler.ServeHTTP(httptest.NewRecorder(), req)
+
+	if touchedWithin(t, ch) {
+		t.Error("a proxied request must not count as a screen touch")
+	}
+}
+
+func TestTouchRecordedWhenWakeFails(t *testing.T) {
+	bus := state.NewBus()
+	screen := &mockScreen{onErr: errors.New("wlopm failed")}
+	handler := httpapi.NewServer(httpapi.Config{Log: testutil.NopLogger(), Screen: screen, Bus: bus})
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/screen/wake", nil)
+	req.RemoteAddr = "127.0.0.1:54321"
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+	if !touchedWithin(t, ch) {
+		t.Error("a tap that fails to wake the panel is still a touch")
+	}
+}

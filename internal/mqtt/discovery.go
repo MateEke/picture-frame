@@ -66,8 +66,9 @@ func (s Settings) uptimeStateTopic() string  { return s.BaseTopic + "/sensor/upt
 func (s Settings) undervoltageStateTopic() string {
 	return s.BaseTopic + "/binary_sensor/undervoltage/state"
 }
-func (s Settings) hostnameStateTopic() string { return s.BaseTopic + "/sensor/hostname/state" }
-func (s Settings) ipStateTopic() string       { return s.BaseTopic + "/sensor/ip_address/state" }
+func (s Settings) lastTouchStateTopic() string { return s.BaseTopic + "/sensor/last_touch/state" }
+func (s Settings) hostnameStateTopic() string  { return s.BaseTopic + "/sensor/hostname/state" }
+func (s Settings) ipStateTopic() string        { return s.BaseTopic + "/sensor/ip_address/state" }
 
 func (s Settings) rebootCommandTopic() string {
 	return s.BaseTopic + "/button/reboot/set"
@@ -236,10 +237,16 @@ func (s Settings) hostMetricDiscoveries(dev haDevice) []message {
 		StateTopic: s.uptimeStateTopic(), DeviceClass: "timestamp", // boot time; HA renders "x days"
 		EntityCategory: diagnosticCategory, Availability: avail, AvailabilityMode: "all", Device: dev,
 	}
+	touch := discoveryConfig{
+		UniqueID: s.NodeID + "_last_touch", Name: "Last Touch",
+		StateTopic: s.lastTouchStateTopic(), DeviceClass: "timestamp",
+		EntityCategory: diagnosticCategory, Availability: avail, AvailabilityMode: "all", Device: dev,
+	}
 	msgs := []message{
 		discoveryMessage(s.discoveryTopic("sensor", "cpu_temperature"), temp),
 		discoveryMessage(s.discoveryTopic("sensor", "memory_usage"), mem),
 		discoveryMessage(s.discoveryTopic("sensor", "uptime"), uptime),
+		discoveryMessage(s.discoveryTopic("sensor", "last_touch"), touch),
 	}
 	if s.Undervoltage {
 		uv := discoveryConfig{

@@ -47,6 +47,9 @@ dark by itself when the room emptied or you switched it off from the [Dashboard]
 or [Home Assistant](/manual/home-assistant/). Switching it back on this way also restores the
 motion wake.
 
+A touch that changes the photo or wakes the screen updates the **last touch** sensor in
+[Home Assistant](/manual/home-assistant/#what-it-exposes). Touches during a fade do not.
+
 ## When the screen sleeps
 
 With a motion sensor, the frame turns the screen off when the room empties and wakes it when you

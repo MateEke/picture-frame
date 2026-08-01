@@ -46,10 +46,10 @@ func decodeConfig(t *testing.T, m message) discoveryConfig {
 
 func TestDiscoveryMessageCount(t *testing.T) {
 	msgs := testSettings().discoveryMessages(testSpecs())
-	// 3 sensor entities + 1 switch + 1 screen-power + 3 always-on host metrics
+	// 3 sensor entities + 1 switch + 1 screen-power + 4 always-on host metrics
 	// + hostname + IP + 2 power buttons (cleared, but still published).
-	if len(msgs) != 12 {
-		t.Fatalf("got %d messages, want 12", len(msgs))
+	if len(msgs) != 13 {
+		t.Fatalf("got %d messages, want 13", len(msgs))
 	}
 	for _, m := range msgs {
 		if m.qos != 1 || !m.retain {
@@ -257,13 +257,13 @@ func TestHostMetricDiscovery(t *testing.T) {
 
 func TestUndervoltageAdvertisedOnlyWhenAvailable(t *testing.T) {
 	off := testSettings().discoveryMessages(testSpecs())
-	if len(off) != 12 {
-		t.Fatalf("without undervoltage: got %d messages, want 12", len(off))
+	if len(off) != 13 {
+		t.Fatalf("without undervoltage: got %d messages, want 13", len(off))
 	}
 	s := testSettings()
 	s.Undervoltage = true
-	if on := s.discoveryMessages(testSpecs()); len(on) != 13 {
-		t.Fatalf("with undervoltage: got %d messages, want 13", len(on))
+	if on := s.discoveryMessages(testSpecs()); len(on) != 14 {
+		t.Fatalf("with undervoltage: got %d messages, want 14", len(on))
 	}
 	for _, m := range off {
 		if m.topic == testSettings().discoveryTopic("binary_sensor", "undervoltage") {
@@ -335,5 +335,22 @@ func TestPowerButtonsAdvertisedIndependently(t *testing.T) {
 	}
 	if m := findMessage(t, msgs, s.discoveryTopic("button", "shutdown")); len(m.payload) != 0 {
 		t.Error("shutdown denied but still advertised")
+	}
+}
+
+func TestLastTouchDiscovery(t *testing.T) {
+	s := testSettings()
+	touch := decodeConfig(t, findMessage(t, s.discoveryMessages(testSpecs()), s.discoveryTopic("sensor", "last_touch")))
+	if touch.DeviceClass != "timestamp" || touch.StateClass != "" {
+		t.Errorf("last_touch config wrong: %+v", touch)
+	}
+	if touch.StateTopic != "picture-frame/sensor/last_touch/state" {
+		t.Errorf("last_touch state_topic: %q", touch.StateTopic)
+	}
+	if touch.EntityCategory != diagnosticCategory {
+		t.Errorf("last_touch entity_category: %q", touch.EntityCategory)
+	}
+	if len(touch.Availability) != 1 || touch.Availability[0].Topic != s.bridgeAvailTopic() {
+		t.Errorf("last_touch availability wrong: %+v", touch.Availability)
 	}
 }
