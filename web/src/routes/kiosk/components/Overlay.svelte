@@ -9,6 +9,7 @@
 	} from '$lib/helpers';
 	import { onMount } from 'svelte';
 	import { weatherIconFor } from './weather-icons';
+	import { overlayShiftPair } from './overlayShift';
 
 	const sse = getSSEContext();
 
@@ -29,12 +30,18 @@
 	let clock = $derived(formatClockParts(now, locale, timeZone));
 	let weekday = $derived(formatWeekday(now, locale, timeZone));
 	let monthDay = $derived(formatMonthDay(now, locale, timeZone));
+	// Rem scales with resolution (layout.css), so px must be recomputed, not cached.
+	let rootPx = $state(16);
+	let portrait = $state(false);
+	let shift = $derived(overlayShiftPair(now, rootPx, portrait));
 
 	onMount(() => {
 		let timeout: ReturnType<typeof setTimeout>;
 
 		const tick = () => {
 			now = new Date();
+			rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize);
+			portrait = matchMedia('(orientation: portrait)').matches;
 			const msToNextMinute = 60_000 - (now.getSeconds() * 1000 + now.getMilliseconds());
 			timeout = setTimeout(tick, msToNextMinute);
 		};
@@ -63,7 +70,7 @@
 		class="pointer-events-none fixed inset-x-0 bottom-0 flex items-end justify-between bg-linear-to-b from-transparent to-black/30 px-15 pt-33 pb-12 text-kiosk-fg text-shadow-lg/30 portrait:flex-col portrait:items-start portrait:gap-12"
 	>
 		{#if !hideClockDate}
-			<div>
+			<div data-testid="kiosk-clock-block" style="transform: {shift.lead}">
 				<div
 					data-testid="kiosk-clock"
 					class="flex items-baseline text-[7rem] leading-none font-medium tabular-nums"
@@ -92,7 +99,11 @@
 		{/if}
 
 		{#if showReadings}
-			<div class="ml-auto flex gap-9 text-right portrait:ml-0 portrait:text-left">
+			<div
+				data-testid="kiosk-readings"
+				class="ml-auto flex gap-9 text-right portrait:ml-0 portrait:text-left"
+				style="transform: {shift.trail}"
+			>
 				{#if showOutside}
 					<div class="min-w-60 portrait:min-w-0">
 						<div

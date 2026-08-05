@@ -64,6 +64,94 @@ test.describe('kiosk overlay visibility', () => {
 		});
 	});
 
+	test.describe('burn-in shift', () => {
+		// UTC pins the minute of the hour; half-hour-offset zones would shift it.
+		test.use({ timezoneId: 'UTC' });
+
+		test('offsets the overlay content without moving the scrim', async ({ kiosk, page }) => {
+			// Minute 24: both components non-zero. Readings may show "--" here (the pinned
+			// clock can push them past SENSOR_STALE_MS); this asserts geometry only.
+			const fixed = new Date();
+			fixed.setUTCMinutes(24, 0, 0);
+			await page.clock.setFixedTime(fixed);
+
+			await kiosk.goto();
+			await kiosk.waitForImage();
+
+			const rem = await kiosk.rootFontSize();
+			const clockShift = await kiosk.shiftOf(kiosk.clockBlock);
+
+			// Past a third of the orbit: x negative, y positive.
+			expect(clockShift.x).toBeLessThan(0);
+			expect(clockShift.y).toBeGreaterThan(0);
+			expect(Math.abs(clockShift.x)).toBeLessThanOrEqual(0.75 * rem);
+			expect(Math.abs(clockShift.y)).toBeLessThanOrEqual(0.5 * rem);
+
+			// Whole pixels, or a promoted layer would resample and soften the text.
+			expect(Number.isInteger(clockShift.x)).toBe(true);
+			expect(Number.isInteger(clockShift.y)).toBe(true);
+
+			// Mirrored horizontally so both margins move together; level so the baseline holds.
+			const readingsShift = await kiosk.shiftOf(kiosk.readings);
+			expect(clockShift.x + readingsShift.x).toBe(0);
+			expect(readingsShift.y).toBe(clockShift.y);
+
+			const size = page.viewportSize();
+			if (!size) throw new Error('no viewport size');
+			const overlayBox = await kiosk.overlay.boundingBox();
+			if (!overlayBox) throw new Error('no overlay box');
+			expect(overlayBox.x).toBeCloseTo(0, 0);
+			expect(overlayBox.width).toBeCloseTo(size.width, 0);
+			expect(overlayBox.y + overlayBox.height).toBeCloseTo(size.height, 0);
+
+			for (const block of [kiosk.clockBlock, kiosk.readings]) {
+				const box = await block.boundingBox();
+				if (!box) throw new Error('no block box');
+				expect(box.x).toBeGreaterThan(0);
+				expect(box.y).toBeGreaterThan(0);
+				expect(box.x + box.width).toBeLessThan(size.width);
+				expect(box.y + box.height).toBeLessThan(size.height);
+			}
+		});
+
+		// Either block can be configured away, so each must shift on its own.
+		test.describe('readings only', () => {
+			test.use({ serverOptions: { hideClockDate: true } });
+
+			test('still shifts the surviving block', async ({ kiosk, page }) => {
+				const fixed = new Date();
+				fixed.setUTCMinutes(24, 0, 0);
+				await page.clock.setFixedTime(fixed);
+				await kiosk.goto();
+				await kiosk.waitForImage();
+
+				await expect(kiosk.clockBlock).toHaveCount(0);
+				const shift = await kiosk.shiftOf(kiosk.readings);
+				expect(shift.x).toBeGreaterThan(0);
+				expect(Number.isInteger(shift.x)).toBe(true);
+				expect(Number.isInteger(shift.y)).toBe(true);
+			});
+		});
+
+		test.describe('clock only', () => {
+			test.use({ serverOptions: { minimalOverlay: true } });
+
+			test('still shifts the surviving block', async ({ kiosk, page }) => {
+				const fixed = new Date();
+				fixed.setUTCMinutes(24, 0, 0);
+				await page.clock.setFixedTime(fixed);
+				await kiosk.goto();
+				await kiosk.waitForImage();
+
+				await expect(kiosk.readings).toHaveCount(0);
+				const shift = await kiosk.shiftOf(kiosk.clockBlock);
+				expect(shift.x).toBeLessThan(0);
+				expect(Number.isInteger(shift.x)).toBe(true);
+				expect(Number.isInteger(shift.y)).toBe(true);
+			});
+		});
+	});
+
 	test.describe('timezone', () => {
 		test.use({ serverOptions: { timezone: 'Asia/Tokyo' } });
 
