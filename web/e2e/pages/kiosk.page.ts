@@ -5,6 +5,8 @@ export class KioskPage {
 	readonly imgBottom: Locator;
 	readonly overlay: Locator;
 	readonly clock: Locator;
+	readonly clockBlock: Locator;
+	readonly readings: Locator;
 	readonly date: Locator;
 	readonly tempInside: Locator;
 	readonly tempOutside: Locator;
@@ -20,6 +22,8 @@ export class KioskPage {
 		this.imgBottom = page.getByTestId('kiosk-img-bottom');
 		this.overlay = page.getByTestId('kiosk-overlay');
 		this.clock = page.getByTestId('kiosk-clock');
+		this.clockBlock = page.getByTestId('kiosk-clock-block');
+		this.readings = page.getByTestId('kiosk-readings');
 		this.date = page.getByTestId('kiosk-date');
 		this.tempInside = page.getByTestId('kiosk-temp-inside');
 		this.tempOutside = page.getByTestId('kiosk-temp-outside');
@@ -61,5 +65,20 @@ export class KioskPage {
 	async waitForImageChange(from: string, timeoutMs = 10_000): Promise<string> {
 		await expect(this.imgBottom).not.toHaveAttribute('src', from, { timeout: timeoutMs });
 		return String(await this.currentImageSrc());
+	}
+
+	/** The element's translate, in CSS px. */
+	shiftOf(target: Locator): Promise<{ x: number; y: number }> {
+		return target.evaluate((el) => {
+			const t = getComputedStyle(el).transform;
+			const m = new DOMMatrixReadOnly(t === 'none' ? '' : t);
+			return { x: m.m41, y: m.m42 };
+		});
+	}
+
+	rootFontSize(): Promise<number> {
+		return this.page.evaluate(() =>
+			parseFloat(getComputedStyle(document.documentElement).fontSize)
+		);
 	}
 }

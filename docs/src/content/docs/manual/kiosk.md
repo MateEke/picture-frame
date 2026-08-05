@@ -34,6 +34,11 @@ A reading shows only when its source is configured, and one that has stopped arr
 to `--`. When nothing is left to show, no readings, no weather, and the clock and date hidden, the
 whole bottom overlay disappears and the photo fills the screen on its own.
 
+The clock, date, and readings drift slowly around a small circle, a step each minute and a full
+turn each hour. Each step is about a pixel, too small to notice, and over an hour it keeps an
+OLED panel from wearing the same bright edges into one spot. LCD panels do not need this, but it
+costs them nothing. There is no setting for it.
+
 ## Touching the screen
 
 Touch the left half of the screen for the previous photo, the right half for the next. Either one
