@@ -11,9 +11,9 @@
 	},
 	"dependencies": {
 		"@astrojs/markdown-remark": "^7.2.2",
-		"@astrojs/starlight": "^0.41.5",
+		"@astrojs/starlight": "^0.41.7",
 		"@fontsource-variable/fraunces": "^5.3.0",
-		"@iconify-json/lucide": "^1.2.120",
+		"@iconify-json/lucide": "^1.2.121",
 		"astro": "^7.1.6",
 		"astro-icon": "^1.1.5",
 		"rehype-external-links": "^3.0.0",
