@@ -347,7 +347,7 @@ func TestLastTouchDiscovery(t *testing.T) {
 	if touch.StateTopic != "picture-frame/sensor/last_touch/state" {
 		t.Errorf("last_touch state_topic: %q", touch.StateTopic)
 	}
-	if touch.EntityCategory != diagnosticCategory {
+	if touch.EntityCategory != "" {
 		t.Errorf("last_touch entity_category: %q", touch.EntityCategory)
 	}
 	if len(touch.Availability) != 1 || touch.Availability[0].Topic != s.bridgeAvailTopic() {

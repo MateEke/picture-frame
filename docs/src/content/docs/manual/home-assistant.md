@@ -81,9 +81,10 @@ you can add its entities to dashboards, or fold them into automations: blank the
 leave, wake it when you are back, or use the frame's motion and climate readings elsewhere in
 your home.
 
-Alongside the screen switch and the sensors you configured, the bridge publishes the frame's own
-diagnostics: CPU temperature, memory use, uptime, last touch, hostname, IP address, and
-undervoltage on Pi hardware. Version, model, and board revision appear on the device card itself.
+Alongside the screen switch and the sensors you configured, the bridge publishes a **last touch**
+timestamp, and the frame's own diagnostics: CPU temperature, memory use, uptime, hostname, IP
+address, and undervoltage on Pi hardware. Version, model, and board revision appear on the device
+card itself.
 
 ## Reboot and shutdown
 
