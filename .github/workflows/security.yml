@@ -31,9 +31,11 @@ jobs:
         run: npm ci
 
       # Prebuilt binary, `go run` would compile osv-scanner from scratch (~2min).
+      # Pinned to the Makefile's OSV_SCANNER_VERSION: v2.5.0 drops the npm scope from
+      # CycloneDX components (google/osv-scanner#2978). Bump both together.
       - name: Install osv-scanner
         run: |
-          curl -fsSL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o "$RUNNER_TEMP/osv-scanner"
+          curl -fsSL https://github.com/google/osv-scanner/releases/download/v2.4.0/osv-scanner_linux_amd64 -o "$RUNNER_TEMP/osv-scanner"
           chmod +x "$RUNNER_TEMP/osv-scanner"
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 

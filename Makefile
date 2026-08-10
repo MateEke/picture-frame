@@ -139,7 +139,11 @@ mutation-diff: embed-seed ## Mutation testing scoped to changes vs BASE_REF (use
 
 # osv-scanner is huge — compiling it via `go run` costs ~2min in CI, so CI downloads the
 # prebuilt release binary onto PATH first; locally go run's build cache makes it cheap.
-OSV_SCANNER := $(shell command -v osv-scanner 2>/dev/null || echo go run github.com/google/osv-scanner/v2/cmd/osv-scanner@latest)
+# Pinned: v2.5.0 drops the npm scope from CycloneDX components, so @lucide/svelte is
+# queried as plain "svelte" (false positives) and @sveltejs/kit as "kit" (missed CVEs).
+# Unpin once google/osv-scanner#2978 ships. Keep in sync with the CI workflows.
+OSV_SCANNER_VERSION := v2.4.0
+OSV_SCANNER := $(shell command -v osv-scanner 2>/dev/null || echo go run github.com/google/osv-scanner/v2/cmd/osv-scanner@$(OSV_SCANNER_VERSION))
 
 vuln: embed-seed ## Scan dependencies for known vulnerabilities (reachable Go + bundled npm)
 	@echo "==> Scanning Go dependencies (govulncheck, reachability-aware)..."
