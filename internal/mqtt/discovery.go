@@ -240,7 +240,7 @@ func (s Settings) hostMetricDiscoveries(dev haDevice) []message {
 	touch := discoveryConfig{
 		UniqueID: s.NodeID + "_last_touch", Name: "Last Touch",
 		StateTopic: s.lastTouchStateTopic(), DeviceClass: "timestamp",
-		EntityCategory: diagnosticCategory, Availability: avail, AvailabilityMode: "all", Device: dev,
+		Availability: avail, AvailabilityMode: "all", Device: dev,
 	}
 	msgs := []message{
 		discoveryMessage(s.discoveryTopic("sensor", "cpu_temperature"), temp),
