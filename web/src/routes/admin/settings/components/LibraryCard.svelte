@@ -49,6 +49,7 @@
 		<div class="border-surface-300-700 space-y-4 border-l-2 pl-4">
 			<Field
 				label="Share URL"
+				help="Link to an Immich shared album. Both /share/… and custom /s/… links work."
 				error={errors?.share_url}
 				changed={library.immich.share_url !== savedLibrary.immich.share_url}
 				onrevert={() => (library.immich.share_url = savedLibrary.immich.share_url)}

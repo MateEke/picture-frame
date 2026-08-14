@@ -40,18 +40,30 @@ const (
 	defaultTimeout  = 30 * time.Second
 	thumbnailSize   = "preview"
 	sharePathPrefix = "/share/"
+	slugPathPrefix  = "/s/"
 	// sharedLinkCookieName carries the password-exchange token on Immich >= 2.6.0.
 	sharedLinkCookieName = "immich_shared_link_token"
 )
 
-// Client fetches an Immich album over a shared link: share key plus an optional
-// password. Immich >= 2.6.0 (GHSA-78x4-6x83-jx75) offers a login/token-cookie
-// exchange, preferred here because it keeps the password out of URLs and access
-// logs; servers without the login endpoint get it as a query parameter instead.
+// shareRef addresses a shared link, by generated key (/share/<key>) or by the
+// custom slug Immich >= 1.137 offers (/s/<slug>). Every shared-link endpoint
+// takes either as a query parameter, but they are separate namespaces: a slug
+// sent as key, or the reverse, is rejected with 401.
+type shareRef struct {
+	param string // "key" or "slug"
+	value string
+}
+
+func (r shareRef) values() url.Values { return url.Values{r.param: {r.value}} }
+
+// Client fetches an Immich album over a shared link: a share reference plus an
+// optional password. Immich >= 2.6.0 (GHSA-78x4-6x83-jx75) offers a login/token
+// cookie exchange, preferred here because it keeps the password out of URLs and
+// access logs; servers without the login endpoint get it as a query parameter.
 // Fields are mutated only from the syncer goroutine.
 type Client struct {
 	base     string // e.g. "https://immich.example.com"
-	key      string
+	ref      shareRef
 	password string
 	http     *http.Client
 	log      *slog.Logger
@@ -67,7 +79,7 @@ type Client struct {
 
 // Config configures the client.
 type Config struct {
-	ShareURL string // full share URL, e.g. https://host/share/<key>
+	ShareURL string // full share URL: https://host/share/<key> or https://host/s/<slug>
 	Password string
 	HTTP     *http.Client // optional override (defaults to a 30s-timeout client)
 	Logger   *slog.Logger // optional; defaults to a discard logger
@@ -75,11 +87,11 @@ type Config struct {
 
 // New parses cfg.ShareURL and returns a ready-to-use Client.
 func New(cfg Config) (*Client, error) {
-	base, key, err := parseShareURL(cfg.ShareURL)
+	base, ref, err := parseShareURL(cfg.ShareURL)
 	if err != nil {
 		return nil, err
 	}
-	c := &Client{base: base, key: key, password: cfg.Password, http: cfg.HTTP, log: cfg.Logger}
+	c := &Client{base: base, ref: ref, password: cfg.Password, http: cfg.HTTP, log: cfg.Logger}
 	if c.http == nil {
 		c.http = &http.Client{Timeout: defaultTimeout}
 	}
@@ -122,7 +134,7 @@ func (c *Client) ensureAuth(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	u := c.base + "/api/shared-links/login?" + url.Values{"key": {c.key}}.Encode()
+	u := c.base + "/api/shared-links/login?" + c.ref.values().Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(body))
 	if err != nil {
 		return err
@@ -318,8 +330,7 @@ func (c *Client) do(ctx context.Context, u string) (*http.Response, error) {
 }
 
 func (c *Client) url(path string, extra url.Values) string {
-	q := url.Values{}
-	q.Set("key", c.key)
+	q := c.ref.values()
 	// Only when the server has no login endpoint; the query form lands in access logs.
 	if c.legacyPassword && c.password != "" {
 		q.Set("password", c.password)
@@ -332,25 +343,36 @@ func (c *Client) url(path string, extra url.Values) string {
 	return c.base + path + "?" + q.Encode()
 }
 
-// parseShareURL splits the URL into base ("https://host") and key (path tail).
-func parseShareURL(shareURL string) (base, key string, err error) {
+// parseShareURL splits the URL into base ("https://host") and the share
+// reference carried by its first path segment.
+func parseShareURL(shareURL string) (base string, ref shareRef, err error) {
 	u, err := url.Parse(shareURL)
 	if err != nil {
-		return "", "", fmt.Errorf("immich: parse share url: %w", err)
+		return "", shareRef{}, fmt.Errorf("immich: parse share url: %w", err)
 	}
 	if u.Scheme != "https" && u.Scheme != "http" {
-		return "", "", fmt.Errorf("immich: share url must be http(s), got %q", u.Scheme)
+		return "", shareRef{}, fmt.Errorf("immich: share url must be http(s), got %q", u.Scheme)
 	}
 	if u.Host == "" {
-		return "", "", fmt.Errorf("immich: share url missing host")
+		return "", shareRef{}, fmt.Errorf("immich: share url missing host")
 	}
-	if !strings.HasPrefix(u.Path, sharePathPrefix) {
-		return "", "", fmt.Errorf("immich: share url path must start with %s", sharePathPrefix)
+	switch {
+	case strings.HasPrefix(u.Path, sharePathPrefix):
+		ref = shareRef{param: "key", value: firstSegment(u.Path, sharePathPrefix)}
+	case strings.HasPrefix(u.Path, slugPathPrefix):
+		ref = shareRef{param: "slug", value: firstSegment(u.Path, slugPathPrefix)}
+	default:
+		return "", shareRef{}, fmt.Errorf("immich: share url path must start with %s or %s", sharePathPrefix, slugPathPrefix)
 	}
-	key = strings.TrimPrefix(u.Path, sharePathPrefix)
-	if key == "" {
-		return "", "", fmt.Errorf("immich: share url missing key")
+	if ref.value == "" {
+		return "", shareRef{}, fmt.Errorf("immich: share url missing %s", ref.param)
 	}
-	base = u.Scheme + "://" + u.Host
-	return base, key, nil
+	return u.Scheme + "://" + u.Host, ref, nil
+}
+
+// firstSegment drops any deeper path: a share opened on one photo reads
+// /share/<key>/photos/<id>.
+func firstSegment(path, prefix string) string {
+	seg, _, _ := strings.Cut(strings.TrimPrefix(path, prefix), "/")
+	return seg
 }

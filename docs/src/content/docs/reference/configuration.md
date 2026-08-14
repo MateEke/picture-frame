@@ -70,7 +70,7 @@ Used only when `backend = "immich"`.
 
 | Key              | Type     | Default | Description                                                              |
 | ---------------- | -------- | ------- | ------------------------------------------------------------------------ |
-| `share_url`      | string   | (empty) | Immich shared-album link. Required for the immich backend.               |
+| `share_url`      | string   | (empty) | Immich shared-album link, `/share/<key>` or `/s/<slug>`. Required.       |
 | `share_password` | string   | (empty) | Share password, exchanged for a session token on Immich 2.6.0 and newer. |
 | `sync_interval`  | duration | `15m`   | How often to reconcile with the album.                                   |
 

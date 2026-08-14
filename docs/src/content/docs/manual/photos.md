@@ -59,7 +59,9 @@ To pull photos from [Immich](https://immich.app) rather than uploading them, swi
 to **immich** in **Settings → Photo library** and give it a shared-album link:
 
 1. In Immich, create a shared link for the album you want on the frame. A password is optional.
-2. Paste the share URL (and password, if any) into the Photo library settings.
+2. Paste the share URL (and password, if any) into the Photo library settings. Either link shape
+   works: `https://your-server/share/<key>`, or `https://your-server/s/<slug>` if the link has a
+   custom URL.
 3. Set how often the frame reconciles with the album, then save and restart.
 
 The frame then keeps a local copy of the album in sync, and the Images page becomes read-only:
