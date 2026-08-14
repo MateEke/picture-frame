@@ -55,6 +55,7 @@ backend = "fs"
 
 # Immich backend (only used when backend = "immich").
 # Create a shared link in the Immich UI; password is optional but recommended.
+# Both link shapes work: /share/<key>, or /s/<slug> if it has a custom URL.
 # On Immich >= 2.6.0 the password is exchanged for a session token (kept out of
 # URLs and logs); older servers fall back to a query parameter. Either way, keep
 # the server behind TLS and don't put a high-trust password here.

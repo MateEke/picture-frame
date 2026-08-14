@@ -18,6 +18,7 @@ import (
 
 const (
 	testKey      = "test-key-123"
+	testSlug     = "fotolijst"
 	testPassword = "Almafa123"
 	testAlbumID  = "1e4bb746-6072-4aec-9a20-a37b130cde4b"
 	assetA       = "9b7b87ad-f032-442d-a7c3-046fed72e7bc"
@@ -28,6 +29,7 @@ type recordedRequest struct {
 	method string
 	path   string
 	key    string
+	slug   string
 	pw     string
 	size   string
 	cookie string // immich_shared_link_token value, if sent
@@ -74,6 +76,7 @@ func (f *fakeImmich) record(r *http.Request) {
 		method: r.Method,
 		path:   r.URL.Path,
 		key:    r.URL.Query().Get("key"),
+		slug:   r.URL.Query().Get("slug"),
 		pw:     r.URL.Query().Get("password"),
 		size:   r.URL.Query().Get("size"),
 		cookie: cookie,
@@ -185,6 +188,7 @@ func newClient(t *testing.T, srv *httptest.Server, password string) *immich.Clie
 func TestParseShareURLErrors(t *testing.T) {
 	cases := []struct{ name, in string }{
 		{"empty key", "https://host/share/"},
+		{"empty slug", "https://host/s/"},
 		{"bad path", "https://host/album/x"},
 		{"missing host", "https:///share/x"},
 		{"wrong scheme", "ftp://host/share/x"},
@@ -222,6 +226,97 @@ func TestParseShareURLIgnoresQueryAndFragment(t *testing.T) {
 			for _, r := range fake.requests {
 				if r.key != testKey {
 					t.Errorf("key = %q, want %q (input %q)", r.key, testKey, in)
+				}
+			}
+		})
+	}
+}
+
+func TestSlugShareURLAuthenticatesWithSlugParam(t *testing.T) {
+	fake := newFakeImmich(t)
+	fake.assets = []fakeAsset{{id: assetA, isImage: true, thumbhash: "ha"}}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+	c, err := immich.New(immich.Config{ShareURL: srv.URL + "/s/" + testSlug, HTTP: srv.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := c.List(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Fetch(context.Background(), assetA); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.requests) == 0 {
+		t.Fatal("no requests recorded")
+	}
+	for _, r := range fake.requests {
+		if r.slug != testSlug {
+			t.Errorf("%s: slug=%q, want %q", r.path, r.slug, testSlug)
+		}
+		if r.key != "" {
+			t.Errorf("%s: key=%q, want empty for a slug share", r.path, r.key)
+		}
+	}
+}
+
+// The password exchange has to address the share the same way the data requests do.
+func TestSlugShareURLLoginUsesSlugParam(t *testing.T) {
+	fake := newFakeImmich(t)
+	fake.loginStatus = http.StatusCreated
+	fake.loginToken = "tok-slug"
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+	c, err := immich.New(immich.Config{
+		ShareURL: srv.URL + "/s/" + testSlug,
+		Password: testPassword,
+		HTTP:     srv.Client(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := c.List(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	logins := 0
+	for _, r := range fake.requests {
+		if r.path != "/api/shared-links/login" {
+			continue
+		}
+		logins++
+		if r.slug != testSlug || r.key != "" {
+			t.Errorf("login: slug=%q key=%q, want slug %q and no key", r.slug, r.key, testSlug)
+		}
+	}
+	if logins != 1 {
+		t.Errorf("login requests = %d, want 1", logins)
+	}
+}
+
+// The URL copied while viewing one photo carries a deeper path.
+func TestParseShareURLIgnoresDeepLinkPath(t *testing.T) {
+	fake := newFakeImmich(t)
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+	cases := []struct{ in, wantKey, wantSlug string }{
+		{srv.URL + "/share/" + testKey + "/photos/" + assetA, testKey, ""},
+		{srv.URL + "/s/" + testSlug + "/photos/" + assetA, "", testSlug},
+	}
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			fake.requests = nil
+			c, err := immich.New(immich.Config{ShareURL: tc.in, HTTP: srv.Client()})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := c.List(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			for _, r := range fake.requests {
+				if r.key != tc.wantKey || r.slug != tc.wantSlug {
+					t.Errorf("%s: key=%q slug=%q, want %q/%q", r.path, r.key, r.slug, tc.wantKey, tc.wantSlug)
 				}
 			}
 		})
