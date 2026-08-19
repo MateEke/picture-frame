@@ -15,7 +15,7 @@
 		"@fontsource-variable/fraunces": "^5.3.0",
 		"@iconify-json/lucide": "^1.2.123",
 		"astro": "^7.2.1",
-		"astro-icon": "^1.1.5",
+		"astro-icon": "^1.2.0",
 		"rehype-external-links": "^3.0.0",
 		"sharp": "^0.35.3"
 	},
