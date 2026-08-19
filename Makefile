@@ -137,11 +137,10 @@ mutation-diff: embed-seed ## Mutation testing scoped to changes vs BASE_REF (use
 	cd $(UI_DIR) && npm run test:mutation:ci
 	go tool gremlins unleash --diff $(BASE_REF) $(GREMLINS_FLAGS) ./internal
 
-# osv-scanner is huge — compiling it via `go run` costs ~2min in CI, so CI downloads the
-# prebuilt release binary onto PATH first; locally go run's build cache makes it cheap.
-# Pinned: v2.5.0 drops the npm scope from CycloneDX components, so @lucide/svelte is
-# queried as plain "svelte" (false positives) and @sveltejs/kit as "kit" (missed CVEs).
-# Unpin once google/osv-scanner#2978 ships. Keep in sync with the CI workflows.
+# CI downloads the prebuilt binary (`go run` would compile it from scratch, ~2min) and
+# reads the version below, so this is the only place the pin lives. v2.5.0+ drops npm
+# scopes from CycloneDX components (@sveltejs/kit → "kit") so it misses CVEs;
+# osv-scanner#2978 is closed but v2.5.1 still breaks, so verify before bumping.
 OSV_SCANNER_VERSION := v2.4.0
 OSV_SCANNER := $(shell command -v osv-scanner 2>/dev/null || echo go run github.com/google/osv-scanner/v2/cmd/osv-scanner@$(OSV_SCANNER_VERSION))
 
