@@ -66,5 +66,10 @@
 		"@meteocons/svg-static": "^0.1.0",
 		"cropt": "^1.3.0",
 		"svelte-dnd-action": "^0.9.78"
+	},
+	"overrides": {
+		"@hey-api/json-schema-ref-parser": {
+			"js-yaml": "^4.3.1"
+		}
 	}
 }

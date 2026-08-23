@@ -65,6 +65,9 @@ build-toolchain hygiene. Releases attach both SBOMs (frontend bundle + linked Go
 modules) for downstream scanning. Dependabot opens security PRs that auto-merge on
 green; weekly grouped version-update PRs wait for a human.
 
+A transitive CVE with no upstream fix gets a scoped npm `overrides` entry naming the
+package we are working around; drop it once that package asks for a safe version itself.
+
 ## Code style
 
 Read [`STYLE.md`](STYLE.md). Match the surrounding code, keep comments to the non-obvious why, and
