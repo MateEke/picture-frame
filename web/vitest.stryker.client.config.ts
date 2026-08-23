@@ -3,7 +3,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { meteocons, themeColor } from './src/lib/build/meteocons';
+import { meteocons, themeColor } from './src/lib/build/meteocons.ts';
 
 // EXPERIMENT: can Stryker drive the browser `client` project? (sse.svelte.ts only)
 const kioskCss = fileURLToPath(new URL('./src/routes/kiosk/layout.css', import.meta.url));

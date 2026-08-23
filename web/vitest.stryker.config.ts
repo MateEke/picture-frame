@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { meteocons, themeColor } from './src/lib/build/meteocons';
+import { meteocons, themeColor } from './src/lib/build/meteocons.ts';
 
 // Stryker-only Vitest config: the node-side `server` project in isolation.
 // Deliberately omits the hey-api plugin (the committed src/lib/api is the test
