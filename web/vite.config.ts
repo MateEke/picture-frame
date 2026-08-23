@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { sveltekit } from '@sveltejs/kit/vite';
 import sbom from 'rollup-plugin-sbom';
-import { meteocons, themeColor } from './src/lib/build/meteocons';
+import { meteocons, themeColor } from './src/lib/build/meteocons.ts';
 
 // anchored to this file, not the cwd, so invoking vite from elsewhere still works
 const kioskCss = fileURLToPath(new URL('./src/routes/kiosk/layout.css', import.meta.url));
