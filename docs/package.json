@@ -11,10 +11,10 @@
 	},
 	"dependencies": {
 		"@astrojs/markdown-remark": "^7.2.4",
-		"@astrojs/starlight": "^0.41.7",
+		"@astrojs/starlight": "^0.41.9",
 		"@fontsource-variable/fraunces": "^5.3.0",
-		"@iconify-json/lucide": "^1.2.124",
-		"astro": "^7.2.4",
+		"@iconify-json/lucide": "^1.2.126",
+		"astro": "^7.2.8",
 		"astro-icon": "^1.2.0",
 		"rehype-external-links": "^3.0.0",
 		"sharp": "^0.35.3"
