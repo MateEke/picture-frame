@@ -4,6 +4,9 @@ export class PhotosPage {
 	readonly uploadInput: Locator;
 	readonly cropperUpload: Locator;
 	readonly cropperUploadOriginal: Locator;
+	readonly bulkProgress: Locator;
+	readonly bulkStop: Locator;
+	readonly bulkCount: Locator;
 	readonly thumbs: Locator;
 	readonly onScreen: Locator;
 	readonly selectButton: Locator;
@@ -23,6 +26,9 @@ export class PhotosPage {
 		this.uploadInput = page.getByTestId('photo-upload-input');
 		this.cropperUpload = page.getByTestId('cropper-upload');
 		this.cropperUploadOriginal = page.getByTestId('cropper-upload-original');
+		this.bulkProgress = page.getByTestId('bulk-upload-progress');
+		this.bulkStop = page.getByTestId('bulk-upload-stop');
+		this.bulkCount = page.getByTestId('bulk-upload-count');
 		this.thumbs = page.getByTestId('photo-thumb');
 		this.onScreen = page.getByTestId('photo-onscreen');
 		this.selectButton = page.getByTestId('photos-select');
