@@ -15,7 +15,8 @@ With the default **local files** backend, you upload and manage photos here dire
 
 ### Uploading
 
-Drag image files onto the upload area, or click it to pick them. Each one opens a quick cropper.
+Drag image files onto the upload area, or click it to pick them. A single photo opens a quick
+cropper.
 
 ![The cropper: aspect-ratio choices, a framed photo, and the upload options below](../../../assets/screenshots/cropper.png)
 
@@ -25,6 +26,20 @@ result, so large camera files shrink to what the screen shows.
 
 To keep the whole photo, choose **Upload without cropping**: it saves the image uncropped,
 scaled down to fit. Either way the frame stores a JPEG.
+
+### Adding several at once
+
+Pick or drag more than one photo and the cropper is skipped: every photo is added uncropped,
+scaled to fit, the same as **Upload without cropping** does for one. The upload area counts them
+off as they go, and **Stop** ends the batch, keeping whatever has already been added.
+
+Up to 200 photos at a time. Select more than that and none of them are added, so pick fewer and
+go again.
+
+Photos go up one at a time over your network, so a large batch takes a while, and the grid fills
+in once the batch finishes. A photo that cannot be added, whether the browser fails to read it or
+the frame turns it down, is skipped and named at the end, so you can add just those again. If the
+frame stops responding altogether, the batch gives up rather than working through the rest.
 
 ### Managing the grid
 
