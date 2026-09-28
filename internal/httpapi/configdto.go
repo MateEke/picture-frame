@@ -30,6 +30,16 @@ type ConfigDTO struct {
 	Weather          WeatherDTO   `json:"weather"`
 	Mqtt             MqttDTO      `json:"mqtt"`
 	Updater          UpdaterDTO   `json:"updater"`
+	Sleep            SleepDTO     `json:"sleep"`
+}
+
+// SleepDTO maps config.SleepConfig.
+type SleepDTO struct {
+	IdleAfter string `json:"idle_after" doc:"Touch-UI inactivity before the slideshow starts, e.g. \"2m\"; \"0s\" disables"`
+	Schedule  bool   `json:"schedule" doc:"Turn the screen off daily between off_from and off_until"`
+	OffFrom   string `json:"off_from" doc:"Start of the nightly off window, HH:MM"`
+	OffUntil  string `json:"off_until" doc:"End of the nightly off window, HH:MM"`
+	WakeFor   string `json:"wake_for" doc:"How long a touch inside the off window keeps the screen on, e.g. \"5m\""`
 }
 
 // UpdaterDTO mirrors config.UpdaterConfig for the settings UI.
@@ -73,6 +83,7 @@ type DisplayDTO struct {
 	HideClockDate bool           `json:"hide_clock_date" doc:"Hide the clock and date block on the kiosk overlay"`
 	Timezone      string         `json:"timezone" doc:"IANA timezone for the kiosk clock/date, e.g. Europe/Budapest; empty uses the browser timezone"`
 	Labels        KioskLabelsDTO `json:"labels"`
+	Brightness    int            `json:"brightness" minimum:"0" maximum:"100" doc:"Backlight percent (1–100) for panels with a backlight device; 0 leaves it alone"`
 }
 
 // KioskLabelsDTO maps config.KioskLabelsConfig.
@@ -197,6 +208,7 @@ func toDTO(cfg config.Config) ConfigDTO {
 			HideClockDate: cfg.Display.HideClockDate,
 			Timezone:      cfg.Display.Timezone,
 			Labels:        labelsToDTO(cfg.Display.Labels),
+			Brightness:    cfg.Display.Brightness,
 		},
 		Slideshow: SlideshowDTO{
 			Interval:    durString(cfg.Slideshow.Interval.Duration),
@@ -239,6 +251,13 @@ func toDTO(cfg config.Config) ConfigDTO {
 			UpdateHour:     cfg.Updater.UpdateHour,
 			GithubRepo:     cfg.Updater.GithubRepo,
 			GithubTokenSet: cfg.Updater.GithubToken != "",
+		},
+		Sleep: SleepDTO{
+			IdleAfter: durString(cfg.Sleep.IdleAfter.Duration),
+			Schedule:  cfg.Sleep.Schedule,
+			OffFrom:   cfg.Sleep.OffFrom,
+			OffUntil:  cfg.Sleep.OffUntil,
+			WakeFor:   durString(cfg.Sleep.WakeFor.Duration),
 		},
 	}
 }
@@ -300,7 +319,27 @@ func applyDTO(dto ConfigDTO, current config.Config) (config.Config, error) {
 	if err := applyUpdaterDTO(&out.Updater, dto.Updater); err != nil {
 		return config.Config{}, err
 	}
+	if err := applySleepDTO(&out.Sleep, dto.Sleep); err != nil {
+		return config.Config{}, err
+	}
 	return out, nil
+}
+
+func applySleepDTO(dst *config.SleepConfig, dto SleepDTO) error {
+	idle, err := parseDuration(dto.IdleAfter, "sleep.idle_after")
+	if err != nil {
+		return err
+	}
+	wake, err := parseDuration(dto.WakeFor, "sleep.wake_for")
+	if err != nil {
+		return err
+	}
+	dst.IdleAfter = idle
+	dst.WakeFor = wake
+	dst.Schedule = dto.Schedule
+	dst.OffFrom = dto.OffFrom
+	dst.OffUntil = dto.OffUntil
+	return nil
 }
 
 func applyUpdaterDTO(dst *config.UpdaterConfig, dto UpdaterDTO) error {
@@ -327,6 +366,7 @@ func applyDisplayDTO(dst *config.DisplayConfig, dto DisplayDTO) error {
 	dst.HideClockDate = dto.HideClockDate
 	dst.Timezone = dto.Timezone
 	dst.Labels = labelsFromDTO(dto.Labels)
+	dst.Brightness = dto.Brightness
 	return nil
 }
 
@@ -493,6 +533,12 @@ func KioskEventPayload(cfg config.Config, weatherActive bool) state.KioskPayload
 		Sensors:       config.SensorKeys(cfg.Sensors),
 		Weather:       weatherActive,
 		Labels:        labelsToState(cfg.Display.Labels),
+		Sleep: state.KioskSleep{
+			IdleAfterSeconds: int(cfg.Sleep.IdleAfter.Seconds()),
+			Schedule:         cfg.Sleep.Schedule,
+			OffFrom:          cfg.Sleep.OffFrom,
+			OffUntil:         cfg.Sleep.OffUntil,
+		},
 	}
 }
 

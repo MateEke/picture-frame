@@ -58,7 +58,43 @@ func (c *Config) Validate() error {
 	if err := c.Slideshow.validate(); err != nil {
 		return fmt.Errorf("slideshow: %w", err)
 	}
+	if err := c.Sleep.validate(); err != nil {
+		return fmt.Errorf("sleep: %w", err)
+	}
 	return nil
+}
+
+func (s SleepConfig) validate() error {
+	if s.IdleAfter.Duration < 0 {
+		return fmt.Errorf("idle_after must not be negative")
+	}
+	if s.WakeFor.Duration < 0 {
+		return fmt.Errorf("wake_for must not be negative")
+	}
+	if !s.Schedule && s.OffFrom == "" && s.OffUntil == "" {
+		return nil
+	}
+	from, err := ParseClock(s.OffFrom)
+	if err != nil {
+		return fmt.Errorf("off_from: %w", err)
+	}
+	until, err := ParseClock(s.OffUntil)
+	if err != nil {
+		return fmt.Errorf("off_until: %w", err)
+	}
+	if s.Schedule && from == until {
+		return fmt.Errorf("off_from and off_until must differ")
+	}
+	return nil
+}
+
+// ParseClock parses "HH:MM" (24h) into minutes after midnight.
+func ParseClock(v string) (int, error) {
+	t, err := time.Parse("15:04", v)
+	if err != nil {
+		return 0, fmt.Errorf("want HH:MM, got %q", v)
+	}
+	return t.Hour()*60 + t.Minute(), nil
 }
 
 func (s SlideshowConfig) validate() error {
@@ -141,6 +177,9 @@ func (d DisplayConfig) validate() error {
 	case 0, 90, 180, 270:
 	default:
 		return fmt.Errorf("rotation must be 0, 90, 180 or 270, got %d", d.Rotation)
+	}
+	if d.Brightness < 0 || d.Brightness > 100 {
+		return fmt.Errorf("brightness must be 0–100, got %d", d.Brightness)
 	}
 	return nil
 }

@@ -28,12 +28,18 @@ type Policy struct {
 	// blanking would be a one-way trip, so it's disabled. Fixed at startup since
 	// sensors only change across a restart.
 	motionAvailable bool
+	now             func() time.Time
 
 	mu         sync.Mutex
 	manualOff  bool      // user turned the screen off; suppresses motion auto-wake
 	idleBlank  bool      // auto-blanked after blankAfter of no motion
 	lastMotion time.Time // idle baseline
 	on         bool      // last power state we applied to the Controller
+
+	schedule  Schedule      // nightly off window
+	wakeFor   time.Duration // how long a touch lights the panel inside the window
+	nightOff  bool          // off because of the schedule
+	wakeUntil time.Time     // a touch inside the window keeps the panel on until then
 }
 
 // Bus is required (Run subscribes to it, and it carries published intent);
@@ -47,9 +53,18 @@ type PolicyConfig struct {
 	// MotionAvailable must be true for idle-blank to engage (a motion sensor is
 	// needed to wake the screen again).
 	MotionAvailable bool
+	// Schedule is the nightly off window; WakeFor is how long a touch inside it
+	// keeps the panel on.
+	Schedule Schedule
+	WakeFor  time.Duration
+	// Now overrides the clock in tests; nil uses time.Now.
+	Now func() time.Time
 }
 
 func NewPolicy(cfg PolicyConfig) *Policy {
+	if cfg.Now == nil {
+		cfg.Now = time.Now
+	}
 	return &Policy{
 		log:             cfg.Log,
 		display:         cfg.Display,
@@ -57,7 +72,26 @@ func NewPolicy(cfg PolicyConfig) *Policy {
 		store:           cfg.Store,
 		blankAfter:      cfg.BlankAfter,
 		motionAvailable: cfg.MotionAvailable,
+		schedule:        cfg.Schedule,
+		wakeFor:         cfg.WakeFor,
+		now:             cfg.Now,
 	}
+}
+
+// SetSchedule updates the nightly off window. Takes effect on the next check.
+func (p *Policy) SetSchedule(s Schedule, wakeFor time.Duration) {
+	p.mu.Lock()
+	p.schedule = s
+	p.wakeFor = wakeFor
+	p.wakeUntil = time.Time{}
+	p.mu.Unlock()
+}
+
+// NightOff reports whether the schedule currently holds the panel off.
+func (p *Policy) NightOff() bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.nightOff
 }
 
 // SetBlankAfter updates the idle-blank duration. Takes effect on the next idle check.
@@ -80,7 +114,7 @@ func (p *Policy) Start(ctx context.Context) {
 			p.manualOff = off
 		}
 	}
-	p.lastMotion = time.Now()
+	p.lastMotion = p.now()
 	sctx, cancel := context.WithTimeout(ctx, displayOpTimeout)
 	actual, err := p.display.State(sctx)
 	cancel()
@@ -147,15 +181,23 @@ func (p *Policy) Reconcile(ctx context.Context) {
 func (p *Policy) SetManual(ctx context.Context, on bool) error {
 	p.mu.Lock()
 	prevManual, prevIdle, prevMotion := p.manualOff, p.idleBlank, p.lastMotion
+	prevNight, prevWakeUntil := p.nightOff, p.wakeUntil
 	p.manualOff = !on
 	if on {
+		now := p.now()
 		p.idleBlank = false
-		p.lastMotion = time.Now()
+		p.lastMotion = now
+		if p.schedule.Contains(now) {
+			// A deliberate "on" at night lasts like a touch, then the schedule resumes.
+			p.nightOff = false
+			p.wakeUntil = now.Add(p.wakeFor)
+		}
 	}
 	// Detach from the caller's context: a manual power change shouldn't abort
 	// half-applied if an HTTP client disconnects. applyLocked still bounds it.
 	if err := p.applyLocked(context.WithoutCancel(ctx)); err != nil {
 		p.manualOff, p.idleBlank, p.lastMotion = prevManual, prevIdle, prevMotion
+		p.nightOff, p.wakeUntil = prevNight, prevWakeUntil
 		p.mu.Unlock()
 		return err
 	}
@@ -175,9 +217,16 @@ func (p *Policy) SetManual(ctx context.Context, on bool) error {
 func (p *Policy) Wake(ctx context.Context) error {
 	p.mu.Lock()
 	prevManual, prevIdle, prevMotion, prevOn := p.manualOff, p.idleBlank, p.lastMotion, p.on
-	p.manualOff, p.idleBlank, p.lastMotion = false, false, time.Now()
+	prevNight, prevWakeUntil := p.nightOff, p.wakeUntil
+	now := p.now()
+	p.manualOff, p.idleBlank, p.lastMotion = false, false, now
+	if p.schedule.Contains(now) {
+		p.nightOff = false
+		p.wakeUntil = now.Add(p.wakeFor)
+	}
 	if err := p.applyLocked(context.WithoutCancel(ctx)); err != nil {
 		p.manualOff, p.idleBlank, p.lastMotion = prevManual, prevIdle, prevMotion
+		p.nightOff, p.wakeUntil = prevNight, prevWakeUntil
 		p.mu.Unlock()
 		return err
 	}
@@ -233,8 +282,9 @@ func (p *Policy) Run(ctx context.Context) {
 
 func (p *Policy) onMotion(ctx context.Context) {
 	p.mu.Lock()
-	p.lastMotion = time.Now()
-	if p.manualOff || !p.idleBlank {
+	p.lastMotion = p.now()
+	// Motion never overrides the night window; only a touch does.
+	if p.manualOff || p.nightOff || !p.idleBlank {
 		p.mu.Unlock()
 		return
 	}
@@ -253,12 +303,55 @@ func (p *Policy) onMotion(ctx context.Context) {
 }
 
 func (p *Policy) onTick(ctx context.Context) {
+	p.scheduleTick(ctx)
+	p.idleTick(ctx)
+}
+
+// scheduleTick enters the night window (unless a touch is holding the panel
+// on) and leaves it in the morning.
+func (p *Policy) scheduleTick(ctx context.Context) {
+	p.mu.Lock()
+	now := p.now()
+	inWindow := p.schedule.Contains(now)
+	var want bool
+	switch {
+	case inWindow && !p.nightOff && !now.Before(p.wakeUntil):
+		want = true
+	case !inWindow && p.nightOff:
+		want = false
+		// Morning is a fresh start: drop a stale idle-blank (e.g. restored after a
+		// restart at night) and don't idle-blank on an old baseline.
+		p.idleBlank = false
+		p.lastMotion = now
+	default:
+		p.mu.Unlock()
+		return
+	}
+	prev := p.nightOff
+	p.nightOff = want
+	if err := p.applyLocked(ctx); err != nil {
+		p.log.Warn("policy: failed to apply schedule", "night", want, "err", err)
+		p.nightOff = prev
+		p.mu.Unlock()
+		return
+	}
+	if want {
+		p.log.Info("policy: display off (schedule)")
+	} else {
+		p.log.Info("policy: display on (schedule ended)")
+	}
+	on, auto := p.on, !p.manualOff
+	p.mu.Unlock()
+	p.publish(on, auto)
+}
+
+func (p *Policy) idleTick(ctx context.Context) {
 	p.mu.Lock()
 	if p.blankAfter <= 0 || !p.motionAvailable || p.manualOff || p.idleBlank {
 		p.mu.Unlock()
 		return
 	}
-	if time.Since(p.lastMotion) < p.blankAfter {
+	if p.now().Sub(p.lastMotion) < p.blankAfter {
 		p.mu.Unlock()
 		return
 	}
@@ -269,14 +362,14 @@ func (p *Policy) onTick(ctx context.Context) {
 		p.mu.Unlock()
 		return
 	}
-	p.log.Info("policy: display off (idle)", "idle", time.Since(p.lastMotion).Round(time.Second))
+	p.log.Info("policy: display off (idle)", "idle", p.now().Sub(p.lastMotion).Round(time.Second))
 	// Live power moved; intent (auto) is unchanged, so the switch won't budge.
 	on, auto := p.on, !p.manualOff
 	p.mu.Unlock()
 	p.publish(on, auto)
 }
 
-func (p *Policy) desiredLocked() bool { return !p.manualOff && !p.idleBlank }
+func (p *Policy) desiredLocked() bool { return !p.manualOff && !p.idleBlank && !p.nightOff }
 
 // applyLocked drives the Controller to the desired state. Must hold p.mu, the
 // I/O runs under the lock (bounded by displayOpTimeout) on purpose: wlopm already

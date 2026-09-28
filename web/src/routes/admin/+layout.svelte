@@ -4,6 +4,7 @@
 	import {
 		HouseIcon,
 		ImagesIcon,
+		FolderOpenIcon,
 		SettingsIcon,
 		FrameIcon,
 		NetworkIcon,
@@ -41,6 +42,7 @@
 	const links = [
 		{ label: 'Dashboard', href: '/admin', icon: HouseIcon },
 		{ label: 'Images', href: '/admin/images', icon: ImagesIcon },
+		{ label: 'Files', href: '/admin/files', icon: FolderOpenIcon },
 		{ label: 'Network', href: '/admin/network', icon: NetworkIcon },
 		{ label: 'Settings', href: '/admin/settings', icon: SettingsIcon }
 	];
@@ -51,7 +53,7 @@
 	{@render children()}
 </main>
 <Navigation layout="bar" class="fixed inset-x-0 bottom-0 z-40 md:hidden" data-testid="nav-bottom">
-	<Navigation.Menu class="grid gap-2 {data.auth?.required ? 'grid-cols-5' : 'grid-cols-4'}">
+	<Navigation.Menu class="grid gap-2 {data.auth?.required ? 'grid-cols-6' : 'grid-cols-5'}">
 		{#each links as link (link)}
 			{const Icon = link.icon}
 			<Navigation.TriggerAnchor

@@ -37,6 +37,8 @@ func copyTier1(dst *config.Config, src config.Config) {
 	dst.Slideshow.PairThreshold = src.Slideshow.PairThreshold
 	dst.Weather.PollInterval = src.Weather.PollInterval
 	dst.Weather.RetryInterval = src.Weather.RetryInterval
+	dst.Display.Brightness = src.Display.Brightness // backlight write
+	dst.Sleep = src.Sleep                           // policy.SetSchedule + kiosk SSE event
 }
 
 // needsRestart reports whether any non-Tier-1 field differs between the running
@@ -154,10 +156,22 @@ func (s *server) registerConfigRoutes(api huma.API) {
 }
 
 func (s *server) handlePutConfig(input *putConfigInput) (*putConfigOutput, error) {
+	restartPending, err := s.saveConfig(func(c config.Config) (config.Config, error) {
+		return applyDTO(input.Body, c)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &putConfigOutput{Body: PutConfigResponseBody{RestartPending: restartPending}}, nil
+}
+
+// saveConfig applies edit to the stored config, validates, persists, applies the
+// live tier and re-publishes the kiosk event. Returns a huma error on failure.
+func (s *server) saveConfig(edit func(config.Config) (config.Config, error)) (restartPending bool, err error) {
 	var newCfg config.Config
 	var validationErr error
 	if err := s.store.Update(func(c *config.Config) error {
-		applied, err := applyDTO(input.Body, *c)
+		applied, err := edit(*c)
 		if err != nil {
 			validationErr = err
 			return err
@@ -171,9 +185,9 @@ func (s *server) handlePutConfig(input *putConfigInput) (*putConfigOutput, error
 		return nil
 	}); err != nil {
 		if validationErr != nil {
-			return nil, huma.Error422UnprocessableEntity(err.Error())
+			return false, huma.Error422UnprocessableEntity(err.Error())
 		}
-		return nil, huma.Error500InternalServerError("failed to save config: " + err.Error())
+		return false, huma.Error500InternalServerError("failed to save config: " + err.Error())
 	}
 
 	s.mu.Lock()
@@ -186,7 +200,5 @@ func (s *server) handlePutConfig(input *putConfigInput) (*putConfigOutput, error
 
 	s.bus.Publish(state.Event{Kind: state.KindKiosk, Payload: KioskEventPayload(newCfg, s.weatherActive)})
 
-	return &putConfigOutput{Body: PutConfigResponseBody{
-		RestartPending: needsRestart(running, newCfg),
-	}}, nil
+	return needsRestart(running, newCfg), nil
 }

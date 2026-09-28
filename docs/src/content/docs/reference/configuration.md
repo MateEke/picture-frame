@@ -35,6 +35,7 @@ See [Slideshow & display](/manual/slideshow-display/).
 | `locale`          | string   | `en-US`  | BCP-47 locale for the clock and date on the frame. **(live)**                                          |
 | `hide_clock_date` | boolean  | `false`  | Hide the clock and date on the frame. With no readings configured, the whole overlay hides. **(live)** |
 | `timezone`        | string   | (device) | IANA time zone for the clock and date, such as `Europe/Budapest`. Empty follows the device. **(live)** |
+| `brightness`      | integer  | `0`      | Backlight percent (1–100) on panels with a backlight device (Touch Display 2). `0` leaves it alone. **(live)** |
 
 ### `[display.labels]`
 
@@ -197,6 +198,24 @@ See [Security](/manual/security/).
 | Key             | Type   | Default | Description                                                                                                    |
 | --------------- | ------ | ------- | -------------------------------------------------------------------------------------------------------------- |
 | `password_hash` | string | (empty) | bcrypt hash of the admin password. Empty leaves the interface open. Set from the admin interface, not by hand. |
+
+## `[sleep]`
+
+See [Touch screen](/manual/touch-screen/). All keys apply live.
+
+| Key          | Type     | Default | Description                                                                                  |
+| ------------ | -------- | ------- | -------------------------------------------------------------------------------------------- |
+| `idle_after` | duration | `2m`    | Time without a touch before the touch menu hands back to the slideshow. `0s` never does.     |
+| `schedule`   | boolean  | `false` | Turn the screen off every night between `off_from` and `off_until`.                          |
+| `off_from`   | string   | `23:00` | Start of the off window, `HH:MM`, in `display.timezone` or device time. May wrap midnight.   |
+| `off_until`  | string   | `07:00` | End of the off window, `HH:MM`.                                                              |
+| `wake_for`   | duration | `5m`    | How long a touch inside the window keeps the screen on. Motion never wakes it there.        |
+
+## `[files]`
+
+| Key   | Type   | Default | Description                                                             |
+| ----- | ------ | ------- | ----------------------------------------------------------------------- |
+| `dir` | string | `files` | Folder for non-photo uploads (videos, PDFs, documents). Needs a restart. |
 
 ## `[updater]`
 

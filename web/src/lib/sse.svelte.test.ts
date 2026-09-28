@@ -364,7 +364,8 @@ describe('SSESubscriber', () => {
 				hide_clock_date: false,
 				timezone: '',
 				sensors: ['inside:temperature'],
-				weather: true
+				weather: true,
+				sleep: { idle_after_seconds: 120, schedule: false, off_from: '23:00', off_until: '07:00' }
 			};
 			emitEvent({ event: 'kiosk', data: kiosk });
 			await tick();

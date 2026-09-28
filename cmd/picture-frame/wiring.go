@@ -11,6 +11,7 @@ import (
 
 	"github.com/MateEke/picture-frame/internal/config"
 	displaypkg "github.com/MateEke/picture-frame/internal/display"
+	"github.com/MateEke/picture-frame/internal/display/adapter"
 	"github.com/MateEke/picture-frame/internal/httpapi"
 	"github.com/MateEke/picture-frame/internal/kioskwatch"
 	"github.com/MateEke/picture-frame/internal/library"
@@ -214,8 +215,43 @@ type liveConfigImpl struct {
 	policy    *displaypkg.Policy
 	rotator   displaypkg.Rotator // nil on vcgencmd
 	weather   *weather.Poller    // may be nil if api_key not configured
+	backlight *adapter.Backlight // nil in dev
 	logLevel  *slog.LevelVar
 	log       *slog.Logger
+}
+
+// sleepSchedule maps config.SleepConfig to the policy's off window, in
+// display.timezone when set so it matches the kiosk clock.
+func sleepSchedule(log *slog.Logger, cfg *config.Config) displaypkg.Schedule {
+	from, errFrom := config.ParseClock(cfg.Sleep.OffFrom)
+	until, errUntil := config.ParseClock(cfg.Sleep.OffUntil)
+	s := displaypkg.Schedule{Enabled: cfg.Sleep.Schedule && errFrom == nil && errUntil == nil, From: from, Until: until}
+	if tz := cfg.Display.Timezone; tz != "" {
+		loc, err := time.LoadLocation(tz)
+		if err != nil {
+			log.Warn("sleep schedule: unknown timezone, using system time", "tz", tz, "err", err)
+		} else {
+			s.Loc = loc
+		}
+	}
+	return s
+}
+
+// newBacklight finds the panel backlight in prod (nil in dev) and applies the
+// configured brightness.
+func newBacklight(production bool, log *slog.Logger, cfg *config.Config) *adapter.Backlight {
+	if !production {
+		return nil
+	}
+	b := adapter.NewBacklight("")
+	if !b.Supported() {
+		log.Info("no backlight device; brightness control disabled")
+		return b
+	}
+	if err := b.Set(cfg.Display.Brightness); err != nil {
+		log.Warn("backlight apply failed", "err", err)
+	}
+	return b
 }
 
 func (l *liveConfigImpl) ApplyLive(cfg config.Config) {
@@ -223,6 +259,12 @@ func (l *liveConfigImpl) ApplyLive(cfg config.Config) {
 	l.slideshow.SetRandomize(cfg.Slideshow.Randomize)
 	l.slideshow.SetSplitConfig(cfg.Slideshow.SplitScreen, slideplan.Threshold{Factor: cfg.Slideshow.PairThreshold})
 	l.policy.SetBlankAfter(cfg.Display.BlankAfter.Duration)
+	l.policy.SetSchedule(sleepSchedule(l.log, &cfg), cfg.Sleep.WakeFor.Duration)
+	if l.backlight != nil && l.backlight.Supported() {
+		if err := l.backlight.Set(cfg.Display.Brightness); err != nil {
+			l.log.Warn("backlight apply failed", "err", err)
+		}
+	}
 	if l.rotator != nil {
 		if err := l.rotator.Set(context.Background(), cfg.Display.Rotation); err != nil {
 			l.log.Warn("rotation apply failed", "err", err)

@@ -9,33 +9,42 @@ test.describe('kiosk touch navigation', () => {
 		await kiosk.waitForImage();
 	});
 
-	test('tapping the right half advances', async ({ kiosk }) => {
+	test('swiping left advances', async ({ kiosk }) => {
 		const first = String(await kiosk.currentImageSrc());
-		await kiosk.tapNext.click();
+		await kiosk.swipe('left');
 		expect(await kiosk.waitForImageChange(first)).not.toBe(first);
+		await expect(kiosk.menu).toHaveCount(0);
 	});
 
-	test('tapping the left half steps back', async ({ kiosk }) => {
+	test('swiping right steps back', async ({ kiosk }) => {
 		const first = String(await kiosk.currentImageSrc());
-		await kiosk.tapNext.click();
+		await kiosk.swipe('left');
 		const second = await kiosk.waitForImageChange(first);
-		await kiosk.tapPrev.click();
+		await kiosk.swipe('right');
 		expect(await kiosk.waitForImageChange(second)).toBe(first);
 	});
 
-	test('a tap over the overlay still registers', async ({ kiosk }) => {
-		const first = String(await kiosk.currentImageSrc());
-		await kiosk.tapAt(0.75, 0.95); // inside the overlay band, right half
-		expect(await kiosk.waitForImageChange(first)).not.toBe(first);
+	test('a tap opens the menu, and the start button returns to the slideshow', async ({
+		kiosk,
+		page
+	}) => {
+		await kiosk.tapAt(0.75, 0.95); // over the overlay band still registers
+		await expect(kiosk.menu).toBeVisible();
+		await page.getByTestId('touch-start-slideshow').click();
+		await expect(kiosk.slideshow).toBeVisible();
+		await kiosk.waitForImage();
 	});
 
-	test('a tap on a blanked screen wakes it without advancing', async ({ kiosk, page, pf }) => {
-		const first = String(await kiosk.currentImageSrc());
+	test('a tap on a blanked screen wakes it without opening the menu', async ({
+		kiosk,
+		page,
+		pf
+	}) => {
 		const off = await page.request.post(`${pf.baseURL}/api/screen`, { data: { state: 'off' } });
 		expect(off.ok()).toBeTruthy();
 		await kiosk.waitForScreenOff();
 
-		await kiosk.tapNext.click();
+		await kiosk.tapAt(0.5, 0.5);
 
 		await expect
 			.poll(async () => {
@@ -43,6 +52,6 @@ test.describe('kiosk touch navigation', () => {
 				return (await res.json()).state;
 			})
 			.toBe('on');
-		expect(await kiosk.currentImageSrc()).toBe(first);
+		await expect(kiosk.menu).toHaveCount(0);
 	});
 });

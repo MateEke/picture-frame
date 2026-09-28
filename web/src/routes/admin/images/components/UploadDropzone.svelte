@@ -18,7 +18,8 @@
 	}
 </script>
 
-<FileUpload accept="image/*" {maxFiles} onFileAccept={handleAccept} onFileReject={handleReject}>
+<!-- Any file type: photos go to the slideshow, the rest to Files. -->
+<FileUpload {maxFiles} onFileAccept={handleAccept} onFileReject={handleReject}>
 	<FileUpload.Dropzone
 		class="border-surface-300-700 hover:border-primary-500 hover:bg-surface-50-950 cursor-pointer gap-1.5 rounded-lg border-2 border-dashed p-4 text-center transition-colors sm:gap-2 sm:p-8"
 	>
@@ -29,11 +30,12 @@
 			<CloudUploadIcon class="size-5 sm:size-6" />
 		</div>
 		<p class="font-medium">
-			<span class="sm:hidden">Add photos</span>
-			<span class="hidden sm:inline">Drop photos here, or click to choose</span>
+			<span class="sm:hidden">Add photos or files</span>
+			<span class="hidden sm:inline">Drop photos and files here, or click to choose</span>
 		</p>
 		<p class="text-surface-500-400 text-sm">
-			One photo opens the cropper. Several are added uncropped.
+			One photo opens the cropper. Several are added uncropped. Videos, PDFs and other files go to
+			Files.
 		</p>
 	</FileUpload.Dropzone>
 </FileUpload>

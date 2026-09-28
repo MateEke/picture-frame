@@ -40,6 +40,8 @@ type getSystemInfoOutput struct {
 }
 
 func (s *server) registerSystemInfoRoutes(api huma.API) {
+	// The touch UI shows the upload URL (IP) and a QR code built from it.
+	s.kioskExempt("/api/system/info")
 	huma.Register(api, huma.Operation{
 		OperationID: "get-system-info",
 		Method:      http.MethodGet,

@@ -1,7 +1,12 @@
 <script lang="ts">
 	import { CloudUploadIcon } from '@lucide/svelte';
 
-	let { done, total, onStop }: { done: number; total: number; onStop: () => void } = $props();
+	let {
+		done,
+		total,
+		noun = 'photo',
+		onStop
+	}: { done: number; total: number; noun?: 'photo' | 'file'; onStop: () => void } = $props();
 
 	const current = $derived(Math.min(done + 1, total));
 	const percent = $derived(total === 0 ? 0 : Math.round((done / total) * 100));
@@ -18,13 +23,14 @@
 	</div>
 
 	<p class="font-medium" aria-live="polite" data-testid="bulk-upload-count">
-		Adding photo {current} of {total}
+		Adding {noun}
+		{current} of {total}
 	</p>
 
 	<div
 		class="bg-surface-300-700 h-1.5 w-full max-w-xs overflow-hidden rounded-full"
 		role="progressbar"
-		aria-label="Adding photos"
+		aria-label="Adding {noun}s"
 		aria-valuenow={done}
 		aria-valuemin={0}
 		aria-valuemax={total}

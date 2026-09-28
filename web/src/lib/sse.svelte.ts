@@ -37,6 +37,9 @@ export class SSESubscriber {
 	private _screen = $state<ScreenPayload | null>(null);
 	private _screenAspect = $state<number | null>(null);
 	private _kiosk = $state<KioskPayload | null>(null);
+	// Bumped on every `library` event (upload, delete, reorder, selection) so
+	// views that list photos or files know to refetch.
+	private _libraryRev = $state(0);
 
 	constructor() {
 		this.subscribe = createSubscriber(() => {
@@ -129,6 +132,9 @@ export class SSESubscriber {
 			case 'kiosk':
 				this._kiosk = event.data;
 				break;
+			case 'library':
+				this._libraryRev++;
+				break;
 			case 'ready':
 				this._ready = true;
 				break;
@@ -165,6 +171,10 @@ export class SSESubscriber {
 	get kiosk() {
 		this.subscribe();
 		return this._kiosk;
+	}
+	get libraryRev() {
+		this.subscribe();
+		return this._libraryRev;
 	}
 	get ready() {
 		this.subscribe();

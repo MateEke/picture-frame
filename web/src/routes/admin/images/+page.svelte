@@ -17,8 +17,9 @@
 	} from '@lucide/svelte';
 	import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME, type DndEvent } from 'svelte-dnd-action';
 	import { deleteImage, deleteImages, setImageOrder, uploadImages } from '$lib/images';
+	import { splitUploads, uploadFiles } from '$lib/files';
 	import { toaster } from '$lib/toaster';
-	import { bulkUploadMessage } from './uploadFeedback';
+	import { bulkUploadMessage, fileUploadMessage } from './uploadFeedback';
 	import { moveUp, moveDown, moveToStart, moveToEnd } from '$lib/reorder';
 	import { syncLibrary } from '$lib/library';
 	import { getSSEContext } from '$lib/sse.svelte';
@@ -33,7 +34,7 @@
 	const sse = getSSEContext();
 
 	let currentFile = $state<File | null>(null);
-	let bulk = $state<{ done: number; total: number } | null>(null);
+	let bulk = $state<{ done: number; total: number; noun?: 'photo' | 'file' } | null>(null);
 	let bulkAbort: AbortController | null = null;
 	let pendingDelete = $state<string | null>(null);
 	let deleting = $state(false);
@@ -52,26 +53,47 @@
 
 	let arranging = $state(false);
 
+	// Photos go to the slideshow; videos, PDFs and everything else go to Files.
 	function handleFiles(files: File[]) {
-		if (files.length === 1) {
-			currentFile = files[0];
+		const { photos, others } = splitUploads(files);
+		if (photos.length === 1 && others.length === 0) {
+			currentFile = photos[0];
 			return;
 		}
-		startBulkUpload(files);
+		startBulkUpload(photos, others);
 	}
 
-	async function startBulkUpload(files: File[]) {
+	async function startBulkUpload(photos: File[], others: File[]) {
 		const controller = new AbortController();
 		bulkAbort = controller;
-		bulk = { done: 0, total: files.length };
-		const result = await uploadImages(files, {
-			signal: controller.signal,
-			onProgress: (done, total) => (bulk = { done, total })
-		});
+		if (photos.length > 0) {
+			bulk = { done: 0, total: photos.length, noun: 'photo' };
+			const result = await uploadImages(photos, {
+				signal: controller.signal,
+				onProgress: (done, total) => (bulk = { done, total, noun: 'photo' })
+			});
+			const { type, ...message } = bulkUploadMessage(result);
+			toaster[type](message);
+			if (result.outcome === 'complete' && result.failed.length > 0) {
+				// A photo this browser can't decode (e.g. HEIC outside Safari) is kept
+				// as a file rather than lost.
+				const failed = new Set(result.failed);
+				others = [...others, ...photos.filter((p) => failed.has(p.name))];
+			}
+			if (result.outcome !== 'complete') others = [];
+		}
+		if (others.length > 0 && !controller.signal.aborted) {
+			bulk = { done: 0, total: others.length, noun: 'file' };
+			const result = await uploadFiles(others, {
+				signal: controller.signal,
+				onProgress: (_sent, _total, index) =>
+					(bulk = { done: index, total: others.length, noun: 'file' })
+			});
+			const { type, ...message } = fileUploadMessage(result);
+			toaster[type](message);
+		}
 		bulkAbort = null;
 		bulk = null;
-		const { type, ...message } = bulkUploadMessage(result);
-		toaster[type](message);
 	}
 
 	function stopBulkUpload() {
@@ -247,7 +269,7 @@
 			onclick={() => openImage(name)}
 		>
 			<img
-				src="/img/{name}"
+				src="/thumb/{name}"
 				alt={name}
 				data-testid="photo-thumb"
 				class="size-full object-cover transition-transform group-hover:scale-105"
@@ -347,7 +369,12 @@
 			</div>
 		{:else if bulk}
 			<div class="reveal">
-				<UploadProgress done={bulk.done} total={bulk.total} onStop={stopBulkUpload} />
+				<UploadProgress
+					done={bulk.done}
+					total={bulk.total}
+					noun={bulk.noun}
+					onStop={stopBulkUpload}
+				/>
 			</div>
 		{:else}
 			<div class="reveal"><UploadDropzone onFiles={handleFiles} /></div>

@@ -31,7 +31,9 @@ type Library struct {
 	images    []Image // canonical order; reordered only by Add/Remove/SetOrder
 	cycle     []Image // current playback order; rebuilt by Reshuffle
 	randomize bool
-	rng       *rand.Rand // nil shuffles via the global PRNG; tests inject a seeded one
+	// excluded images stay in the canonical order but are skipped by playback.
+	excluded map[string]bool
+	rng      *rand.Rand // nil shuffles via the global PRNG; tests inject a seeded one
 }
 
 // Option defines a functional configuration for the Library.
@@ -46,7 +48,7 @@ func WithTestRNG(rng *rand.Rand) Option {
 
 // New creates a Library with the given canonical order and an initial cycle.
 func New(images []Image, randomize bool, opts ...Option) *Library {
-	l := &Library{randomize: randomize}
+	l := &Library{randomize: randomize, excluded: map[string]bool{}}
 	for _, opt := range opts {
 		opt(l)
 	}
@@ -95,7 +97,9 @@ func (l *Library) Add(name string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.images = append(l.images, Image{Name: name})
-	l.cycle = append(l.cycle, Image{Name: name})
+	if !l.excluded[name] {
+		l.cycle = append(l.cycle, Image{Name: name})
+	}
 }
 
 // Remove deletes the first image with name from both slices; false if absent
@@ -104,6 +108,7 @@ func (l *Library) Remove(name string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.cycle = deleteByName(l.cycle, name)
+	delete(l.excluded, name)
 	for i, img := range l.images {
 		if img.Name == name {
 			l.images = slices.Delete(l.images, i, i+1)
@@ -177,10 +182,63 @@ func (l *Library) Reshuffle() []Image {
 	return clone(l.cycle)
 }
 
-// newCycle builds a fresh playback cycle from the canonical order. Caller holds
-// the mutex (or is New).
+// SetExcluded hides (excluded=true) or shows names in playback. Unknown names
+// are ignored. Reports whether anything changed; the caller restarts the cycle.
+func (l *Library) SetExcluded(names []string, excluded bool) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	known := make(map[string]bool, len(l.images))
+	for _, img := range l.images {
+		known[img.Name] = true
+	}
+	changed := false
+	for _, n := range names {
+		if !known[n] || l.excluded[n] == excluded {
+			continue
+		}
+		if excluded {
+			l.excluded[n] = true
+		} else {
+			delete(l.excluded, n)
+		}
+		changed = true
+	}
+	return changed
+}
+
+// Excluded reports whether name is hidden from playback.
+func (l *Library) Excluded(name string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.excluded[name]
+}
+
+// ExcludedNames returns the hidden names in canonical order (what gets persisted).
+func (l *Library) ExcludedNames() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	out := []string{}
+	for _, img := range l.images {
+		if l.excluded[img.Name] {
+			out = append(out, img.Name)
+		}
+	}
+	return out
+}
+
+// newCycle builds a fresh playback cycle from the canonical order, skipping
+// excluded images unless that would leave nothing to show. Caller holds the
+// mutex (or is New).
 func (l *Library) newCycle(prevLast string) []Image {
-	c := clone(l.images)
+	c := make([]Image, 0, len(l.images))
+	for _, img := range l.images {
+		if !l.excluded[img.Name] {
+			c = append(c, img)
+		}
+	}
+	if len(c) == 0 {
+		c = clone(l.images)
+	}
 	if l.randomize && len(c) > 1 {
 		l.shuffleSlice(c)
 		if prevLast != "" && c[0].Name == prevLast {

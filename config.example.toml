@@ -29,10 +29,34 @@ blank_after = "20m"
 #
 # Captions shown under the readings on the frame, in your own words (e.g.
 # "Outside" / "Kint" / "Garden"). Empty or omitted hides that caption.
+#
+# Backlight level in percent (1–100) for panels with a backlight device, such as
+# the Raspberry Pi Touch Display 2. 0 leaves the panel's own level alone.
+# brightness = 0
+#
 # [display.labels]
 # outside = "Outside"
 # inside = "Inside"
 # humidity = "Humidity"
+
+# Touch screen sleep mode and night schedule
+
+[sleep]
+# On a touch screen the menu hands back to the slideshow after this long without
+# a touch. "0s" keeps the menu up until "start slideshow" is tapped.
+idle_after = "2m"
+# Turn the screen off every night between off_from and off_until (device time,
+# or display.timezone when set). A touch lights it for wake_for, then it goes
+# dark again. Motion sensors never wake it inside the window.
+schedule = false
+off_from = "23:00"
+off_until = "07:00"
+wake_for = "5m"
+
+# Non-photo uploads (videos, PDFs, documents), shown in the touch screen's
+# Files view and the admin Files page.
+[files]
+dir = "files"
 
 # Slideshow
 

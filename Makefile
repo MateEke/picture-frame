@@ -1,4 +1,4 @@
-.PHONY: all clean build build-ui build-go embed-seed test test-e2e lint modernize mutation mutation-diff vuln sbom-go watch generate hooks help notices release-snapshot
+.PHONY: all clean build build-ui build-go build-pi4 embed-seed test test-e2e lint modernize mutation mutation-diff vuln sbom-go watch generate hooks help notices release-snapshot
 
 # --- Variables ---
 APP_NAME := picture-frame
@@ -14,7 +14,7 @@ VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev
 
 # Default self-update source ("owner/name"), derived from the origin remote so it tracks
 # the repo (incl. a future rename). goreleaser uses $GITHUB_REPOSITORY instead.
-UPDATE_REPO := $(shell git config --get remote.origin.url 2>/dev/null | sed -E 's#.*github.com[:/]##; s#\.git$$##')
+UPDATE_REPO := $(shell git config --get remote.origin.url 2>/dev/null | sed -E 's|.*github.com[:/]||; s|\.git$$||')
 
 # Frontend build version (kiosk heartbeats carry it); overridable so goreleaser can match it
 # to the version.Version ldflag — they must agree or updates roll back on the commit gate.
@@ -23,9 +23,10 @@ PUBLIC_APP_VERSION ?= $(VERSION)
 # Linker flags: strip debug symbols (-s -w) and inject version + platform + default update
 # source. build-go targets armv6 (Pi Zero W), so Platform is linux_armv6; goreleaser sets
 # its own per-arch Platform. Without this the self-updater can't match its release asset.
-LDFLAGS := -s -w \
+PLATFORM ?= linux_armv6
+LDFLAGS = -s -w \
 	-X github.com/MateEke/picture-frame/internal/version.Version=$(VERSION) \
-	-X github.com/MateEke/picture-frame/internal/version.Platform=linux_armv6 \
+	-X github.com/MateEke/picture-frame/internal/version.Platform=$(PLATFORM) \
 	-X github.com/MateEke/picture-frame/internal/version.UpdateRepo=$(UPDATE_REPO)
 
 # The default target runs the full pipeline
@@ -56,6 +57,14 @@ build-go: embed-seed ## Build the static Go backend for ARMv6
 	if [ "$$baked" != "$(VERSION)" ]; then \
 		echo "WARNING: embedded frontend ($$baked) != backend ($(VERSION)) — run 'make build VERSION=$(VERSION)' to rebuild the UI, or the frame will reload-loop."; \
 	fi
+
+# Raspberry Pi 4/5 (64-bit OS). Install on the Pi with:
+#   sudo bash deploy/install.sh --local-binary dist/picture-frame-arm64 --display dsi
+build-pi4: PLATFORM = linux_arm64
+build-pi4: build-ui ## Build UI + arm64 binary for a Pi 4/5 (dist/picture-frame-arm64)
+	@echo "==> Building Go backend for linux/arm64..."
+	@mkdir -p $(BUILD_DIR)
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(APP_NAME)-arm64 $(CMD_DIR)
 
 # --- Release Targets ---
 

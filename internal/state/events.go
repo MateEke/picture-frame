@@ -59,6 +59,14 @@ type TouchPayload struct {
 
 func (TouchPayload) busPayload() {}
 
+// LibraryPayload signals that the photo or file library changed (upload,
+// delete, reorder, slideshow selection) so open views refetch their lists.
+type LibraryPayload struct {
+	Changed time.Time `json:"changed"`
+}
+
+func (LibraryPayload) busPayload() {}
+
 // KioskPayload carries the kiosk overlay's render inputs.
 type KioskPayload struct {
 	Version       string      `json:"version"` // running build; the kiosk reloads when it changes (post-update)
@@ -68,6 +76,16 @@ type KioskPayload struct {
 	Sensors       []string    `json:"sensors"`
 	Weather       bool        `json:"weather"`
 	Labels        KioskLabels `json:"labels"`
+	Sleep         KioskSleep  `json:"sleep"`
+}
+
+// KioskSleep is what the touch UI needs from config.SleepConfig: when to hand
+// over to the slideshow, and the night window to show on the home screen.
+type KioskSleep struct {
+	IdleAfterSeconds int    `json:"idle_after_seconds"`
+	Schedule         bool   `json:"schedule"`
+	OffFrom          string `json:"off_from"`
+	OffUntil         string `json:"off_until"`
 }
 
 // KioskLabels mirrors config.KioskLabelsConfig; empty strings hide the caption.

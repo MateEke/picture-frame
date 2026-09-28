@@ -875,3 +875,61 @@ func TestHasMotionSensor(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateSleep(t *testing.T) {
+	cases := []struct {
+		name    string
+		sleep   config.SleepConfig
+		wantErr bool
+	}{
+		{"zero value", config.SleepConfig{}, false},
+		{"valid window", config.SleepConfig{Schedule: true, OffFrom: "23:00", OffUntil: "07:00"}, false},
+		{"schedule needs times", config.SleepConfig{Schedule: true}, true},
+		{"bad clock", config.SleepConfig{OffFrom: "25:00", OffUntil: "07:00"}, true},
+		{"bad until", config.SleepConfig{OffFrom: "22:00", OffUntil: "7"}, true},
+		{"empty window", config.SleepConfig{Schedule: true, OffFrom: "22:00", OffUntil: "22:00"}, true},
+		{"negative idle", config.SleepConfig{IdleAfter: config.Duration{Duration: -time.Second}}, true},
+		{"negative wake", config.SleepConfig{WakeFor: config.Duration{Duration: -time.Second}}, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &config.Config{Sleep: tc.sleep}
+			err := cfg.Validate()
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("err = %v, wantErr %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateBrightness(t *testing.T) {
+	for _, b := range []int{-1, 101} {
+		cfg := &config.Config{Display: config.DisplayConfig{Brightness: b}}
+		if cfg.Validate() == nil {
+			t.Errorf("brightness %d accepted", b)
+		}
+	}
+	cfg := &config.Config{Display: config.DisplayConfig{Brightness: 60}}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestParseClock(t *testing.T) {
+	if m, err := config.ParseClock("07:30"); err != nil || m != 450 {
+		t.Fatalf("got %d %v", m, err)
+	}
+}
+
+func TestDefaultsSleepAndFiles(t *testing.T) {
+	cfg, err := config.Load(filepath.Join(t.TempDir(), "none.toml"), filepath.Join(t.TempDir(), "none2.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Sleep.IdleAfter.Duration != 2*time.Minute || cfg.Sleep.OffFrom != "23:00" || cfg.Files.Dir != "files" {
+		t.Fatalf("defaults = %+v %+v", cfg.Sleep, cfg.Files)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
+	}
+}

@@ -18,6 +18,7 @@ import (
 
 	"github.com/MateEke/picture-frame/internal/auth"
 	"github.com/MateEke/picture-frame/internal/config"
+	"github.com/MateEke/picture-frame/internal/files"
 	"github.com/MateEke/picture-frame/internal/hostmetrics"
 	"github.com/MateEke/picture-frame/internal/library"
 	"github.com/MateEke/picture-frame/internal/power"
@@ -86,6 +87,12 @@ type Config struct {
 	Aspect *library.AspectStore
 	// Order persists the canonical image order; nil disables order saving.
 	Order *library.OrderStore
+	// Exclude persists which images are hidden from the slideshow; nil disables saving.
+	Exclude *library.ExcludeStore
+	// Thumbs serves gallery thumbnails; nil falls back to the full image.
+	Thumbs *library.ThumbStore
+	// Files stores non-image uploads; nil disables the /api/files routes (503).
+	Files *files.Store
 	// Planner rebuilds slide plans and receives the kiosk's screen aspect; nil in
 	// tests/dev that don't exercise split-screen.
 	Planner SlidePlanner
@@ -101,6 +108,8 @@ type Config struct {
 	Production bool
 	// WeatherActive gates the kiosk weather UI; see startup.WeatherEnabled.
 	WeatherActive bool
+	// BacklightSupported reports a /sys/class/backlight device (brightness control).
+	BacklightSupported bool
 	// SysfsBase roots device enumeration (Bluetooth adapters, display outputs);
 	// "" defaults to /sys/class. Overridden in tests with a fake sysfs tree.
 	SysfsBase string
@@ -138,6 +147,9 @@ type server struct {
 	kioskBeater   KioskBeater
 	aspect        *library.AspectStore
 	order         *library.OrderStore
+	exclude       *library.ExcludeStore
+	thumbs        *library.ThumbStore
+	files         *files.Store
 	planner       SlidePlanner
 	backend       string
 	syncer        SyncerStatus
@@ -145,6 +157,7 @@ type server struct {
 	wifiMgr       WiFiManager
 	sysfsBase     string
 	weatherActive bool
+	backlight     bool
 	hostMetrics   HostMetricsReader
 	power         PowerController
 	auth          *auth.Authenticator
@@ -183,6 +196,9 @@ func NewServer(cfg Config) http.Handler {
 		kioskBeater:   cfg.KioskBeater,
 		aspect:        cfg.Aspect,
 		order:         cfg.Order,
+		exclude:       cfg.Exclude,
+		thumbs:        cfg.Thumbs,
+		files:         cfg.Files,
 		planner:       cfg.Planner,
 		backend:       backend,
 		syncer:        cfg.Syncer,
@@ -190,6 +206,7 @@ func NewServer(cfg Config) http.Handler {
 		wifiMgr:       cfg.WiFi,
 		sysfsBase:     sysfsBase,
 		weatherActive: cfg.WeatherActive,
+		backlight:     cfg.BacklightSupported,
 		hostMetrics:   cfg.HostMetrics,
 		power:         cfg.Power,
 		auth:          auth.New(),
@@ -208,6 +225,8 @@ func NewServer(cfg Config) http.Handler {
 	api := humachi.New(r, humaConfig)
 
 	s.registerRoutes(api)
+	// Streaming upload bypasses huma; see handleUploadFile.
+	r.Post("/api/files", s.handleUploadFile)
 
 	// OS captive-portal probe URLs, redirect to /admin/network when AP is active.
 	for _, path := range captiveProbes {
@@ -236,6 +255,8 @@ func (s *server) registerRoutes(api huma.API) {
 	s.registerScreenRoutes(api)
 	s.registerLibraryRoutes(api)
 	s.registerImageRoutes(api)
+	s.registerFileRoutes(api)
+	s.registerTouchRoutes(api)
 	s.registerSlideshowRoutes(api)
 	s.registerHeartbeatRoutes(api)
 	s.registerWiFiRoutes(api)

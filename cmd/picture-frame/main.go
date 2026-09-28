@@ -20,6 +20,7 @@ import (
 
 	"github.com/MateEke/picture-frame/internal/config"
 	displaypkg "github.com/MateEke/picture-frame/internal/display"
+	"github.com/MateEke/picture-frame/internal/files"
 	"github.com/MateEke/picture-frame/internal/httpapi"
 	"github.com/MateEke/picture-frame/internal/kioskwatch"
 	"github.com/MateEke/picture-frame/internal/library"
@@ -115,6 +116,8 @@ func run() error {
 		Store:           intentStore,
 		BlankAfter:      cfg.Display.BlankAfter.Duration,
 		MotionAvailable: config.HasMotionSensor(cfg.Sensors), // idle-blank needs a sensor to wake it
+		Schedule:        sleepSchedule(log, cfg),
+		WakeFor:         cfg.Sleep.WakeFor.Duration,
 	})
 	policy.Start(ctx)
 	go policy.Run(ctx)
@@ -152,8 +155,27 @@ func run() error {
 	}
 	if len(savedOrder) > 0 {
 		lib.SetOrder(savedOrder)
-		lib.Reshuffle() // adopt the saved order into the first playback cycle
 	}
+	excludeStore, savedExclude, err := library.LoadExcludeStore(log, imagesRoot)
+	if err != nil {
+		return fmt.Errorf("load slideshow selection: %w", err)
+	}
+	lib.SetExcluded(savedExclude, true)
+	lib.Reshuffle() // adopt the saved order and selection into the first playback cycle
+
+	thumbStore, err := library.NewThumbStore(log, imagesRoot)
+	if err != nil {
+		return fmt.Errorf("init thumbnails: %w", err)
+	}
+	go thumbStore.BackfillMissing(ctx, lib)
+
+	fileStore, err := files.Open(log, cfg.Files.Dir)
+	if err != nil {
+		return fmt.Errorf("open file storage: %w", err)
+	}
+	defer fileStore.Close()
+
+	backlight := newBacklight(production, log, cfg)
 
 	planner := slideplan.NewPlanner(
 		slideshow.NewLibrarySource(lib),
@@ -227,7 +249,7 @@ func run() error {
 		go mqttHub.Connect(ctx)
 	}
 
-	liveCfg := &liveConfigImpl{slideshow: slides, policy: policy, rotator: rotator, weather: weatherPoller, logLevel: &levelVar, log: log}
+	liveCfg := &liveConfigImpl{slideshow: slides, policy: policy, rotator: rotator, weather: weatherPoller, backlight: backlight, logLevel: &levelVar, log: log}
 
 	restartFn := startup.MakeRestartFunc(restartCh)
 	updaterSvc := startUpdater(ctx, log, cfg, production, restartFn)
@@ -236,29 +258,33 @@ func run() error {
 		Addr:              cfg.Addr,
 		ReadHeaderTimeout: 10 * time.Second,
 		Handler: httpapi.NewServer(httpapi.Config{
-			Log:           log,
-			Screen:        screen,
-			Rotator:       rotator,
-			Bus:           bus,
-			Library:       lib,
-			Slideshow:     slides,
-			ImagesRoot:    imagesRoot,
-			Aspect:        aspectStore,
-			Order:         orderStore,
-			Planner:       planner,
-			KioskBeater:   kioskWatch,
-			Backend:       libraryBackend(cfg),
-			Syncer:        startup.SyncerStatus(librarySyncer),
-			Updater:       updaterSvc,
-			WiFi:          wifiMgr,
-			Production:    production,
-			WeatherActive: weatherActive,
-			Store:         store,
-			RunningConfig: *cfg,
-			LiveConfig:    liveCfg,
-			Restart:       restartFn,
-			HostMetrics:   hostReader,
-			Power:         powerMgr,
+			Log:                log,
+			Screen:             screen,
+			Rotator:            rotator,
+			Bus:                bus,
+			Library:            lib,
+			Slideshow:          slides,
+			ImagesRoot:         imagesRoot,
+			Aspect:             aspectStore,
+			Order:              orderStore,
+			Exclude:            excludeStore,
+			Thumbs:             thumbStore,
+			Files:              fileStore,
+			Planner:            planner,
+			KioskBeater:        kioskWatch,
+			Backend:            libraryBackend(cfg),
+			Syncer:             startup.SyncerStatus(librarySyncer),
+			Updater:            updaterSvc,
+			WiFi:               wifiMgr,
+			Production:         production,
+			WeatherActive:      weatherActive,
+			BacklightSupported: backlight != nil && backlight.Supported(),
+			Store:              store,
+			RunningConfig:      *cfg,
+			LiveConfig:         liveCfg,
+			Restart:            restartFn,
+			HostMetrics:        hostReader,
+			Power:              powerMgr,
 		}),
 	}
 

@@ -1,7 +1,29 @@
 import { describe, it, expect } from 'vitest';
-import { bulkUploadMessage, rejectedFilesMessage } from './uploadFeedback';
+import { bulkUploadMessage, fileUploadMessage, rejectedFilesMessage } from './uploadFeedback';
 
 describe('upload feedback', () => {
+	describe('fileUploadMessage', () => {
+		it('announces files that went to Files', () => {
+			expect(fileUploadMessage({ added: 1, failed: [], outcome: 'complete' })).toEqual({
+				type: 'success',
+				title: 'Added 1 file to Files'
+			});
+		});
+
+		it('names files that could not be added', () => {
+			const msg = fileUploadMessage({ added: 2, failed: ['big.mov'], outcome: 'complete' });
+			expect(msg.type).toBe('warning');
+			expect(msg.description).toContain('big.mov');
+		});
+
+		it('reports a stop and an unreachable frame', () => {
+			expect(fileUploadMessage({ added: 3, failed: [], outcome: 'stopped' }).type).toBe('info');
+			expect(fileUploadMessage({ added: 0, failed: ['a'], outcome: 'unreachable' }).type).toBe(
+				'error'
+			);
+		});
+	});
+
 	describe('bulkUploadMessage', () => {
 		it('announces a finished batch', () => {
 			const msg = bulkUploadMessage({ added: 12, failed: [], outcome: 'complete' });
@@ -63,11 +85,13 @@ describe('upload feedback', () => {
 			expect(msg.description).not.toContain('The rest');
 		});
 
-		it('explains a file that was not an image', () => {
-			const msg = rejectedFilesMessage([{ errors: ['FILE_INVALID_TYPE'] }], 200);
+		// Every file type is accepted now; a per-file rejection means the picker
+		// couldn't read it.
+		it('explains a file that could not be read', () => {
+			const msg = rejectedFilesMessage([{ errors: ['FILE_INVALID'] }], 200);
 			expect(msg.type).toBe('warning');
 			expect(msg.title).toBe('Some files were left out');
-			expect(msg.description).toContain('image');
+			expect(msg.description).toContain('could not be read');
 		});
 
 		it('leads with the cap when a selection trips both', () => {

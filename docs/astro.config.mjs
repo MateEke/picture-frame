@@ -75,7 +75,8 @@ export default defineConfig({
 						{ label: 'Network', slug: 'manual/network' },
 						{ label: 'Software updates', slug: 'manual/updates' },
 						{ label: 'Security', slug: 'manual/security' },
-						{ label: 'The kiosk display', slug: 'manual/kiosk' }
+						{ label: 'The kiosk display', slug: 'manual/kiosk' },
+						{ label: 'Touch screen', slug: 'manual/touch-screen' }
 					]
 				},
 				{

@@ -64,8 +64,10 @@ func (s *server) registerScreenRoutes(api huma.API) {
 		return nil, nil
 	})
 
-	// Exempt so the kiosk can post it per tap. Wake-only: off stays gated.
+	// Exempt so the kiosk can post it per tap.
 	s.kioskExempt("/api/screen/wake")
+	// The touch UI's home screen has an on/off button.
+	s.kioskExempt("/api/screen")
 	huma.Register(api, huma.Operation{
 		OperationID:   "screen-wake",
 		Method:        http.MethodPost,

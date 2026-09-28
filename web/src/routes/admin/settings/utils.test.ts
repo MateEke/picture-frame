@@ -121,7 +121,8 @@ describe('settings utils', () => {
 					locale: 'en-US',
 					hide_clock_date: false,
 					timezone: '',
-					labels: { outside: '', inside: '', humidity: '' }
+					labels: { outside: '', inside: '', humidity: '' },
+					brightness: 0
 				},
 				slideshow: { interval: '2m', randomize: false, split_screen: true, images_dir: 'images' },
 				library: {
@@ -163,6 +164,13 @@ describe('settings utils', () => {
 					github_repo: '',
 					github_token: '',
 					github_token_set: false
+				},
+				sleep: {
+					idle_after: '2m',
+					schedule: false,
+					off_from: '23:00',
+					off_until: '07:00',
+					wake_for: '5m'
 				},
 				restart_pending: false
 			});

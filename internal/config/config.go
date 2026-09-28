@@ -36,6 +36,28 @@ type Config struct {
 	WiFi             WiFiConfig      `toml:"wifi"`
 	Auth             AuthConfig      `toml:"auth"`
 	Updater          UpdaterConfig   `toml:"updater"`
+	Sleep            SleepConfig     `toml:"sleep"`
+	Files            FilesConfig     `toml:"files"`
+}
+
+// SleepConfig drives the touch UI's sleep mode (the slideshow that takes over
+// after inactivity) and the nightly screen-off schedule.
+type SleepConfig struct {
+	// IdleAfter is how long the touch UI waits without a touch before the
+	// slideshow takes over; 0 keeps the menu up until "start slideshow" is tapped.
+	IdleAfter Duration `toml:"idle_after"`
+	// Schedule turns the screen off daily between OffFrom and OffUntil
+	// ("HH:MM", device-local or display.timezone; may wrap past midnight).
+	Schedule bool   `toml:"schedule"`
+	OffFrom  string `toml:"off_from"`
+	OffUntil string `toml:"off_until"`
+	// WakeFor is how long a touch during the off window keeps the screen on.
+	WakeFor Duration `toml:"wake_for"`
+}
+
+// FilesConfig is where non-image uploads (videos, PDFs, documents) are kept.
+type FilesConfig struct {
+	Dir string `toml:"dir"`
 }
 
 // UpdaterConfig controls the in-app updater. Checking always runs; AutoUpdate
@@ -131,6 +153,9 @@ type DisplayConfig struct {
 	// Labels are the owner-provided captions under the kiosk readings;
 	// an empty string hides that caption.
 	Labels KioskLabelsConfig `toml:"labels"`
+	// Brightness is the backlight level in percent (1–100); 0 leaves it alone.
+	// Only panels with a /sys/class/backlight device (e.g. Touch Display 2).
+	Brightness int `toml:"brightness"`
 }
 
 // KioskLabelsConfig holds free-text captions, owner wording, not translations.
@@ -248,6 +273,13 @@ func defaults() Config {
 		},
 		// AutoUpdate on by default; the SameMajor gate keeps it to minor/patch.
 		Updater: UpdaterConfig{AutoUpdate: true, UpdateHour: 2},
+		Sleep: SleepConfig{
+			IdleAfter: Duration{2 * time.Minute},
+			OffFrom:   "23:00",
+			OffUntil:  "07:00",
+			WakeFor:   Duration{5 * time.Minute},
+		},
+		Files: FilesConfig{Dir: "files"},
 	}
 }
 

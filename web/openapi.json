@@ -123,6 +123,9 @@
               "null"
             ]
           },
+          "sleep": {
+            "$ref": "#/components/schemas/SleepDTO"
+          },
           "slideshow": {
             "$ref": "#/components/schemas/SlideshowDTO"
           },
@@ -142,7 +145,8 @@
           "sensors",
           "weather",
           "mqtt",
-          "updater"
+          "updater",
+          "sleep"
         ],
         "type": "object"
       },
@@ -281,6 +285,9 @@
               "null"
             ]
           },
+          "sleep": {
+            "$ref": "#/components/schemas/SleepDTO"
+          },
           "slideshow": {
             "$ref": "#/components/schemas/SlideshowDTO"
           },
@@ -301,7 +308,8 @@
           "sensors",
           "weather",
           "mqtt",
-          "updater"
+          "updater",
+          "sleep"
         ],
         "type": "object"
       },
@@ -392,6 +400,13 @@
             "description": "Idle duration before screen blanks, e.g. \"20m\"",
             "type": "string"
           },
+          "brightness": {
+            "description": "Backlight percent (1–100) for panels with a backlight device; 0 leaves it alone",
+            "format": "int64",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
           "hide_clock_date": {
             "description": "Hide the clock and date block on the kiosk overlay",
             "type": "boolean"
@@ -431,7 +446,8 @@
           "locale",
           "hide_clock_date",
           "timezone",
-          "labels"
+          "labels",
+          "brightness"
         ],
         "type": "object"
       },
@@ -516,6 +532,41 @@
         },
         "type": "object"
       },
+      "FileItem": {
+        "additionalProperties": false,
+        "properties": {
+          "added": {
+            "description": "Upload time",
+            "format": "date-time",
+            "type": "string"
+          },
+          "mime": {
+            "description": "Media type",
+            "type": "string"
+          },
+          "name": {
+            "description": "Stored filename",
+            "type": "string"
+          },
+          "original": {
+            "description": "Filename as uploaded",
+            "type": "string"
+          },
+          "size": {
+            "description": "Size in bytes",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "original",
+          "size",
+          "mime",
+          "added"
+        ],
+        "type": "object"
+      },
       "ImageItem": {
         "additionalProperties": false,
         "properties": {
@@ -528,13 +579,18 @@
             "readOnly": true,
             "type": "string"
           },
+          "included": {
+            "description": "true if the image plays in the slideshow",
+            "type": "boolean"
+          },
           "name": {
             "description": "Image filename",
             "type": "string"
           }
         },
         "required": [
-          "name"
+          "name",
+          "included"
         ],
         "type": "object"
       },
@@ -645,6 +701,9 @@
               "null"
             ]
           },
+          "sleep": {
+            "$ref": "#/components/schemas/KioskSleep"
+          },
           "timezone": {
             "type": "string"
           },
@@ -662,7 +721,33 @@
           "timezone",
           "sensors",
           "weather",
-          "labels"
+          "labels",
+          "sleep"
+        ],
+        "type": "object"
+      },
+      "KioskSleep": {
+        "additionalProperties": false,
+        "properties": {
+          "idle_after_seconds": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "off_from": {
+            "type": "string"
+          },
+          "off_until": {
+            "type": "string"
+          },
+          "schedule": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "idle_after_seconds",
+          "schedule",
+          "off_from",
+          "off_until"
         ],
         "type": "object"
       },
@@ -683,6 +768,19 @@
         "required": [
           "backend",
           "immich"
+        ],
+        "type": "object"
+      },
+      "LibraryPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "changed": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "changed"
         ],
         "type": "object"
       },
@@ -731,6 +829,39 @@
         },
         "required": [
           "asset_count"
+        ],
+        "type": "object"
+      },
+      "ListFilesOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ListFilesOutputBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/FileItem"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "free_bytes": {
+            "description": "Space left on the storage, when known",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "files"
         ],
         "type": "object"
       },
@@ -1112,6 +1243,72 @@
         ],
         "type": "object"
       },
+      "SetSlideshowSelectionInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/SetSlideshowSelectionInputBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "included": {
+            "description": "true shows them in the slideshow, false hides them",
+            "type": "boolean"
+          },
+          "names": {
+            "description": "Image filenames to update",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "names",
+          "included"
+        ],
+        "type": "object"
+      },
+      "SleepDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "idle_after": {
+            "description": "Touch-UI inactivity before the slideshow starts, e.g. \"2m\"; \"0s\" disables",
+            "type": "string"
+          },
+          "off_from": {
+            "description": "Start of the nightly off window, HH:MM",
+            "type": "string"
+          },
+          "off_until": {
+            "description": "End of the nightly off window, HH:MM",
+            "type": "string"
+          },
+          "schedule": {
+            "description": "Turn the screen off daily between off_from and off_until",
+            "type": "boolean"
+          },
+          "wake_for": {
+            "description": "How long a touch inside the off window keeps the screen on, e.g. \"5m\"",
+            "type": "string"
+          }
+        },
+        "required": [
+          "idle_after",
+          "schedule",
+          "off_from",
+          "off_until",
+          "wake_for"
+        ],
+        "type": "object"
+      },
       "SlideshowDTO": {
         "additionalProperties": false,
         "properties": {
@@ -1262,6 +1459,120 @@
         },
         "required": [
           "at"
+        ],
+        "type": "object"
+      },
+      "TouchSettingsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/TouchSettingsBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "brightness": {
+            "format": "int64",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "brightness_supported": {
+            "description": "true if the panel has a controllable backlight",
+            "type": "boolean"
+          },
+          "interval": {
+            "description": "Slideshow advance interval, e.g. \"2m\"",
+            "type": "string"
+          },
+          "randomize": {
+            "type": "boolean"
+          },
+          "rotation": {
+            "enum": [
+              0,
+              90,
+              180,
+              270
+            ],
+            "format": "int64",
+            "type": "integer"
+          },
+          "rotation_supported": {
+            "description": "true if the display backend can rotate",
+            "type": "boolean"
+          },
+          "sleep": {
+            "$ref": "#/components/schemas/SleepDTO"
+          },
+          "split_screen": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "brightness_supported",
+          "rotation_supported",
+          "sleep",
+          "interval",
+          "randomize",
+          "split_screen",
+          "brightness",
+          "rotation"
+        ],
+        "type": "object"
+      },
+      "TouchSettingsDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/TouchSettingsDTO.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "brightness": {
+            "format": "int64",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "interval": {
+            "description": "Slideshow advance interval, e.g. \"2m\"",
+            "type": "string"
+          },
+          "randomize": {
+            "type": "boolean"
+          },
+          "rotation": {
+            "enum": [
+              0,
+              90,
+              180,
+              270
+            ],
+            "format": "int64",
+            "type": "integer"
+          },
+          "sleep": {
+            "$ref": "#/components/schemas/SleepDTO"
+          },
+          "split_screen": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "sleep",
+          "interval",
+          "randomize",
+          "split_screen",
+          "brightness",
+          "rotation"
         ],
         "type": "object"
       },
@@ -1795,6 +2106,69 @@
         "summary": "Get configuration metadata (enum values for UI selects)"
       }
     },
+    "/api/files": {
+      "get": {
+        "operationId": "list-files",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListFilesOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List uploaded non-image files"
+      }
+    },
+    "/api/files/{name}": {
+      "delete": {
+        "operationId": "delete-file",
+        "parameters": [
+          {
+            "description": "Stored filename",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "description": "Stored filename",
+              "maxLength": 120,
+              "pattern": "^[a-zA-Z0-9_~-][a-zA-Z0-9_.~-]*$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Delete an uploaded file"
+      }
+    },
     "/api/heartbeat": {
       "post": {
         "operationId": "heartbeat",
@@ -1949,6 +2323,37 @@
           }
         },
         "summary": "Set the manual photo order"
+      }
+    },
+    "/api/images/slideshow": {
+      "put": {
+        "operationId": "set-slideshow-selection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSlideshowSelectionInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Show or hide images in the slideshow"
       }
     },
     "/api/images/{name}": {
@@ -2377,6 +2782,63 @@
         "summary": "Check the release source for a newer version now"
       }
     },
+    "/api/touch/settings": {
+      "get": {
+        "operationId": "get-touch-settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TouchSettingsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Get the settings the touch UI can edit"
+      },
+      "put": {
+        "operationId": "put-touch-settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TouchSettingsDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Save the settings the touch UI can edit (all apply live)"
+      }
+    },
     "/api/wifi/ap": {
       "put": {
         "operationId": "configure-ap",
@@ -2607,6 +3069,32 @@
                       {
                         "properties": {
                           "data": {
+                            "$ref": "#/components/schemas/LibraryPayload"
+                          },
+                          "event": {
+                            "const": "library",
+                            "description": "The event name.",
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "The event ID.",
+                            "type": "integer"
+                          },
+                          "retry": {
+                            "description": "The retry time in milliseconds.",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "event"
+                        ],
+                        "title": "Event library",
+                        "type": "object"
+                      },
+                      {
+                        "properties": {
+                          "data": {
                             "$ref": "#/components/schemas/PingEvent"
                           },
                           "event": {
@@ -2809,6 +3297,51 @@
         "summary": "SSE event stream"
       }
     },
+    "/files/{name}": {
+      "get": {
+        "operationId": "serve-file",
+        "parameters": [
+          {
+            "description": "Stored filename",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "description": "Stored filename",
+              "maxLength": 120,
+              "pattern": "^[a-zA-Z0-9_~-][a-zA-Z0-9_.~-]*$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send as an attachment instead of inline",
+            "explode": false,
+            "in": "query",
+            "name": "download",
+            "schema": {
+              "description": "Send as an attachment instead of inline",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Serve an uploaded file (supports Range for media seeking)"
+      }
+    },
     "/healthz": {
       "get": {
         "operationId": "healthz",
@@ -2862,6 +3395,40 @@
           }
         },
         "summary": "Serve an image file"
+      }
+    },
+    "/thumb/{name}": {
+      "get": {
+        "operationId": "serve-thumbnail",
+        "parameters": [
+          {
+            "description": "Image filename",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "description": "Image filename",
+              "pattern": "^[a-zA-Z0-9_.~-]+\\.(jpe?g|png)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Serve a small preview of an image"
       }
     }
   }

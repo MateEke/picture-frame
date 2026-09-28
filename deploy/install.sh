@@ -29,6 +29,9 @@ APP_PASSWORD=""
 APP_PASSWORD_SET=0
 UNATTENDED_UPGRADES=1
 UNATTENDED_UPGRADES_SET=0
+DISPLAY_KIND=""        # hdmi | dsi; "" = detect
+TOUCH_DISPLAY_SIZE="7" # Touch Display 2 panel: 7 or 5 (inch)
+LOCAL_BINARY=""
 
 ARCH=""
 WLAN_IFACE=""
@@ -153,7 +156,16 @@ Flags:
                               vcgencmd is a legacy fallback: lighter on RAM/CPU
                               (no compositor) but showed instability in testing
                               that labwc/wlopm does not.
-  --display-output <name>     Override detected HDMI connector (e.g. HDMI-A-2).
+  --display-output <name>     Override detected connector (e.g. HDMI-A-2, DSI-1).
+  --display <hdmi|dsi>        Panel type. dsi = Raspberry Pi Touch Display 2 on the
+                              ribbon connector: loads its overlay, skips the HDMI pin
+                              and lets the frame control the backlight. Default:
+                              dsi when a DSI panel is already detected, else hdmi.
+  --touch-display-size <7|5>  Touch Display 2 size for the overlay (default 7).
+  --local-binary <path>       Install this picture-frame binary (e.g. your own
+                              `make build-pi4`) instead of downloading a signed
+                              release. Also turns nightly auto-update off so a
+                              stock release can't replace it.
   --ssid <name>               Enable the WiFi-recovery AP with this SSID.
   --ap-password <pw>          AP password (optional; open AP if omitted).
   --no-ap                     Do not configure the AP fallback.
@@ -177,6 +189,9 @@ parse_args() {
             --user)            SERVICE_USER="${2:?--user requires a value}"; shift 2 ;;
             --display-backend) DISPLAY_BACKEND="${2:?--display-backend requires a value}"; DISPLAY_BACKEND_SET=1; shift 2 ;;
             --display-output)  DISPLAY_OUTPUT="${2:?--display-output requires a value}"; DISPLAY_OUTPUT_SET=1; shift 2 ;;
+            --display)         DISPLAY_KIND="${2:?--display requires a value}"; shift 2 ;;
+            --touch-display-size) TOUCH_DISPLAY_SIZE="${2:?--touch-display-size requires a value}"; shift 2 ;;
+            --local-binary)    LOCAL_BINARY="${2:?--local-binary requires a value}"; shift 2 ;;
             --ssid)            AP_SSID="${2:?--ssid requires a value}"; AP_SSID_SET=1; shift 2 ;;
             --ap-password)     AP_PASSWORD="${2:?--ap-password requires a value}"; AP_PASSWORD_SET=1; shift 2 ;;
             --no-ap)           NO_AP=1; shift ;;
@@ -190,6 +205,14 @@ parse_args() {
             *) err "unknown argument: $1 (see --help)" ;;
         esac
     done
+    case "$DISPLAY_KIND" in
+        ""|hdmi|dsi) ;;
+        *) err "invalid --display: $DISPLAY_KIND (want hdmi or dsi)" ;;
+    esac
+    case "$TOUCH_DISPLAY_SIZE" in
+        7|5) ;;
+        *) err "invalid --touch-display-size: $TOUCH_DISPLAY_SIZE (want 7 or 5)" ;;
+    esac
     case "$DISPLAY_BACKEND" in
         wlopm|vcgencmd) ;;
         *) err "invalid --display-backend: $DISPLAY_BACKEND (want wlopm or vcgencmd)" ;;
@@ -306,7 +329,27 @@ payload_is_current() {
     [ "$(cat "$INSTALL_DIR/$PAYLOAD_MARKER" 2>/dev/null || true)" = "$RELEASE_TAG" ]
 }
 
+# A self-built binary (make build-pi4) plus this checkout's deploy/ and
+# config.example.toml, in place of a downloaded release.
+install_local_payload() {
+    local here; here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    [ -f "$LOCAL_BINARY" ] || err "--local-binary: no such file: $LOCAL_BINARY"
+    log "installing local binary $LOCAL_BINARY to $INSTALL_DIR"
+    run_cmd mkdir -p "$INSTALL_DIR/deploy"
+    run_cmd install -m 0755 "$LOCAL_BINARY" "$INSTALL_DIR/picture-frame"
+    run_cmd cp -r "$here/." "$INSTALL_DIR/deploy/"
+    if [ -f "$here/../config.example.toml" ]; then
+        run_cmd install -m 0644 "$here/../config.example.toml" "$INSTALL_DIR/config.example.toml"
+    fi
+    if [ "$DRY_RUN" -eq 0 ]; then printf 'local\n' > "$INSTALL_DIR/$PAYLOAD_MARKER"; fi
+    run_cmd chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
+}
+
 fetch_and_verify() {
+    if [ -n "$LOCAL_BINARY" ]; then
+        install_local_payload
+        return
+    fi
     if [ "$DRY_RUN" -eq 1 ]; then
         log "[dry-run] would resolve/download/verify/extract release '$VERSION' for $ARCH"
         return
@@ -441,8 +484,34 @@ install_labwc() {
     fi
 }
 
+# Connected DSI connector name (e.g. DSI-1), or "".
+detect_dsi_connector() {
+    local st name
+    for st in /sys/class/drm/card*-DSI-*/status; do
+        [ -e "$st" ] || continue
+        if [ "$(cat "$st")" = "connected" ]; then
+            name="$(basename "$(dirname "$st")")"
+            printf '%s' "${name#card*-}"
+            return 0
+        fi
+    done
+    return 0
+}
+
+# Resolves DISPLAY_KIND (hdmi|dsi) and HDMI_CONN, the connector the frame drives.
+# A fresh Touch Display 2 on a Pi 4 has no DSI connector until its overlay loads
+# (after the reboot this install asks for), so detection only helps re-runs; pass
+# --display dsi the first time.
 detect_hdmi_connector() {
+    local dsi; dsi="$(detect_dsi_connector)"
+    if [ -z "$DISPLAY_KIND" ]; then
+        if [ -n "$dsi" ]; then DISPLAY_KIND="dsi"; else DISPLAY_KIND="hdmi"; fi
+    fi
     if [ -n "$DISPLAY_OUTPUT" ]; then HDMI_CONN="$DISPLAY_OUTPUT"; return; fi
+    if [ "$DISPLAY_KIND" = "dsi" ]; then
+        HDMI_CONN="${dsi:-DSI-1}"
+        return
+    fi
     HDMI_CONN=""
     local st
     for st in /sys/class/drm/card*-HDMI-A-*/status; do
@@ -458,7 +527,11 @@ detect_hdmi_connector() {
 
 configure_display() {
     set_display_overlay
-    if [ "$DISPLAY_BACKEND" = "wlopm" ]; then
+    if [ "$DISPLAY_KIND" = "dsi" ]; then
+        set_touch_display_overlay
+        install_backlight_rule
+        log "DSI panel: skipping HDMI cmdline pin (a forced HDMI output would be a phantom screen)"
+    elif [ "$DISPLAY_BACKEND" = "wlopm" ]; then
         pin_hdmi_cmdline
     else
         log "vcgencmd backend: skipping HDMI cmdline pin (full-KMS-only fix)"
@@ -495,6 +568,33 @@ set_display_overlay() {
     ' "$cfg" > "$tmp"
     write_file "$cfg" < "$tmp"
     rm -f "$tmp"
+}
+
+# Touch Display 2 needs its panel overlay on a Pi 4 (the Pi 5 auto-detects it).
+set_touch_display_overlay() {
+    local cfg want="vc4-kms-dsi-ili9881-${TOUCH_DISPLAY_SIZE}inch"
+    cfg="$(find_boot_file config.txt)"
+    if [ -z "$cfg" ]; then
+        warn "no config.txt found; add 'dtoverlay=$want' manually"
+        return
+    fi
+    if grep -qE "^[[:space:]]*dtoverlay=vc4-kms-dsi-ili9881-" "$cfg"; then
+        log "Touch Display 2 overlay already in $cfg"
+        return
+    fi
+    log "adding dtoverlay=$want to $cfg (reboot required)"
+    [ -f "$cfg.pictureframe.bak" ] || run_cmd cp "$cfg" "$cfg.pictureframe.bak"
+    { cat "$cfg"; printf 'dtoverlay=%s\n' "$want"; } | write_file "$cfg.new"
+    run_cmd mv "$cfg.new" "$cfg"
+}
+
+# Lets the video group (the backend's SupplementaryGroups) set panel brightness.
+install_backlight_rule() {
+    log "installing backlight udev rule"
+    printf '%s\n' \
+        '# picture-frame: let the video group set DSI panel brightness' \
+        'SUBSYSTEM=="backlight", ACTION=="add", RUN+="/bin/chgrp video /sys/class/backlight/%k/brightness", RUN+="/bin/chmod g+w /sys/class/backlight/%k/brightness"' \
+        | write_file /etc/udev/rules.d/99-pictureframe-backlight.rules
 }
 
 # Forces the connector connected so a DPMS-off panel's HPD drop doesn't lose the output.
@@ -559,7 +659,7 @@ seed_config() {
     [ -f "$cfg" ] || fresh=1
 
     if [ "$DRY_RUN" -eq 1 ]; then
-        log "[dry-run] would seed $cfg (fresh=$fresh): display.backend=$DISPLAY_BACKEND display.output=$HDMI_CONN wifi.ap_ssid=$AP_SSID app_password=$([ "$APP_PASSWORD_SET" -eq 1 ] && echo set || echo unchanged)"
+        log "[dry-run] would seed $cfg (fresh=$fresh): display.backend=$DISPLAY_BACKEND display.output=$HDMI_CONN local_binary=${LOCAL_BINARY:-no} wifi.ap_ssid=$AP_SSID app_password=$([ "$APP_PASSWORD_SET" -eq 1 ] && echo set || echo unchanged)"
         return
     fi
 
@@ -583,6 +683,10 @@ seed_config() {
     fi
     if [ "$fresh" -eq 1 ] || [ "$AP_PASSWORD_SET" -eq 1 ]; then
         set_toml_key "$cfg" wifi ap_password "\"$AP_PASSWORD\""
+    fi
+    if [ -n "$LOCAL_BINARY" ]; then
+        # Auto-update would swap this build for a stock release (and drop its features).
+        set_toml_key "$cfg" updater auto_update "false"
     fi
     if [ "$APP_PASSWORD_SET" -eq 1 ]; then
         local hash
@@ -642,6 +746,7 @@ uninstall() {
     run_cmd rm -f /etc/NetworkManager/dnsmasq-shared.d/captive-portal.conf
     run_cmd rm -f /etc/polkit-1/rules.d/50-pictureframe-networkmanager.rules
     run_cmd rm -f /etc/polkit-1/rules.d/50-pictureframe-power.rules
+    run_cmd rm -f /etc/udev/rules.d/99-pictureframe-backlight.rules
     local f
     for f in /boot/firmware/cmdline.txt /boot/cmdline.txt /boot/firmware/config.txt /boot/config.txt; do
         if [ -f "$f.pictureframe.bak" ]; then
@@ -662,7 +767,7 @@ main() {
     require_tty
     detect_arch
     gather_input
-    log "installer: user=$SERVICE_USER dir=$INSTALL_DIR backend=$DISPLAY_BACKEND arch=$ARCH"
+    log "installer: user=$SERVICE_USER dir=$INSTALL_DIR backend=$DISPLAY_BACKEND arch=$ARCH display=${DISPLAY_KIND:-detect}"
 
     apt_install minisign curl ca-certificates   # bootstrap-verify deps
     fetch_and_verify

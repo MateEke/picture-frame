@@ -7,6 +7,9 @@
 	import TouchNav from './TouchNav.svelte';
 	import { onDestroy, untrack } from 'svelte';
 
+	// onTap opens the touch menu; without it (e.g. a remote viewer) taps do nothing.
+	let { onTap }: { onTap?: () => void } = $props();
+
 	const sse = getSSEContext();
 	const fader = new Fader();
 
@@ -57,5 +60,5 @@
 />
 
 {#if onDevice}
-	<TouchNav isBusy={() => fader.busy} />
+	<TouchNav isBusy={() => fader.busy} {onTap} />
 {/if}

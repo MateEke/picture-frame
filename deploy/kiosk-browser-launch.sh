@@ -9,7 +9,10 @@
 # no stale value. Falls back to cog's default if detection fails.
 set -eu
 
-for conn in /sys/class/drm/card*-*/status; do
+# DSI first: with a Touch Display 2 on the ribbon, that's the frame's screen even
+# if a monitor is also on HDMI.
+for conn in /sys/class/drm/card*-DSI-*/status /sys/class/drm/card*-*/status; do
+    [ -e "$conn" ] || continue
     [ "$(cat "$conn" 2>/dev/null)" = "connected" ] || continue
     mode="$(head -n1 "$(dirname "$conn")/modes" 2>/dev/null || true)"
     case "$mode" in

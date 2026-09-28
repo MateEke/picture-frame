@@ -18,6 +18,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
+	_ "golang.org/x/image/webp" // register WebP decoder
 
 	"github.com/MateEke/picture-frame/internal/config"
 	"github.com/MateEke/picture-frame/internal/library"
@@ -34,7 +35,8 @@ const (
 )
 
 type ImageItem struct {
-	Name string `json:"name" doc:"Image filename"`
+	Name     string `json:"name" doc:"Image filename"`
+	Included bool   `json:"included" doc:"true if the image plays in the slideshow"`
 }
 
 type ListImagesOutput struct {
@@ -64,6 +66,13 @@ type SetImageOrderInput struct {
 	}
 }
 
+type SetSlideshowSelectionInput struct {
+	Body struct {
+		Names    []string `json:"names" doc:"Image filenames to update"`
+		Included bool     `json:"included" doc:"true shows them in the slideshow, false hides them"`
+	}
+}
+
 type ServeImageInput struct {
 	Name string `path:"name" pattern:"^[a-zA-Z0-9_.~-]+\\.(jpe?g|png)$" doc:"Image filename"`
 }
@@ -78,7 +87,7 @@ func (s *server) registerImageRoutes(api huma.API) {
 		imgs := s.lib.List()
 		out := make([]ImageItem, len(imgs))
 		for i, img := range imgs {
-			out[i] = ImageItem{Name: img.Name}
+			out[i] = ImageItem{Name: img.Name, Included: !s.lib.Excluded(img.Name)}
 		}
 		return &ListImagesOutput{Body: out}, nil
 	})
@@ -108,6 +117,26 @@ func (s *server) registerImageRoutes(api huma.API) {
 		DefaultStatus: http.StatusNoContent,
 	}, s.handleSetImageOrder)
 
+	// The touch UI's gallery lists, deletes and toggles slideshow membership
+	// over loopback (the prefix covers /api/images/{name} and /slideshow).
+	s.kioskExempt("/api/images")
+	s.kioskExemptPrefix("/api/images/")
+	huma.Register(api, huma.Operation{
+		OperationID:   "set-slideshow-selection",
+		Method:        http.MethodPut,
+		Path:          "/api/images/slideshow",
+		Summary:       "Show or hide images in the slideshow",
+		DefaultStatus: http.StatusNoContent,
+	}, s.handleSetSlideshowSelection)
+
+	s.kioskExemptPrefix("/thumb/")
+	huma.Register(api, huma.Operation{
+		OperationID: "serve-thumbnail",
+		Method:      http.MethodGet,
+		Path:        "/thumb/{name}",
+		Summary:     "Serve a small preview of an image",
+	}, s.handleServeThumb)
+
 	s.kioskExemptPrefix("/img/")
 	huma.Register(api, huma.Operation{
 		OperationID: "serve-image",
@@ -129,7 +158,14 @@ func (s *server) handleDeleteImage(_ context.Context, input *DeleteImageInput) (
 		s.log.Error("failed to delete image file", "name", input.Name, "err", err)
 		return nil, huma.Error500InternalServerError("failed to delete image")
 	}
+	wasExcluded := s.lib.Excluded(input.Name)
 	s.lib.Remove(input.Name)
+	if wasExcluded {
+		s.persistExclude()
+	}
+	if s.thumbs != nil {
+		s.thumbs.Delete(input.Name)
+	}
 	if s.aspect != nil {
 		// In-memory only: the sidecar is a cache, a stale entry for a removed file is
 		// never read (the planner queries live names only), and the next upload/sync
@@ -142,6 +178,7 @@ func (s *server) handleDeleteImage(_ context.Context, input *DeleteImageInput) (
 			Payload: state.ImagePayload{},
 		})
 	}
+	s.publishLibraryChanged()
 	return nil, nil
 }
 
@@ -154,7 +191,48 @@ func (s *server) handleSetImageOrder(_ context.Context, input *SetImageOrderInpu
 	if input.Body.Commit && s.slideshow != nil && !s.lib.Randomized() {
 		s.slideshow.RestartCycle()
 	}
+	s.publishLibraryChanged()
 	return nil, nil
+}
+
+func (s *server) handleSetSlideshowSelection(_ context.Context, input *SetSlideshowSelectionInput) (*struct{}, error) {
+	if !s.lib.SetExcluded(input.Body.Names, !input.Body.Included) {
+		return nil, nil
+	}
+	s.persistExclude()
+	if s.slideshow != nil {
+		s.slideshow.RestartCycle()
+	}
+	s.publishLibraryChanged()
+	return nil, nil
+}
+
+func (s *server) handleServeThumb(ctx context.Context, input *ServeImageInput) (*huma.StreamResponse, error) {
+	// Membership gate: never decode an arbitrary on-disk file on request.
+	if !s.lib.Has(input.Name) {
+		return nil, huma.Error404NotFound("image not found")
+	}
+	if s.thumbs == nil {
+		return s.handleServeImage(ctx, input)
+	}
+	f, err := s.thumbs.Open(input.Name)
+	if err != nil {
+		s.log.Warn("thumbnail unavailable, serving full image", "name", input.Name, "err", err)
+		return s.handleServeImage(ctx, input)
+	}
+	info, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return nil, huma.Error500InternalServerError("failed to open thumbnail")
+	}
+	return &huma.StreamResponse{
+		Body: func(ctx huma.Context) {
+			defer f.Close()
+			r, w := humachi.Unwrap(ctx)
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			http.ServeContent(w, r, input.Name, info.ModTime(), f)
+		},
+	}, nil
 }
 
 func (s *server) handleServeImage(_ context.Context, input *ServeImageInput) (*huma.StreamResponse, error) {
@@ -240,7 +318,7 @@ func (s *server) handleUploadImage(_ context.Context, input *UploadImageInput) (
 		return nil, huma.Error400BadRequest("invalid image")
 	}
 	if format != "jpeg" {
-		// PNG/GIF dimensions sit within the sniff bytes, so DecodeConfig
+		// PNG/GIF/WebP dimensions sit within the sniff bytes, so DecodeConfig
 		// doesn't consume the stream.
 		imgCfg, _, err := image.DecodeConfig(bytes.NewReader(sniff))
 		if err != nil {
@@ -292,8 +370,16 @@ func (s *server) handleUploadImage(_ context.Context, input *UploadImageInput) (
 	if wasEmpty && s.slideshow != nil {
 		s.slideshow.Next()
 	}
+	if s.thumbs != nil {
+		go func() {
+			if err := s.thumbs.Generate(name); err != nil {
+				s.log.Warn("failed to generate thumbnail", "name", name, "err", err)
+			}
+		}()
+	}
+	s.publishLibraryChanged()
 
-	return &UploadImageOutput{Body: ImageItem{Name: name}}, nil
+	return &UploadImageOutput{Body: ImageItem{Name: name, Included: true}}, nil
 }
 
 func (s *server) recordAspect(name string, w, h int) {
@@ -320,6 +406,19 @@ func (s *server) persistOrder() {
 	}
 }
 
+func (s *server) persistExclude() {
+	if s.exclude == nil {
+		return
+	}
+	if err := s.exclude.Save(s.lib.ExcludedNames()); err != nil {
+		s.log.Warn("failed to persist slideshow selection", "err", err)
+	}
+}
+
+func (s *server) publishLibraryChanged() {
+	s.bus.Publish(state.Event{Kind: state.KindLibrary, Payload: state.LibraryPayload{Changed: time.Now()}})
+}
+
 // sniffImageFormat maps net/http content sniffing to a stdlib image format name.
 func sniffImageFormat(sniff []byte) (string, bool) {
 	switch http.DetectContentType(sniff) {
@@ -329,6 +428,8 @@ func sniffImageFormat(sniff []byte) (string, bool) {
 		return "png", true
 	case "image/gif":
 		return "gif", true
+	case "image/webp":
+		return "webp", true
 	default:
 		return "", false
 	}

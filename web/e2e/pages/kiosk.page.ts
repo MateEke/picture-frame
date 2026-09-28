@@ -15,8 +15,8 @@ export class KioskPage {
 	readonly labelHumidity: Locator;
 	readonly weatherIcon: Locator;
 	readonly touchNav: Locator;
-	readonly tapPrev: Locator;
-	readonly tapNext: Locator;
+	readonly menu: Locator;
+	readonly slideshow: Locator;
 
 	constructor(private readonly page: Page) {
 		this.imgBottom = page.getByTestId('kiosk-img-bottom');
@@ -32,8 +32,8 @@ export class KioskPage {
 		this.labelHumidity = page.getByTestId('kiosk-label-humidity');
 		this.weatherIcon = page.getByTestId('kiosk-weather-icon');
 		this.touchNav = page.getByTestId('kiosk-touch-nav');
-		this.tapPrev = page.getByTestId('kiosk-tap-prev');
-		this.tapNext = page.getByTestId('kiosk-tap-next');
+		this.menu = page.getByTestId('touch-menu');
+		this.slideshow = page.getByTestId('touch-slideshow');
 	}
 
 	async goto(): Promise<void> {
@@ -59,6 +59,28 @@ export class KioskPage {
 		const size = this.page.viewportSize();
 		if (!size) throw new Error('no viewport size');
 		await this.page.mouse.click(size.width * xFraction, size.height * yFraction);
+	}
+
+	/** A horizontal drag across the middle of the screen; left = next photo. */
+	async swipe(direction: 'left' | 'right'): Promise<void> {
+		const size = this.page.viewportSize();
+		if (!size) throw new Error('no viewport size');
+		const y = size.height / 2;
+		const [from, to] = direction === 'left' ? [0.8, 0.2] : [0.2, 0.8];
+		await this.page.mouse.move(size.width * from, y);
+		await this.page.mouse.down();
+		await this.page.mouse.move(size.width * to, y, { steps: 5 });
+		await this.page.mouse.up();
+	}
+
+	/** Opens the touch menu from the slideshow with a tap. */
+	async openMenu(): Promise<void> {
+		await this.tapAt(0.5, 0.5);
+		await expect(this.menu).toBeVisible();
+	}
+
+	tab(id: 'home' | 'gallery' | 'upload' | 'files' | 'settings'): Locator {
+		return this.page.getByTestId(`touch-tab-${id}`);
 	}
 
 	/** Waits for the settled bottom-layer src to differ from `from`. */

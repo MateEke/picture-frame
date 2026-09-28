@@ -1,4 +1,5 @@
 import type { BulkUploadResult } from '$lib/images';
+import type { FileUploadResult } from '$lib/files';
 
 // Matches the toaster's method names, so a caller can pick one by type.
 export interface ToastMessage {
@@ -45,6 +46,31 @@ export function bulkUploadMessage(result: BulkUploadResult): ToastMessage {
 	return { type: 'success', title: `Added ${photoCount(result.added)}` };
 }
 
+function fileCount(n: number): string {
+	return `${n} ${n === 1 ? 'file' : 'files'}`;
+}
+
+export function fileUploadMessage(result: FileUploadResult): ToastMessage {
+	if (result.outcome === 'unreachable') {
+		return {
+			type: 'error',
+			title: 'The frame stopped accepting files',
+			description: `Added ${fileCount(result.added)} first. Check the frame, then add the rest.`
+		};
+	}
+	if (result.outcome === 'stopped') {
+		return { type: 'info', title: `Stopped. Added ${fileCount(result.added)}` };
+	}
+	if (result.failed.length > 0) {
+		return {
+			type: 'warning',
+			title: `Added ${fileCount(result.added)} to Files`,
+			description: `Could not add ${failedList(result.failed)} (too large, or the frame is out of space).`
+		};
+	}
+	return { type: 'success', title: `Added ${fileCount(result.added)} to Files` };
+}
+
 export function rejectedFilesMessage(rejected: RejectedFile[], maxFiles: number): ToastMessage {
 	// The cap leads: going over it makes the file input reject the whole selection,
 	// so nothing at all was added.
@@ -58,6 +84,6 @@ export function rejectedFilesMessage(rejected: RejectedFile[], maxFiles: number)
 	return {
 		type: 'warning',
 		title: 'Some files were left out',
-		description: 'Only image files can be added.'
+		description: 'They could not be read. Try adding them again.'
 	};
 }

@@ -57,6 +57,8 @@ type ConfigureAPOutput struct {
 }
 
 func (s *server) registerWiFiRoutes(api huma.API) {
+	// The touch UI's settings view shows the connected network.
+	s.kioskExempt("/api/wifi/status")
 	huma.Register(api, huma.Operation{
 		OperationID: "get-wifi-status",
 		Method:      http.MethodGet,

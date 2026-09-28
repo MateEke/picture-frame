@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type ServerSentEventsResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { ApplyUpdateData, ApplyUpdateErrors, ApplyUpdateResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthSetPasswordData, AuthSetPasswordErrors, AuthSetPasswordResponses, AuthStatusData, AuthStatusErrors, AuthStatusResponses, CheckUpdateData, CheckUpdateErrors, CheckUpdateResponses, ConfigureApData, ConfigureApErrors, ConfigureApResponses, DeleteImageData, DeleteImageErrors, DeleteImageResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, GetConfigData, GetConfigErrors, GetConfigMetaData, GetConfigMetaErrors, GetConfigMetaResponses, GetConfigResponses, GetLibraryData, GetLibraryErrors, GetLibraryResponses, GetLicensesData, GetLicensesErrors, GetLicensesResponses, GetScreenData, GetScreenErrors, GetScreenResponses, GetSystemDevicesData, GetSystemDevicesErrors, GetSystemDevicesResponses, GetSystemInfoData, GetSystemInfoErrors, GetSystemInfoResponses, GetUpdateData, GetUpdateErrors, GetUpdateResponses, GetWifiNetworksData, GetWifiNetworksErrors, GetWifiNetworksResponses, GetWifiStatusData, GetWifiStatusErrors, GetWifiStatusResponses, HealthzData, HealthzErrors, HealthzResponses, HeartbeatData, HeartbeatErrors, HeartbeatResponses, ListImagesData, ListImagesErrors, ListImagesResponses, PutConfigData, PutConfigErrors, PutConfigResponses, ScreenWakeData, ScreenWakeErrors, ScreenWakeResponses, ServeImageData, ServeImageErrors, ServeImageResponses, SetImageOrderData, SetImageOrderErrors, SetImageOrderResponses, SetScreenData, SetScreenErrors, SetScreenResponses, SlideshowNextData, SlideshowNextErrors, SlideshowNextResponses, SlideshowPrevData, SlideshowPrevErrors, SlideshowPrevResponses, SyncLibraryData, SyncLibraryErrors, SyncLibraryResponses, SystemRebootData, SystemRebootErrors, SystemRebootResponses, SystemRestartData, SystemRestartErrors, SystemRestartResponses, SystemShutdownData, SystemShutdownErrors, SystemShutdownResponses, UploadImageData, UploadImageErrors, UploadImageResponses, WifiConnectData, WifiConnectErrors, WifiConnectResponses, WifiForgetData, WifiForgetErrors, WifiForgetResponses } from './types.gen';
+import type { ApplyUpdateData, ApplyUpdateErrors, ApplyUpdateResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthSetPasswordData, AuthSetPasswordErrors, AuthSetPasswordResponses, AuthStatusData, AuthStatusErrors, AuthStatusResponses, CheckUpdateData, CheckUpdateErrors, CheckUpdateResponses, ConfigureApData, ConfigureApErrors, ConfigureApResponses, DeleteFileData, DeleteFileErrors, DeleteFileResponses, DeleteImageData, DeleteImageErrors, DeleteImageResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, GetConfigData, GetConfigErrors, GetConfigMetaData, GetConfigMetaErrors, GetConfigMetaResponses, GetConfigResponses, GetLibraryData, GetLibraryErrors, GetLibraryResponses, GetLicensesData, GetLicensesErrors, GetLicensesResponses, GetScreenData, GetScreenErrors, GetScreenResponses, GetSystemDevicesData, GetSystemDevicesErrors, GetSystemDevicesResponses, GetSystemInfoData, GetSystemInfoErrors, GetSystemInfoResponses, GetTouchSettingsData, GetTouchSettingsErrors, GetTouchSettingsResponses, GetUpdateData, GetUpdateErrors, GetUpdateResponses, GetWifiNetworksData, GetWifiNetworksErrors, GetWifiNetworksResponses, GetWifiStatusData, GetWifiStatusErrors, GetWifiStatusResponses, HealthzData, HealthzErrors, HealthzResponses, HeartbeatData, HeartbeatErrors, HeartbeatResponses, ListFilesData, ListFilesErrors, ListFilesResponses, ListImagesData, ListImagesErrors, ListImagesResponses, PutConfigData, PutConfigErrors, PutConfigResponses, PutTouchSettingsData, PutTouchSettingsErrors, PutTouchSettingsResponses, ScreenWakeData, ScreenWakeErrors, ScreenWakeResponses, ServeFileData, ServeFileErrors, ServeFileResponses, ServeImageData, ServeImageErrors, ServeImageResponses, ServeThumbnailData, ServeThumbnailErrors, ServeThumbnailResponses, SetImageOrderData, SetImageOrderErrors, SetImageOrderResponses, SetScreenData, SetScreenErrors, SetScreenResponses, SetSlideshowSelectionData, SetSlideshowSelectionErrors, SetSlideshowSelectionResponses, SlideshowNextData, SlideshowNextErrors, SlideshowNextResponses, SlideshowPrevData, SlideshowPrevErrors, SlideshowPrevResponses, SyncLibraryData, SyncLibraryErrors, SyncLibraryResponses, SystemRebootData, SystemRebootErrors, SystemRebootResponses, SystemRestartData, SystemRestartErrors, SystemRestartResponses, SystemShutdownData, SystemShutdownErrors, SystemShutdownResponses, UploadImageData, UploadImageErrors, UploadImageResponses, WifiConnectData, WifiConnectErrors, WifiConnectResponses, WifiForgetData, WifiForgetErrors, WifiForgetResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -75,6 +75,16 @@ export const apiPutConfig = <ThrowOnError extends boolean = false>(options: Opti
 export const apiGetConfigMeta = <ThrowOnError extends boolean = false>(options?: Options<GetConfigMetaData, ThrowOnError>): RequestResult<GetConfigMetaResponses, GetConfigMetaErrors, ThrowOnError> => (options?.client ?? client).get<GetConfigMetaResponses, GetConfigMetaErrors, ThrowOnError>({ url: '/api/config/meta', ...options });
 
 /**
+ * List uploaded non-image files
+ */
+export const apiListFiles = <ThrowOnError extends boolean = false>(options?: Options<ListFilesData, ThrowOnError>): RequestResult<ListFilesResponses, ListFilesErrors, ThrowOnError> => (options?.client ?? client).get<ListFilesResponses, ListFilesErrors, ThrowOnError>({ url: '/api/files', ...options });
+
+/**
+ * Delete an uploaded file
+ */
+export const apiDeleteFile = <ThrowOnError extends boolean = false>(options: Options<DeleteFileData, ThrowOnError>): RequestResult<DeleteFileResponses, DeleteFileErrors, ThrowOnError> => (options.client ?? client).delete<DeleteFileResponses, DeleteFileErrors, ThrowOnError>({ url: '/api/files/{name}', ...options });
+
+/**
  * Record kiosk heartbeat
  */
 export const apiHeartbeat = <ThrowOnError extends boolean = false>(options?: Options<HeartbeatData, ThrowOnError>): RequestResult<HeartbeatResponses, HeartbeatErrors, ThrowOnError> => (options?.client ?? client).post<HeartbeatResponses, HeartbeatErrors, ThrowOnError>({ url: '/api/heartbeat', ...options });
@@ -102,6 +112,18 @@ export const apiUploadImage = <ThrowOnError extends boolean = false>(options?: O
  */
 export const apiSetImageOrder = <ThrowOnError extends boolean = false>(options: Options<SetImageOrderData, ThrowOnError>): RequestResult<SetImageOrderResponses, SetImageOrderErrors, ThrowOnError> => (options.client ?? client).put<SetImageOrderResponses, SetImageOrderErrors, ThrowOnError>({
     url: '/api/images/order',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Show or hide images in the slideshow
+ */
+export const apiSetSlideshowSelection = <ThrowOnError extends boolean = false>(options: Options<SetSlideshowSelectionData, ThrowOnError>): RequestResult<SetSlideshowSelectionResponses, SetSlideshowSelectionErrors, ThrowOnError> => (options.client ?? client).put<SetSlideshowSelectionResponses, SetSlideshowSelectionErrors, ThrowOnError>({
+    url: '/api/images/slideshow',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -202,6 +224,23 @@ export const apiApplyUpdate = <ThrowOnError extends boolean = false>(options?: O
 export const apiCheckUpdate = <ThrowOnError extends boolean = false>(options?: Options<CheckUpdateData, ThrowOnError>): RequestResult<CheckUpdateResponses, CheckUpdateErrors, ThrowOnError> => (options?.client ?? client).post<CheckUpdateResponses, CheckUpdateErrors, ThrowOnError>({ url: '/api/system/update/check', ...options });
 
 /**
+ * Get the settings the touch UI can edit
+ */
+export const apiGetTouchSettings = <ThrowOnError extends boolean = false>(options?: Options<GetTouchSettingsData, ThrowOnError>): RequestResult<GetTouchSettingsResponses, GetTouchSettingsErrors, ThrowOnError> => (options?.client ?? client).get<GetTouchSettingsResponses, GetTouchSettingsErrors, ThrowOnError>({ url: '/api/touch/settings', ...options });
+
+/**
+ * Save the settings the touch UI can edit (all apply live)
+ */
+export const apiPutTouchSettings = <ThrowOnError extends boolean = false>(options: Options<PutTouchSettingsData, ThrowOnError>): RequestResult<PutTouchSettingsResponses, PutTouchSettingsErrors, ThrowOnError> => (options.client ?? client).put<PutTouchSettingsResponses, PutTouchSettingsErrors, ThrowOnError>({
+    url: '/api/touch/settings',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
  * Configure the access point
  */
 export const apiConfigureAp = <ThrowOnError extends boolean = false>(options: Options<ConfigureApData, ThrowOnError>): RequestResult<ConfigureApResponses, ConfigureApErrors, ThrowOnError> => (options.client ?? client).put<ConfigureApResponses, ConfigureApErrors, ThrowOnError>({
@@ -246,6 +285,11 @@ export const apiGetWifiStatus = <ThrowOnError extends boolean = false>(options?:
 export const apiEvents = <ThrowOnError extends boolean = false>(options?: Options<EventsData, ThrowOnError, EventsResponse>): Promise<ServerSentEventsResult<EventsResponses>> => (options?.client ?? client).sse.get<EventsResponses, EventsErrors, ThrowOnError>({ url: '/events', ...options });
 
 /**
+ * Serve an uploaded file (supports Range for media seeking)
+ */
+export const apiServeFile = <ThrowOnError extends boolean = false>(options: Options<ServeFileData, ThrowOnError>): RequestResult<ServeFileResponses, ServeFileErrors, ThrowOnError> => (options.client ?? client).get<ServeFileResponses, ServeFileErrors, ThrowOnError>({ url: '/files/{name}', ...options });
+
+/**
  * Health check
  */
 export const apiHealthz = <ThrowOnError extends boolean = false>(options?: Options<HealthzData, ThrowOnError>): RequestResult<HealthzResponses, HealthzErrors, ThrowOnError> => (options?.client ?? client).get<HealthzResponses, HealthzErrors, ThrowOnError>({ url: '/healthz', ...options });
@@ -254,3 +298,8 @@ export const apiHealthz = <ThrowOnError extends boolean = false>(options?: Optio
  * Serve an image file
  */
 export const apiServeImage = <ThrowOnError extends boolean = false>(options: Options<ServeImageData, ThrowOnError>): RequestResult<ServeImageResponses, ServeImageErrors, ThrowOnError> => (options.client ?? client).get<ServeImageResponses, ServeImageErrors, ThrowOnError>({ url: '/img/{name}', ...options });
+
+/**
+ * Serve a small preview of an image
+ */
+export const apiServeThumbnail = <ThrowOnError extends boolean = false>(options: Options<ServeThumbnailData, ThrowOnError>): RequestResult<ServeThumbnailResponses, ServeThumbnailErrors, ThrowOnError> => (options.client ?? client).get<ServeThumbnailResponses, ServeThumbnailErrors, ThrowOnError>({ url: '/thumb/{name}', ...options });
