@@ -1,0 +1,26 @@
+diff --git a/node_modules/@stryker-mutator/vitest-runner/dist/src/stryker-setup.js b/node_modules/@stryker-mutator/vitest-runner/dist/src/stryker-setup.js
+index aecfacb..bbb824c 100644
+--- a/node_modules/@stryker-mutator/vitest-runner/dist/src/stryker-setup.js
++++ b/node_modules/@stryker-mutator/vitest-runner/dist/src/stryker-setup.js
+@@ -63,7 +63,7 @@ function collectTestName({ name, suite, }) {
+         nameParts.unshift(currentSuite.name);
+         currentSuite = currentSuite.suite;
+     }
+-    return nameParts.join(' ').trim();
++    return nameParts.join(' > ').trim();
+ }
+ function toRawTestId(test) {
+     return `${test.file?.filepath ?? 'unknown.js'}#${collectTestName(test)}`;
+diff --git a/node_modules/@stryker-mutator/vitest-runner/dist/src/test-helpers.js b/node_modules/@stryker-mutator/vitest-runner/dist/src/test-helpers.js
+index 56cc786..2cd9786 100644
+--- a/node_modules/@stryker-mutator/vitest-runner/dist/src/test-helpers.js
++++ b/node_modules/@stryker-mutator/vitest-runner/dist/src/test-helpers.js
+@@ -8,7 +8,7 @@ export function collectTestName({ name, suite, }) {
+         nameParts.unshift(currentSuite.name);
+         currentSuite = currentSuite.suite;
+     }
+-    return nameParts.join(' ').trim();
++    return nameParts.join(' > ').trim();
+ }
+ export function toRawTestId(test) {
+     return `${test.file?.filepath ?? 'unknown.js'}#${collectTestName(test)}`;
