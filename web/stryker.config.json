@@ -7,7 +7,6 @@
 		"src/**/*.ts",
 		"src/**/*.svelte.ts",
 		"!src/**/*.test.ts",
-		"!src/**/*.spec.ts",
 		"!src/**/*.d.ts",
 		"!src/lib/api/**",
 		"!src/lib/sse.svelte.ts",
@@ -18,7 +17,7 @@
 		"!src/routes/+page.ts",
 		"!src/routes/+layout.ts",
 		"!src/routes/admin/settings/+page.ts",
-		"!src/routes/admin/wifi/+page.ts"
+		"!src/routes/admin/network/+page.ts"
 	],
 	"reporters": ["clear-text"],
 	"clearTextReporter": { "reportMutants": false, "skipFull": true },

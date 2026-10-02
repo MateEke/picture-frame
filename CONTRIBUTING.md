@@ -55,6 +55,10 @@ CI runs mutation testing on every PR and push to main, scoped to the diff (Stryk
 `--incremental` anchored to the main baseline, gremlins `--diff`). It is informational.
 A red mutation check flags weak tests but does not block merging.
 
+`web/patches/` holds a `patch-package` fix for Stryker's vitest-runner on Vitest 5
+([stryker-js#6210](https://github.com/stryker-mutator/stryker-js/issues/6210)). It's applied on
+`postinstall`; delete it (and the dependency) once a runner release includes the fix.
+
 ## Security
 
 `make vuln` scans for known CVEs: govulncheck (Go, reachability-aware) and osv-scanner
