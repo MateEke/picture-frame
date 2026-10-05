@@ -110,7 +110,7 @@ type LibraryDTO struct {
 	Immich  ImmichLibraryDTO `json:"immich"`
 }
 
-// ImmichLibraryDTO maps config.ImmichLibraryConfig with the password as write-only.
+// ImmichLibraryDTO maps config.ImmichLibraryShareConfig with the password as write-only.
 type ImmichLibraryDTO struct {
 	ShareURL         string `json:"share_url"`
 	SharePassword    string `json:"share_password,omitempty" doc:"Write-only; leave blank to keep current"`

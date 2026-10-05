@@ -1,0 +1,33 @@
+# Minimal MVP config: Immich-only digital frame, no extras.
+# Copy to config.toml and fill in the [immich] section.
+addr = ":8080"
+
+[immich]
+url            = "https://photos.example.com"
+api_key        = "<api-key>"
+album_ids      = ["<album-uuid>"]   # one or more album UUIDs, merged in order
+sync_interval  = "15m"
+
+[library]
+backend = "immich"
+
+[slideshow]
+interval   = "120s"
+images_dir = "images"
+randomize  = false
+
+[display]
+# No motion sensor on the MVP frame: never blank on idle.
+blank_after = "0s"
+
+[cache]
+# max_size = "500MB"
+
+[weather]
+enabled = false
+
+[wifi]
+enabled = false
+
+[updater]
+enabled = false

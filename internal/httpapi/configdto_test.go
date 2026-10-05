@@ -61,7 +61,7 @@ func fullTestConfig() config.Config {
 		},
 		Library: config.LibraryConfig{
 			Backend: config.BackendFS,
-			Immich: config.ImmichLibraryConfig{
+			Immich: config.ImmichLibraryShareConfig{
 				ShareURL:      "https://immich.example.com",
 				SharePassword: "secret-immich",
 				SyncInterval:  config.Duration{Duration: 15 * time.Minute},

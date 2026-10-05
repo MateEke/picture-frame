@@ -47,13 +47,15 @@ func TestWeatherEnabled(t *testing.T) {
 		production bool
 		want       bool
 	}{
-		{"api key in prod", config.WeatherConfig{APIKey: "k"}, true, true},
-		{"api key in dev", config.WeatherConfig{APIKey: "k"}, false, true},
-		{"configured (lat) in dev uses mock", config.WeatherConfig{Lat: 47.5}, false, true},
-		{"configured (lon) in dev uses mock", config.WeatherConfig{Lon: 19.0}, false, true},
-		{"no key, no location in dev disabled", config.WeatherConfig{}, false, false},
-		{"configured but no key in prod disabled", config.WeatherConfig{Lat: 47.5}, true, false},
-		{"no key in prod disabled", config.WeatherConfig{}, true, false},
+		{"api key in prod", config.WeatherConfig{Enabled: true, APIKey: "k"}, true, true},
+		{"api key in dev", config.WeatherConfig{Enabled: true, APIKey: "k"}, false, true},
+		{"configured (lat) in dev uses mock", config.WeatherConfig{Enabled: true, Lat: 47.5}, false, true},
+		{"configured (lon) in dev uses mock", config.WeatherConfig{Enabled: true, Lon: 19.0}, false, true},
+		{"no key, no location in dev disabled", config.WeatherConfig{Enabled: true}, false, false},
+		{"configured but no key in prod disabled", config.WeatherConfig{Enabled: true, Lat: 47.5}, true, false},
+		{"no key in prod disabled", config.WeatherConfig{Enabled: true}, true, false},
+		{"explicitly disabled with key", config.WeatherConfig{APIKey: "k"}, true, false},
+		{"explicitly disabled in dev", config.WeatherConfig{Lat: 47.5}, false, false},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -73,10 +75,11 @@ func TestBuildWeatherFetcher(t *testing.T) {
 		wantNil    bool
 		wantOWM    bool // non-nil result: true = real OWM client, false = dev mock
 	}{
-		{"api key uses owm", config.WeatherConfig{APIKey: "k", Units: "metric"}, true, false, true},
-		{"dev with location uses mock", config.WeatherConfig{Lat: 47.5}, false, false, false},
-		{"dev without location disables", config.WeatherConfig{}, false, true, false},
-		{"prod without key disables", config.WeatherConfig{Lat: 47.5}, true, true, false},
+		{"api key uses owm", config.WeatherConfig{Enabled: true, APIKey: "k", Units: "metric"}, true, false, true},
+		{"dev with location uses mock", config.WeatherConfig{Enabled: true, Lat: 47.5}, false, false, false},
+		{"dev without location disables", config.WeatherConfig{Enabled: true}, false, true, false},
+		{"prod without key disables", config.WeatherConfig{Enabled: true, Lat: 47.5}, true, true, false},
+		{"explicitly disabled with key disables", config.WeatherConfig{APIKey: "k", Units: "metric"}, true, true, false},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

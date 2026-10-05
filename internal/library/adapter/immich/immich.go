@@ -1,4 +1,4 @@
-// Package immich implements library.RemoteAlbum against an Immich shared link.
+// Package immich implements providers.Provider against an Immich shared link.
 package immich
 
 import (
@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/MateEke/picture-frame/internal/library"
+	"github.com/MateEke/picture-frame/providers"
 )
 
 // httpError lets callers branch on HTTP status without parsing strings.
@@ -61,6 +62,8 @@ func (r shareRef) values() url.Values { return url.Values{r.param: {r.value}} }
 // cookie exchange, preferred here because it keeps the password out of URLs and
 // access logs; servers without the login endpoint get it as a query parameter.
 // Fields are mutated only from the syncer goroutine.
+var _ providers.Provider = (*Client)(nil)
+
 type Client struct {
 	base     string // e.g. "https://immich.example.com"
 	ref      shareRef

@@ -109,6 +109,22 @@ func (p *Planner) Next() *Slide {
 	return &s
 }
 
+// PeekNext returns the slide after the cursor without moving it: a
+// best-effort preload hint for the next transition. It never starts a new
+// cycle, so at the plan's end it returns the current plan's first slide (the
+// actual post-wrap order may differ when randomized). Nil when empty.
+func (p *Planner) PeekNext() *Slide {
+	p.ensure()
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if len(p.slides) == 0 {
+		return nil
+	}
+	s := p.slides[(p.idx+1)%len(p.slides)]
+	return &s
+}
+
 // Prev steps the cursor back, wrapping to the plan's last slide at the start
 // (nil when empty). It never starts a new cycle. A pending rebuild wins, as in Next.
 func (p *Planner) Prev() *Slide {

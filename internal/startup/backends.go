@@ -41,7 +41,11 @@ func NewRotator(log *slog.Logger, cfg config.DisplayConfig) displaypkg.Rotator {
 
 // WeatherEnabled reports whether a weather fetcher runs: real OWM when an api_key
 // is set, or the dev mock when weather is otherwise configured (a location is set).
+// Enabled gates both; false skips weather entirely.
 func WeatherEnabled(cfg *config.Config, production bool) bool {
+	if !cfg.Weather.Enabled {
+		return false
+	}
 	if cfg.Weather.APIKey != "" {
 		return true
 	}

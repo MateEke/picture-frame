@@ -22,6 +22,22 @@
 		untrack(() => fader.show(names.join('|')));
 	});
 
+	// Preload the upcoming slide while the current one is on screen: fetch +
+	// decode into the browser cache so the next crossfade starts instantly,
+	// even on a slow Pi. Best-effort; a stale hint only warms a wrong image.
+	const nextNames = $derived(sse.ready && sse.image?.next?.length ? sse.image.next : null);
+
+	$effect(() => {
+		if (!nextNames) return;
+		untrack(() => {
+			for (const name of nextNames) {
+				const img = new Image();
+				img.src = `/img/${name}`;
+				img.decode().catch(() => {});
+			}
+		});
+	});
+
 	function splitKey(key: string): string[] {
 		return key ? key.split('|') : [];
 	}

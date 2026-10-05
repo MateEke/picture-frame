@@ -25,8 +25,10 @@ type fakeRemote struct {
 	mu       sync.Mutex
 	assets   []library.Asset
 	bodies   map[string][]byte
+	failIDs  map[string]bool // per-asset fetch failures
 	listErr  error
 	fetchErr error
+	lists    int // List call count
 }
 
 func (f *fakeRemote) set(assets ...library.Asset) {
@@ -46,6 +48,7 @@ func (f *fakeRemote) set(assets ...library.Asset) {
 func (f *fakeRemote) List(context.Context) ([]library.Asset, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.lists++
 	if f.listErr != nil {
 		return nil, f.listErr
 	}
@@ -59,6 +62,9 @@ func (f *fakeRemote) Fetch(_ context.Context, id string) (io.ReadCloser, error) 
 	defer f.mu.Unlock()
 	if f.fetchErr != nil {
 		return nil, f.fetchErr
+	}
+	if f.failIDs[id] {
+		return nil, errors.New("asset failed")
 	}
 	b, ok := f.bodies[id]
 	if !ok {
@@ -510,4 +516,104 @@ func TestSyncCleansAllLeftoverTmpFiles(t *testing.T) {
 	if got := names(t, root); len(got) != 0 {
 		t.Errorf("leftover tmp files survived the sweep: %v", got)
 	}
+}
+
+// The slideshow unpauses on the first successful download even when a later
+// one fails: first image fast, exact-once advance.
+func TestSyncAdvancesOnFirstSuccessDespiteLaterFailure(t *testing.T) {
+	root, lib := setup(t)
+	r := &fakeRemote{}
+	r.set(asset(idA, 1), asset(idB, 2))
+	r.failIDs = map[string]bool{idB: true}
+	adv := &fakeAdvancer{}
+	s := library.NewSyncer(testutil.NopLogger(), r, lib, root, time.Hour, adv)
+	runOnce(t, s)
+
+	if adv.n != 1 {
+		t.Errorf("advancer called %d times, want exactly 1 (on first success)", adv.n)
+	}
+	if lib.Len() != 1 {
+		t.Errorf("library len = %d, want 1 (only the successful download)", lib.Len())
+	}
+	if st := s.Status(); st.LastError != "downloads failed: 1" {
+		t.Errorf("LastError = %q, want downloads failed: 1", st.LastError)
+	}
+}
+
+// A failing List retries with backoff instead of waiting out the full
+// interval, then recovers on the next success.
+func TestSyncRetriesFailuresWithBackoff(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		root, lib := setup(t)
+		r := &fakeRemote{listErr: errors.New("network down")}
+		s := library.NewSyncer(testutil.NopLogger(), r, lib, root, time.Hour, &fakeAdvancer{})
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go s.Run(ctx)
+		synctest.Wait() // initial sync fails
+
+		// First retry lands within the 30s base (jitter only shortens it).
+		time.Sleep(31 * time.Second)
+		synctest.Wait()
+		// Second retry within the doubled 60s level.
+		time.Sleep(61 * time.Second)
+		synctest.Wait()
+
+		r.mu.Lock()
+		lists := r.lists
+		r.mu.Unlock()
+		if lists < 3 {
+			t.Fatalf("lists = %d in 92s virtual, want >= 3 (initial + 2 backoff retries, not hourly)", lists)
+		}
+		if st := s.Status(); st.LastError == "" {
+			t.Error("expected LastError while the remote fails")
+		}
+
+		// The server recovers: the next backoff tick succeeds and clears the error.
+		r.mu.Lock()
+		r.listErr = nil
+		r.mu.Unlock()
+		r.set(asset(idA, 1))
+		time.Sleep(5 * time.Minute)
+		synctest.Wait()
+		if st := s.Status(); st.LastError != "" {
+			t.Errorf("LastError = %q after recovery, want cleared", st.LastError)
+		}
+		if lib.Len() != 1 {
+			t.Errorf("library len = %d after recovery, want 1", lib.Len())
+		}
+	})
+}
+
+// A successful cycle still waits the full interval: no backoff, no drift.
+func TestSyncSuccessWaitsFullInterval(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		root, lib := setup(t)
+		r := &fakeRemote{}
+		s := library.NewSyncer(testutil.NopLogger(), r, lib, root, time.Minute, &fakeAdvancer{})
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go s.Run(ctx)
+		synctest.Wait() // initial (empty) sync succeeds
+
+		time.Sleep(30 * time.Second)
+		synctest.Wait()
+		r.mu.Lock()
+		lists := r.lists
+		r.mu.Unlock()
+		if lists != 1 {
+			t.Fatalf("lists = %d after 30s of a 1m interval, want 1 (no early re-sync)", lists)
+		}
+
+		time.Sleep(30 * time.Second)
+		synctest.Wait()
+		r.mu.Lock()
+		lists = r.lists
+		r.mu.Unlock()
+		if lists != 2 {
+			t.Fatalf("lists = %d after 1m, want 2 (interval tick)", lists)
+		}
+	})
 }

@@ -14,6 +14,11 @@ addr = ":80"
 # Set to "0s" to disable idle-blank entirely, recommended when you have no
 # motion sensor, so the screen stays on until turned off (e.g. via the HA switch).
 blank_after = "20m"
+#
+# Panel resolution in pixels, used by future renderers and thumbnail sizing.
+# 0 (default) means unspecified; the web kiosk follows its viewport.
+# width = 1024
+# height = 600
 
 # Screen-power backend:
 #   "wlopm" (default): full KMS (vc4-kms-v3d), via the labwc compositor.
@@ -50,20 +55,42 @@ randomize = false
 
 [library]
 # "fs" (default): local uploads via the admin page only.
-# "immich": sync from a shared Immich album; admin page becomes read-only.
+# "immich": sync from Immich; admin page becomes read-only. Configure the
+# connection via [immich] (preferred) or a legacy [library.immich] share.
 backend = "fs"
 
-# Immich backend (only used when backend = "immich").
+# Immich API-key mode (preferred). Create a full-access API key in the Immich
+# UI (Account settings → API keys) and list one or more album IDs (open an
+# album in the Immich UI, the last UUID in the URL). Only used when
+# backend = "immich". The key travels in the x-api-key header only, never in
+# URLs or logs.
+#
+# [immich]
+# url            = "https://photos.example.com"
+# api_key        = "<api-key>"
+# album_ids      = ["<album-uuid>"]   # one or more album UUIDs, merged in order
+# sync_interval  = "15m"        # how often to reconcile with the albums
+#
+# Legacy Immich shared-link mode (alternative to [immich], mutually exclusive).
 # Create a shared link in the Immich UI; password is optional but recommended.
 # Both link shapes work: /share/<key>, or /s/<slug> if it has a custom URL.
 # On Immich >= 2.6.0 the password is exchanged for a session token (kept out of
-# URLs and logs); older servers fall back to a query parameter. Either way, keep
-# the server behind TLS and don't put a high-trust password here.
+# URLs and logs); older servers fall back to a query parameter. Either way,
+# keep the server behind TLS and don't put a high-trust password here.
 #
 # [library.immich]
 # share_url      = "https://photos.example.com/share/<key>"
 # share_password = ""           # leave empty if the share has no password
-# sync_interval  = "15m"        # how often to reconcile with the album
+# sync_interval  = "15m"
+
+# Cache
+#
+# [cache]
+# Maximum bytes held in the synced image cache: a bare byte count or a
+# B/KB/MB/GB suffix, e.g. max_size = "500MB". Unset (or 0) means unlimited.
+# When over budget, new downloads are skipped until pruning frees space; the
+# slideshow keeps serving what is cached. Applies to remote backends only.
+# max_size = "500MB"
 
 # Sensors, multiple [[sensor]] blocks allowed; each needs a unique id and type.
 
@@ -188,6 +215,7 @@ backend = "fs"
 # Weather (OpenWeatherMap)
 
 [weather]
+enabled          = true     # false skips weather entirely, even with an api_key set
 api_key        = ""       # OWM API key, leave empty to disable weather
 lat            = 0.0
 lon            = 0.0
@@ -246,6 +274,7 @@ units          = "metric" # "standard" (K), "metric" (°C), or "imperial" (°F)
 # reconnect via a phone without SSH. Active by default (ap_ssid is set).
 # Clear ap_ssid to disable the AP fallback entirely.
 [wifi]
+enabled                = true          # false disables the manager entirely (routes serve 503)
 ap_ssid              = "PictureFrame"    # hotspot name; clear to disable AP fallback
 # ap_password        = ""               # WPA2 passphrase; leave absent for open AP
 ap_timeout_minutes   = 3                 # minutes disconnected before raising AP
@@ -256,6 +285,7 @@ scan_interval_minutes = 5               # minutes between AP-mode scans for know
 # On by default, only same-major (non-breaking minor/patch) releases auto-apply;
 # a new major is surfaced but applied manually from the admin UI.
 [updater]
+enabled     = true         # false skips checks entirely (the API reports no update available)
 auto_update = true       # nightly auto-apply of same-major releases
 update_hour = 2          # device-local hour (0–23) for the scheduled check+apply
 # github_repo  = ""      # override the release source ("owner/name") for forks

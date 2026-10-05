@@ -37,9 +37,11 @@ type WeatherPayload struct {
 func (WeatherPayload) busPayload() {}
 
 // ImagePayload carries the current slide's image names (one solo, two for a
-// split pair). Empty signals no image.
+// split pair). Empty signals no image. Next is a best-effort preload hint for
+// the following slide (absent when unknown or identical to the current one).
 type ImagePayload struct {
 	Names []string `json:"names"`
+	Next  []string `json:"next,omitempty"`
 }
 
 func (ImagePayload) busPayload() {}

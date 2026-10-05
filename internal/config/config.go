@@ -4,12 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
 )
 
 type WiFiConfig struct {
+	// Enabled gates the manager; false disables AP fallback entirely even
+	// when ap_ssid is set (routes then serve 503). Default true.
+	Enabled             bool   `toml:"enabled"`
 	APTimeoutMinutes    int    `toml:"ap_timeout_minutes"`
 	ScanIntervalMinutes int    `toml:"scan_interval_minutes"`
 	APSSID              string `toml:"ap_ssid"`
@@ -30,6 +35,8 @@ type Config struct {
 	Display          DisplayConfig   `toml:"display"`
 	Slideshow        SlideshowConfig `toml:"slideshow"`
 	Library          LibraryConfig   `toml:"library"`
+	Immich           ImmichConfig    `toml:"immich"`
+	Cache            CacheConfig     `toml:"cache"`
 	Sensors          []SensorConfig  `toml:"sensor"`
 	Weather          WeatherConfig   `toml:"weather"`
 	Mqtt             MqttConfig      `toml:"mqtt"`
@@ -38,9 +45,13 @@ type Config struct {
 	Updater          UpdaterConfig   `toml:"updater"`
 }
 
-// UpdaterConfig controls the in-app updater. Checking always runs; AutoUpdate
-// gates only the nightly auto-apply at UpdateHour (device-local time).
+// UpdaterConfig controls the in-app updater. Enabled gates everything:
+// false skips checks and the background goroutine entirely (the API then
+// reports no update available). Default true. Checking always runs when
+// enabled; AutoUpdate gates only the nightly auto-apply at UpdateHour
+// (device-local time).
 type UpdaterConfig struct {
+	Enabled     bool   `toml:"enabled"`
 	AutoUpdate  bool   `toml:"auto_update"`
 	UpdateHour  int    `toml:"update_hour"`  // local hour 0–23 for the scheduled check+apply
 	GithubRepo  string `toml:"github_repo"`  // override release source for forks; empty = built-in default
@@ -54,19 +65,34 @@ const (
 	BackendImmich = "immich"
 )
 
-// LibraryConfig selects the image library backend. "fs" reads local uploads
-// from Slideshow.ImagesDir; "immich" syncs from a shared Immich album into
-// Slideshow.ImagesDir/immich/.
+// LibraryConfig selects the library backend. "fs" reads local uploads;
+// "immich" syncs from Immich, configured either by legacy shared link
+// ([library.immich]) or by API key ([immich], preferred). See Validate.
 type LibraryConfig struct {
-	Backend string              `toml:"backend"` // BackendFS (default) | BackendImmich
-	Immich  ImmichLibraryConfig `toml:"immich"`
+	Backend string                   `toml:"backend"` // BackendFS (default) | BackendImmich
+	Immich  ImmichLibraryShareConfig `toml:"immich"`
 }
 
-// ImmichLibraryConfig configures the Immich shared-link backend.
-type ImmichLibraryConfig struct {
+// ImmichLibraryShareConfig configures the legacy Immich shared-link backend.
+type ImmichLibraryShareConfig struct {
 	ShareURL      string   `toml:"share_url"`
 	SharePassword string   `toml:"share_password"`
 	SyncInterval  Duration `toml:"sync_interval"`
+}
+
+// ImmichConfig configures the preferred Immich API-key mode: a server URL, a
+// full-access API key (created in the Immich UI), and the albums to display.
+// The modes are mutually exclusive; see Validate.
+type ImmichConfig struct {
+	URL          string   `toml:"url"`
+	APIKey       string   `toml:"api_key"`
+	AlbumIDs     []string `toml:"album_ids"`
+	SyncInterval Duration `toml:"sync_interval"`
+}
+
+// UsingAPI reports whether any api-key mode field is set.
+func (c ImmichConfig) UsingAPI() bool {
+	return c.URL != "" || c.APIKey != "" || len(c.AlbumIDs) > 0
 }
 
 // MqttConfig is the broker connection shared by bridge and subscriber sources.
@@ -114,6 +140,11 @@ const (
 
 type DisplayConfig struct {
 	BlankAfter Duration `toml:"blank_after"`
+	// Width/Height are the panel resolution in pixels. 0 means unspecified
+	// (the web kiosk follows its viewport); future renderers and thumbnail
+	// sizing use them when set.
+	Width  int `toml:"width"`
+	Height int `toml:"height"`
 	// Backend: DisplayBackendWlopm (default) or DisplayBackendVcgencmd.
 	Backend string `toml:"backend"`
 	// Output is the wlopm connector, e.g. "HDMI-A-1" (run `wlopm` to list);
@@ -180,6 +211,9 @@ type CharacteristicConfig struct {
 }
 
 type WeatherConfig struct {
+	// Enabled gates the poller; false skips weather entirely even when an
+	// API key is set. Default true (previous behavior: on when configured).
+	Enabled      bool     `toml:"enabled"`
 	APIKey       string   `toml:"api_key"`
 	Lat          float64  `toml:"lat"`
 	Lon          float64  `toml:"lon"`
@@ -187,6 +221,45 @@ type WeatherConfig struct {
 	// First retry delay after a failed poll; doubles up to PollInterval (0 = none).
 	RetryInterval Duration `toml:"retry_interval"`
 	Units         string   `toml:"units"` // "standard" | "metric" | "imperial"; default "metric"
+}
+
+// CacheConfig bounds the synced image cache. MaxSize 0 (default) is unlimited.
+type CacheConfig struct {
+	MaxSize ByteSize `toml:"max_size"`
+}
+
+// ByteSize is a byte count that unmarshals from a TOML string: a bare number
+// (bytes) or a B/KB/MB/GB suffix, e.g. "500MB". Zero means unset/unlimited.
+type ByteSize struct{ Bytes int64 }
+
+func (b *ByteSize) UnmarshalText(text []byte) error {
+	s := strings.TrimSpace(string(text))
+	i := 0
+	for i < len(s) && s[i] >= '0' && s[i] <= '9' {
+		i++
+	}
+	n, err := strconv.ParseInt(s[:i], 10, 64)
+	if s[:i] == "" || err != nil {
+		return fmt.Errorf("invalid byte size %q", s)
+	}
+	var mult int64 = 1
+	switch strings.ToUpper(strings.TrimSpace(s[i:])) {
+	case "", "B":
+	case "K", "KB":
+		mult = 1 << 10
+	case "M", "MB":
+		mult = 1 << 20
+	case "G", "GB":
+		mult = 1 << 30
+	default:
+		return fmt.Errorf("invalid byte size %q: unknown suffix", s)
+	}
+	b.Bytes = n * mult
+	return nil
+}
+
+func (b ByteSize) MarshalText() ([]byte, error) {
+	return []byte(strconv.FormatInt(b.Bytes, 10)), nil
 }
 
 // Duration is a time.Duration that marshals to/from a TOML string (e.g. "20m").
@@ -225,9 +298,11 @@ func defaults() Config {
 		},
 		Library: LibraryConfig{
 			Backend: BackendFS,
-			Immich:  ImmichLibraryConfig{SyncInterval: Duration{15 * time.Minute}},
+			Immich:  ImmichLibraryShareConfig{SyncInterval: Duration{15 * time.Minute}},
 		},
+		Immich: ImmichConfig{SyncInterval: Duration{15 * time.Minute}},
 		Weather: WeatherConfig{
+			Enabled:       true,
 			PollInterval:  Duration{10 * time.Minute},
 			RetryInterval: Duration{30 * time.Second},
 			Units:         "metric",
@@ -242,12 +317,13 @@ func defaults() Config {
 			},
 		},
 		WiFi: WiFiConfig{
+			Enabled:             true,
 			APTimeoutMinutes:    3,
 			ScanIntervalMinutes: 5,
 			APSSID:              "PictureFrame",
 		},
 		// AutoUpdate on by default; the SameMajor gate keeps it to minor/patch.
-		Updater: UpdaterConfig{AutoUpdate: true, UpdateHour: 2},
+		Updater: UpdaterConfig{Enabled: true, AutoUpdate: true, UpdateHour: 2},
 	}
 }
 

@@ -3,6 +3,7 @@ package slideshow
 import (
 	"context"
 	"log/slog"
+	"slices"
 	"sync"
 	"time"
 
@@ -187,7 +188,24 @@ func (s *Slideshow) allPresent(slide *slideplan.Slide) bool {
 func (s *Slideshow) publish(slide *slideplan.Slide) {
 	s.bus.Publish(state.Event{
 		Kind:    state.KindImage,
-		Payload: state.ImagePayload{Names: slide.Names},
+		Payload: state.ImagePayload{Names: slide.Names, Next: s.preloadHint(slide)},
 	})
 	s.log.Debug("slideshow: displaying slide", "names", slide.Names)
+}
+
+// preloadHint peeks at the slide after the published one so the kiosk can
+// fetch+decode it while the current slide is on screen. It returns nil when
+// the hint would be useless: same slide (single-slide plan), or any image
+// missing from the library (a stale plan entry that servable would skip).
+func (s *Slideshow) preloadHint(current *slideplan.Slide) []string {
+	peek := s.planner.PeekNext()
+	if peek == nil || slices.Equal(peek.Names, current.Names) {
+		return nil
+	}
+	for _, name := range peek.Names {
+		if !s.lib.Has(name) {
+			return nil
+		}
+	}
+	return peek.Names
 }

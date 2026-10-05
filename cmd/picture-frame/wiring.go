@@ -74,6 +74,10 @@ func kioskTimeoutFunc(production bool, log *slog.Logger) func() {
 // buildWiFiManager returns the real nmcli manager in prod, an in-memory mock in
 // dev, or nil (wifi routes then serve 503) when WIFI_MOCK=off.
 func buildWiFiManager(ctx context.Context, log *slog.Logger, cfg *config.Config, production bool, store *config.Store) (httpapi.WiFiManager, error) {
+	if !cfg.WiFi.Enabled {
+		log.Info("wifi: disabled, routes serve 503")
+		return nil, nil
+	}
 	if !production {
 		hostname, _ := os.Hostname()
 		switch strings.ToLower(os.Getenv("WIFI_MOCK")) {
@@ -118,9 +122,35 @@ func libraryDir(cfg *config.Config) string {
 
 // startLibrarySyncer starts the remote-backend syncer in a goroutine when one
 // is configured and returns it for status exposure. fs backend → (nil, nil).
+// In api-key mode (url + api_key + album_id) the APIClient is used, otherwise
+// the legacy shared-link client. Both satisfy the providers.Provider seam.
 func startLibrarySyncer(ctx context.Context, log *slog.Logger, cfg *config.Config, lib *library.Library, root *os.Root, slides *slideshow.Slideshow, aspect *library.AspectStore) (*library.Syncer, error) {
 	if libraryBackend(cfg) != config.BackendImmich {
 		return nil, nil
+	}
+	if im := cfg.Immich; im.UsingAPI() {
+		interval := im.SyncInterval.Duration
+		if interval <= 0 {
+			interval = 15 * time.Minute
+		}
+		client, err := immich.NewAPIClient(immich.APIConfig{
+			BaseURL:  im.URL,
+			APIKey:   im.APIKey,
+			AlbumIDs: im.AlbumIDs,
+			Logger:   log,
+		})
+		if err != nil {
+			return nil, err
+		}
+		syncer := library.NewSyncer(log, client, lib, root, interval, slides, syncOpts(log, cfg, root, aspect)...)
+		go syncer.Run(ctx)
+		// The API key is never logged.
+		log.Info("library: immich syncer started (api-key mode)", "url", im.URL, "albums", im.AlbumIDs, "interval", interval)
+		return syncer, nil
+	}
+	interval := cfg.Library.Immich.SyncInterval.Duration
+	if interval <= 0 {
+		interval = 15 * time.Minute
 	}
 	client, err := immich.New(immich.Config{
 		ShareURL: cfg.Library.Immich.ShareURL,
@@ -130,20 +160,34 @@ func startLibrarySyncer(ctx context.Context, log *slog.Logger, cfg *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	interval := cfg.Library.Immich.SyncInterval.Duration
-	if interval <= 0 {
-		interval = 15 * time.Minute
-	}
-	syncer := library.NewSyncer(log, client, lib, root, interval, slides, library.WithAspectStore(aspect))
+	syncer := library.NewSyncer(log, client, lib, root, interval, slides, syncOpts(log, cfg, root, aspect)...)
 	go syncer.Run(ctx)
 	log.Info("library: immich syncer started", "share_url", cfg.Library.Immich.ShareURL, "interval", interval)
 	return syncer, nil
 }
 
+// syncOpts wires the persistent cache manifest (one per images root) and the
+// storage budget into the syncer. The manifest self-heals from disk, so a
+// missing or corrupt index only costs re-adoption, never a sync failure.
+func syncOpts(log *slog.Logger, cfg *config.Config, root *os.Root, aspect *library.AspectStore) []library.SyncerOption {
+	opts := []library.SyncerOption{
+		library.WithManifest(library.LoadManifest(log, root)),
+		library.WithAspectStore(aspect),
+	}
+	if max := cfg.Cache.MaxSize.Bytes; max > 0 {
+		opts = append(opts, library.WithMaxBytes(max))
+	}
+	return opts
+}
+
 // startUpdater wires the self-updater: real GitHub-backed adapters in production, a
 // binary-free simulator in development. Returns nil (the API then reports no update
-// available) when production has no github_repo configured.
+// available) when disabled or when production has no github_repo configured.
 func startUpdater(ctx context.Context, log *slog.Logger, cfg *config.Config, production bool, restart func() error) httpapi.UpdaterStatus {
+	if !cfg.Updater.Enabled {
+		log.Info("updater: disabled")
+		return nil
+	}
 	if !production {
 		mock := updatermock.New(updatermock.Options{
 			Current:  version.Version,

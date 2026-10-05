@@ -46,6 +46,9 @@ func (c *Config) Validate() error {
 	if err := c.Library.validate(); err != nil {
 		return fmt.Errorf("library: %w", err)
 	}
+	if err := c.validateImmich(); err != nil {
+		return fmt.Errorf("library: %w", err)
+	}
 	if err := c.Display.validate(); err != nil {
 		return fmt.Errorf("display: %w", err)
 	}
@@ -142,6 +145,9 @@ func (d DisplayConfig) validate() error {
 	default:
 		return fmt.Errorf("rotation must be 0, 90, 180 or 270, got %d", d.Rotation)
 	}
+	if d.Width < 0 || d.Height < 0 {
+		return fmt.Errorf("width and height must be >= 0 (0 = unspecified), got %dx%d", d.Width, d.Height)
+	}
 	return nil
 }
 
@@ -150,12 +156,29 @@ func (l LibraryConfig) validate() error {
 	case "", BackendFS:
 		return nil
 	case BackendImmich:
-		if l.Immich.ShareURL == "" {
-			return fmt.Errorf("immich.share_url required when backend is immich")
-		}
-		return nil
+		return nil // connection details validated against [immich] below
 	default:
 		return fmt.Errorf("unknown backend %q (valid: %s, %s)", l.Backend, BackendFS, BackendImmich)
+	}
+}
+
+// validateImmich checks the Immich connection details for the immich backend:
+// exactly one of the legacy shared link ([library.immich]) and the preferred
+// API-key mode ([immich]) must be configured.
+func (c *Config) validateImmich() error {
+	if c.Library.Backend != BackendImmich {
+		return nil
+	}
+	share, api := c.Library.Immich.ShareURL, c.Immich
+	switch {
+	case share == "" && !api.UsingAPI():
+		return fmt.Errorf("immich.share_url or [immich] (url + api_key + album_ids) required when backend is immich")
+	case share != "" && api.UsingAPI():
+		return fmt.Errorf("immich.share_url and [immich] are mutually exclusive; configure only one")
+	case api.UsingAPI() && (api.URL == "" || api.APIKey == "" || len(api.AlbumIDs) == 0):
+		return fmt.Errorf("immich.url, api_key and album_ids are all required")
+	default:
+		return nil
 	}
 }
 

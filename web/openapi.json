@@ -549,6 +549,15 @@
               "array",
               "null"
             ]
+          },
+          "next": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
           }
         },
         "required": [

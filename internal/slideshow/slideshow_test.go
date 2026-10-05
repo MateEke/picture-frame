@@ -470,3 +470,87 @@ func TestPrevWithEveryImageDeletedTerminates(t *testing.T) {
 	// Which deleted slide it gives up on is not the point, only that it gives up.
 	receiveImage(t, ch, time.Second)
 }
+
+func receivePayload(t *testing.T, ch <-chan state.Event, timeout time.Duration) state.ImagePayload {
+	t.Helper()
+	select {
+	case e := <-ch:
+		return e.Payload.(state.ImagePayload)
+	case <-time.After(timeout):
+		t.Fatal("timeout waiting for image event")
+		return state.ImagePayload{}
+	}
+}
+
+func TestPublishCarriesNextSlideHint(t *testing.T) {
+	lib := library.New([]library.Image{{Name: "a.jpg"}, {Name: "b.jpg"}, {Name: "c.jpg"}}, false)
+	ss, bus := newSlideshow(lib)
+
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	go ss.Run(t.Context())
+
+	first := receivePayload(t, ch, time.Second)
+	if len(first.Names) != 1 || first.Names[0] != "a.jpg" {
+		t.Fatalf("initial names = %v, want [a.jpg]", first.Names)
+	}
+	if len(first.Next) != 1 || first.Next[0] != "b.jpg" {
+		t.Errorf("initial next = %v, want [b.jpg]", first.Next)
+	}
+
+	ss.Next()
+	second := receivePayload(t, ch, time.Second)
+	if second.Names[0] != "b.jpg" {
+		t.Fatalf("names = %v, want [b.jpg]", second.Names)
+	}
+	if len(second.Next) != 1 || second.Next[0] != "c.jpg" {
+		t.Errorf("next = %v, want [c.jpg]", second.Next)
+	}
+
+	// At the plan's end the hint wraps to the first slide.
+	ss.Next()
+	third := receivePayload(t, ch, time.Second)
+	if third.Names[0] != "c.jpg" {
+		t.Fatalf("names = %v, want [c.jpg]", third.Names)
+	}
+	if len(third.Next) != 1 || third.Next[0] != "a.jpg" {
+		t.Errorf("next at end = %v, want wrap to [a.jpg]", third.Next)
+	}
+}
+
+func TestPublishOmitsHintForSingleSlide(t *testing.T) {
+	lib := library.New([]library.Image{{Name: "a.jpg"}}, false)
+	ss, bus := newSlideshow(lib)
+
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	go ss.Run(t.Context())
+
+	got := receivePayload(t, ch, time.Second)
+	if len(got.Next) != 0 {
+		t.Errorf("next = %v for a single-slide library, want empty", got.Next)
+	}
+}
+
+func TestPublishOmitsHintWhenNextDeleted(t *testing.T) {
+	lib := library.New([]library.Image{{Name: "a.jpg"}, {Name: "b.jpg"}, {Name: "c.jpg"}}, false)
+	ss, bus := newSlideshow(lib)
+
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	go ss.Run(t.Context())
+
+	receivePayload(t, ch, time.Second) // initial "a.jpg", hint [b.jpg]
+	lib.Remove("c.jpg")                // delete the upcoming hint target
+	ss.Next()                          // advances to "b.jpg"; peek now hits deleted "c.jpg"
+	got := receivePayload(t, ch, time.Second)
+	if got.Names[0] != "b.jpg" {
+		t.Fatalf("names = %v, want [b.jpg]", got.Names)
+	}
+	if len(got.Next) != 0 {
+		t.Errorf("next = %v for a deleted target, want empty", got.Next)
+	}
+}

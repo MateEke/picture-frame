@@ -211,6 +211,7 @@ export type ImageItem = {
 
 export type ImagePayload = {
     names: Array<string> | null;
+    next?: Array<string> | null;
 };
 
 export type ImmichLibraryDto = {

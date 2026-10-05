@@ -440,10 +440,10 @@ func TestValidateLibrary(t *testing.T) {
 		{"fs", config.LibraryConfig{Backend: "fs"}, ""},
 		{
 			"immich with share_url",
-			config.LibraryConfig{Backend: "immich", Immich: config.ImmichLibraryConfig{ShareURL: "https://host/share/x"}},
+			config.LibraryConfig{Backend: "immich", Immich: config.ImmichLibraryShareConfig{ShareURL: "https://host/share/x"}},
 			"",
 		},
-		{"immich missing share_url", config.LibraryConfig{Backend: "immich"}, "share_url required"},
+		{"immich missing everything", config.LibraryConfig{Backend: "immich"}, "or [immich]"},
 		{"unknown backend", config.LibraryConfig{Backend: "icloud"}, "unknown backend"},
 	}
 	for _, tc := range cases {
@@ -873,5 +873,194 @@ func TestHasMotionSensor(t *testing.T) {
 				t.Errorf("HasMotionSensor = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestByteSizeParsing(t *testing.T) {
+	cases := []struct {
+		in   string
+		want int64
+	}{
+		{"0", 0},
+		{"1024", 1024},
+		{"10B", 10},
+		{"1KB", 1 << 10},
+		{"2k", 2 << 10},
+		{"500MB", 500 << 20},
+		{"5mb", 5 << 20},
+		{"1GB", 1 << 30},
+		{"3g", 3 << 30},
+		{" 500 MB ", 500 << 20},
+	}
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			var b config.ByteSize
+			if err := b.UnmarshalText([]byte(tc.in)); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if b.Bytes != tc.want {
+				t.Errorf("Bytes = %d, want %d", b.Bytes, tc.want)
+			}
+		})
+	}
+	bads := []string{"", "abc", "10XB", "-5", "1.5GB", "MB"}
+	for _, in := range bads {
+		t.Run("bad/"+in, func(t *testing.T) {
+			var b config.ByteSize
+			if err := b.UnmarshalText([]byte(in)); err == nil {
+				t.Error("expected error")
+			}
+		})
+	}
+}
+
+func TestCacheMaxSizeLoadsFromTOML(t *testing.T) {
+	dir := t.TempDir()
+	cfg, err := config.Load(write(t, dir, "c.toml", "[cache]\nmax_size = \"500MB\"\n"), "/nonexistent/overrides.toml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Cache.MaxSize.Bytes != 500<<20 {
+		t.Errorf("MaxSize = %d, want %d", cfg.Cache.MaxSize.Bytes, 500<<20)
+	}
+}
+
+func TestValidateImmichModes(t *testing.T) {
+	api := config.ImmichConfig{URL: "https://host", APIKey: "key", AlbumIDs: []string{"album"}}
+	cases := []struct {
+		name    string
+		library config.LibraryConfig
+		immich  config.ImmichConfig
+		wantErr string
+	}{
+		{"fs ignores immich", config.LibraryConfig{Backend: "fs"}, config.ImmichConfig{}, ""},
+		{
+			"api mode",
+			config.LibraryConfig{Backend: "immich"},
+			api,
+			"",
+		},
+		{
+			"share mode",
+			config.LibraryConfig{Backend: "immich", Immich: config.ImmichLibraryShareConfig{ShareURL: "https://host/share/x"}},
+			config.ImmichConfig{},
+			"",
+		},
+		{
+			"neither",
+			config.LibraryConfig{Backend: "immich"},
+			config.ImmichConfig{},
+			"or [immich]",
+		},
+		{
+			"api mode incomplete",
+			config.LibraryConfig{Backend: "immich"},
+			config.ImmichConfig{URL: "https://host", APIKey: "key"},
+			"all required",
+		},
+		{
+			"both modes exclusive",
+			config.LibraryConfig{Backend: "immich", Immich: config.ImmichLibraryShareConfig{ShareURL: "https://host/share/x"}},
+			api,
+			"mutually exclusive",
+		},
+		{
+			"partial api with share exclusive",
+			config.LibraryConfig{Backend: "immich", Immich: config.ImmichLibraryShareConfig{ShareURL: "https://host/share/x"}},
+			config.ImmichConfig{URL: "https://host"},
+			"mutually exclusive",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &config.Config{Library: tc.library, Immich: tc.immich}
+			err := cfg.Validate()
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Errorf("err = %v, want substring %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateDisplaySize(t *testing.T) {
+	cases := []struct {
+		name    string
+		display config.DisplayConfig
+		wantErr string
+	}{
+		{"unspecified", config.DisplayConfig{}, ""},
+		{"sized", config.DisplayConfig{Width: 1024, Height: 600}, ""},
+		{"negative width", config.DisplayConfig{Width: -1}, ">= 0"},
+		{"negative height", config.DisplayConfig{Height: -600}, ">= 0"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &config.Config{Display: tc.display}
+			err := cfg.Validate()
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Errorf("err = %v, want substring %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestImmichLoadsFromTOML(t *testing.T) {
+	dir := t.TempDir()
+	cfg, err := config.Load(write(t, dir, "c.toml",
+		"[library]\nbackend = \"immich\"\n[immich]\nurl = \"https://host\"\napi_key = \"k\"\nalbum_ids = [\"a\", \"b\"]\nsync_interval = \"15m\"\n"),
+		"/nonexistent/overrides.toml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Immich.URL != "https://host" || cfg.Immich.APIKey != "k" || len(cfg.Immich.AlbumIDs) != 2 || cfg.Immich.AlbumIDs[0] != "a" {
+		t.Errorf("immich section = %+v", cfg.Immich)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("unexpected validation error: %v", err)
+	}
+}
+
+func TestSubsystemDefaultsEnabled(t *testing.T) {
+	cfg, err := config.Load("/nonexistent/config.toml", "/nonexistent/overrides.toml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.Weather.Enabled || !cfg.WiFi.Enabled || !cfg.Updater.Enabled {
+		t.Errorf("subsystem defaults = weather %v wifi %v updater %v, want all true",
+			cfg.Weather.Enabled, cfg.WiFi.Enabled, cfg.Updater.Enabled)
+	}
+}
+
+// The shipped minimal example must load and validate (it uses placeholder
+// credentials, so only structural validity is asserted via Validate pieces
+// that don't dial out: fill the album ID shape instead of placeholders).
+func TestMinimalExampleLoads(t *testing.T) {
+	cfg, err := config.Load("../../config.minimal.example.toml", "/nonexistent/overrides.toml")
+	if err != nil {
+		t.Fatalf("minimal example does not load: %v", err)
+	}
+	if cfg.Library.Backend != "immich" {
+		t.Errorf("backend = %q, want immich", cfg.Library.Backend)
+	}
+	if cfg.Weather.Enabled || cfg.WiFi.Enabled || cfg.Updater.Enabled {
+		t.Error("minimal example must leave weather/wifi/updater disabled")
+	}
+	cfg.Immich.URL = "https://host"
+	cfg.Immich.APIKey = "key"
+	cfg.Immich.AlbumIDs = []string{"album"}
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("minimal example does not validate: %v", err)
 	}
 }

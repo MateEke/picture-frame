@@ -325,3 +325,47 @@ func TestPlannerSlideCount(t *testing.T) {
 		t.Errorf("SlideCount = %d, want 3", got)
 	}
 }
+
+func TestPlannerPeekNextDoesNotAdvance(t *testing.T) {
+	src := &fakeSource{order: []string{"a", "b", "c"}}
+	p := newPlanner(src)
+	p.SetScreenAspect(landscape)
+
+	p.Current() // [a]
+	if got := p.PeekNext(); got == nil || got.Names[0] != "b" {
+		t.Fatalf("PeekNext = %v, want [b]", got)
+	}
+	// The cursor must not have moved: Next still yields [b], not [c].
+	if got := p.Next(); got == nil || got.Names[0] != "b" {
+		t.Fatalf("Next after peek = %v, want [b] (peek must not advance)", got)
+	}
+}
+
+func TestPlannerPeekNextAtEndWrapsWithoutNewCycle(t *testing.T) {
+	src := &fakeSource{
+		order:  []string{"a", "b"},
+		cycles: [][]string{{"x", "y"}},
+	}
+	p := newPlanner(src)
+	p.SetScreenAspect(landscape)
+
+	p.Current() // [a]
+	p.Next()    // [b], cursor at the end
+	if got := p.PeekNext(); got == nil || got.Names[0] != "a" {
+		t.Fatalf("PeekNext at end = %v, want [a] (wrap within the current plan)", got)
+	}
+	if len(src.cycles) != 1 {
+		t.Fatalf("peek consumed a queued cycle; cycles left = %d, want 1", len(src.cycles))
+	}
+	// A real Next still wraps into the queued cycle normally.
+	if got := p.Next(); got == nil || got.Names[0] != "x" {
+		t.Fatalf("Next after peek = %v, want the new cycle [x]", got)
+	}
+}
+
+func TestPlannerPeekNextEmpty(t *testing.T) {
+	p := newPlanner(&fakeSource{})
+	if got := p.PeekNext(); got != nil {
+		t.Fatalf("PeekNext on empty plan = %v, want nil", got)
+	}
+}
