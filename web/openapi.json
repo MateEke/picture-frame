@@ -565,6 +565,88 @@
         ],
         "type": "object"
       },
+      "ImmichAPIKeyDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "album_ids": {
+            "description": "Album IDs to display, merged in this order",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "api_key": {
+            "description": "Write-only; leave blank to keep current",
+            "type": "string"
+          },
+          "api_key_set": {
+            "description": "true if an API key is stored; set false on PUT to clear",
+            "type": "boolean"
+          },
+          "sync_interval": {
+            "type": "string"
+          },
+          "url": {
+            "description": "Immich server base URL, e.g. https://immich.example.com",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "api_key_set",
+          "album_ids",
+          "sync_interval"
+        ],
+        "type": "object"
+      },
+      "ImmichAlbum": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_count": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "description": "Immich album UUID; store in immich_api_key.album_ids",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "asset_count"
+        ],
+        "type": "object"
+      },
+      "ImmichAlbumsRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ImmichAlbumsRequest.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "api_key": {
+            "description": "Overrides the saved API key when set",
+            "type": "string"
+          },
+          "url": {
+            "description": "Overrides the saved Immich URL when set",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "ImmichLibraryDTO": {
         "additionalProperties": false,
         "properties": {
@@ -687,11 +769,15 @@
           },
           "immich": {
             "$ref": "#/components/schemas/ImmichLibraryDTO"
+          },
+          "immich_api_key": {
+            "$ref": "#/components/schemas/ImmichAPIKeyDTO"
           }
         },
         "required": [
           "backend",
-          "immich"
+          "immich",
+          "immich_api_key"
         ],
         "type": "object"
       },
@@ -1992,6 +2078,50 @@
           }
         },
         "summary": "Delete an image"
+      }
+    },
+    "/api/immich/albums": {
+      "post": {
+        "operationId": "list-immich-albums",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImmichAlbumsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ImmichAlbum"
+                  },
+                  "type": [
+                    "array",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List Immich albums for the album picker"
       }
     },
     "/api/library": {

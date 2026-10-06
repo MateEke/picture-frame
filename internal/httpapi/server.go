@@ -235,6 +235,7 @@ func NewServer(cfg Config) http.Handler {
 func (s *server) registerRoutes(api huma.API) {
 	s.registerScreenRoutes(api)
 	s.registerLibraryRoutes(api)
+	s.registerImmichAlbumsRoute(api)
 	s.registerImageRoutes(api)
 	s.registerSlideshowRoutes(api)
 	s.registerHeartbeatRoutes(api)

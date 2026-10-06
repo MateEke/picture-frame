@@ -108,6 +108,20 @@ type SlideshowDTO struct {
 type LibraryDTO struct {
 	Backend string           `json:"backend" enum:"fs,immich"`
 	Immich  ImmichLibraryDTO `json:"immich"`
+	// ApiKey carries the preferred [immich] api-key mode. Mutually exclusive
+	// with Immich's share_url; see config.Config.validateImmich.
+	ApiKey ImmichAPIKeyDTO `json:"immich_api_key"`
+}
+
+// ImmichAPIKeyDTO maps config.ImmichConfig with the API key as write-only.
+// AlbumIDs is the picker selection, filled from GET /api/immich/albums rather
+// than hand-pasted UUIDs; at least one is required while this mode is active.
+type ImmichAPIKeyDTO struct {
+	URL          string   `json:"url" doc:"Immich server base URL, e.g. https://immich.example.com"`
+	APIKey       string   `json:"api_key,omitempty" doc:"Write-only; leave blank to keep current"`
+	APIKeySet    bool     `json:"api_key_set" doc:"true if an API key is stored; set false on PUT to clear"`
+	AlbumIDs     []string `json:"album_ids" doc:"Album IDs to display, merged in this order"`
+	SyncInterval string   `json:"sync_interval"`
 }
 
 // ImmichLibraryDTO maps config.ImmichLibraryShareConfig with the password as write-only.
@@ -211,6 +225,12 @@ func toDTO(cfg config.Config) ConfigDTO {
 				SharePasswordSet: cfg.Library.Immich.SharePassword != "",
 				SyncInterval:     durString(cfg.Library.Immich.SyncInterval.Duration),
 			},
+			ApiKey: ImmichAPIKeyDTO{
+				URL:          cfg.Immich.URL,
+				APIKeySet:    cfg.Immich.APIKey != "",
+				AlbumIDs:     cfg.Immich.AlbumIDs,
+				SyncInterval: durString(cfg.Immich.SyncInterval.Duration),
+			},
 		},
 		Sensors: sensors,
 		Weather: WeatherDTO{
@@ -283,7 +303,7 @@ func applyDTO(dto ConfigDTO, current config.Config) (config.Config, error) {
 	if err := applySlideshowDTO(&out.Slideshow, dto.Slideshow); err != nil {
 		return config.Config{}, err
 	}
-	if err := applyLibraryDTO(&out.Library, dto.Library); err != nil {
+	if err := applyLibraryDTO(&out, dto.Library); err != nil {
 		return config.Config{}, err
 	}
 	sensors, err := applySensorsDTO(dto.Sensors, current.Sensors)
@@ -350,15 +370,26 @@ func applySlideshowDTO(dst *config.SlideshowConfig, dto SlideshowDTO) error {
 	return nil
 }
 
-func applyLibraryDTO(dst *config.LibraryConfig, dto LibraryDTO) error {
-	dst.Backend = dto.Backend
-	dst.Immich.ShareURL = dto.Immich.ShareURL
-	dst.Immich.SharePassword = applySecret(dst.Immich.SharePassword, dto.Immich.SharePassword, dto.Immich.SharePasswordSet)
-	syncInterval, err := parseDuration(dto.Immich.SyncInterval, "library.immich.sync_interval")
+// applyLibraryDTO applies both Immich modes: the legacy [library.immich]
+// share trio and the [immich] api-key block, which lives outside LibraryConfig.
+func applyLibraryDTO(dst *config.Config, dto LibraryDTO) error {
+	dst.Library.Backend = dto.Backend
+	dst.Library.Immich.ShareURL = dto.Immich.ShareURL
+	dst.Library.Immich.SharePassword = applySecret(dst.Library.Immich.SharePassword, dto.Immich.SharePassword, dto.Immich.SharePasswordSet)
+	shareInterval, err := parseDuration(dto.Immich.SyncInterval, "library.immich.sync_interval")
 	if err != nil {
 		return err
 	}
-	dst.Immich.SyncInterval = syncInterval
+	dst.Library.Immich.SyncInterval = shareInterval
+
+	dst.Immich.URL = dto.ApiKey.URL
+	dst.Immich.APIKey = applySecret(dst.Immich.APIKey, dto.ApiKey.APIKey, dto.ApiKey.APIKeySet)
+	dst.Immich.AlbumIDs = dto.ApiKey.AlbumIDs
+	apiInterval, err := parseDuration(dto.ApiKey.SyncInterval, "immich.sync_interval")
+	if err != nil {
+		return err
+	}
+	dst.Immich.SyncInterval = apiInterval
 	return nil
 }
 

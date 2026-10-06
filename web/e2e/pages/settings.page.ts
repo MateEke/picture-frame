@@ -18,7 +18,14 @@ export class SettingsPage {
 	readonly dialogSave: Locator;
 	readonly dialogCancel: Locator;
 	readonly libraryBackend: Locator;
+	readonly libraryImmichMode: Locator;
 	readonly libraryShareUrl: Locator;
+	readonly libraryImmichUrl: Locator;
+	readonly libraryImmichApiKey: Locator;
+	readonly libraryAlbumsLoad: Locator;
+	readonly libraryAlbumsList: Locator;
+	readonly libraryAlbumsError: Locator;
+	readonly libraryAlbumOption: Locator;
 	readonly mqttBroker: Locator;
 	readonly mqttBrokerHint: Locator;
 	readonly mqttBridgeSwitch: Locator;
@@ -57,7 +64,16 @@ export class SettingsPage {
 		this.dialogSave = page.getByTestId('sensor-dialog-save');
 		this.dialogCancel = page.getByTestId('sensor-dialog-cancel');
 		this.libraryBackend = page.getByTestId('library-backend');
+		this.libraryImmichMode = page.getByTestId('library-immich-mode');
 		this.libraryShareUrl = page.getByTestId('library-share-url');
+		this.libraryImmichUrl = page.getByTestId('library-immich-url');
+		// SecretField wraps its input in a <label> with a .label-text span, so
+		// the accessible name is the field label.
+		this.libraryImmichApiKey = page.getByLabel('API key', { exact: true });
+		this.libraryAlbumsLoad = page.getByTestId('library-albums-load');
+		this.libraryAlbumsList = page.getByTestId('library-albums-list');
+		this.libraryAlbumsError = page.getByTestId('library-albums-error');
+		this.libraryAlbumOption = page.getByTestId('library-album-option');
 		this.mqttBroker = page.getByTestId('mqtt-broker');
 		this.mqttBrokerHint = page.getByTestId('mqtt-broker-hint');
 		this.mqttBridgeSwitch = page.getByTestId('mqtt-bridge-switch');

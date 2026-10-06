@@ -60,10 +60,13 @@ randomize = false
 backend = "fs"
 
 # Immich API-key mode (preferred). Create a full-access API key in the Immich
-# UI (Account settings → API keys) and list one or more album IDs (open an
-# album in the Immich UI, the last UUID in the URL). Only used when
-# backend = "immich". The key travels in the x-api-key header only, never in
-# URLs or logs.
+# UI (Account settings → API keys). Only used when backend = "immich". The key
+# travels in the x-api-key header only, never in URLs or logs.
+#
+# Normally you don't edit this by hand: Settings → Photo library → API key takes
+# the URL and key and lists your albums for you to tick. The keys below are for
+# a headless/TOML-only setup, where you get each album UUID from its Immich URL
+# (the last UUID in the address bar).
 #
 # [immich]
 # url            = "https://photos.example.com"

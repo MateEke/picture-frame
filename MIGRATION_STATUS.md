@@ -204,3 +204,38 @@ salvo dove dichiarato. Aggiornare questo file a ogni step completato.
 - Verifica: `go build ./...` OK, `go vet ./...` pulito, `gofmt` pulito,
   `go test -count=1` `ok` su TUTTI i package non-adapter + cmd
   (via Docker `golang:1`, `-buildvcs=false`).
+
+### S10 — Album picker nell'admin UI `[x]`
+
+- **Ribalta la scelta S2** ("NON fatto (volutamente): campi api-key nell'admin
+  UI — la modalità si configura via TOML"). Motivo: senza UI, `album_ids`
+  obbligava a copiare UUID a mano dal browser Immich. Ora il frame li
+  elenca e li scegli.
+- `immich.ListAlbums(ctx, baseURL, apiKey, httpc)` (nuovo
+  `internal/library/adapter/immich/albums.go`): `GET /api/albums`. Funzione di
+  package, non metodo di `APIClient` — la discovery deve funzionare *prima*
+  che un album sia configurato, e `NewAPIClient` rifiuta `album_ids` vuoto.
+  Header `x-api-key` come il resto del client.
+- `POST /api/immich/albums` (`internal/httpapi/handlers.go`). POST con body
+  opzionale, non GET: salvare la modalità api-key richiede almeno un album
+  (`validateImmich`), quindi un endpoint solo-GET sarebbe un deadlock — la
+  lista non sarebbe mai raggiungibile da una config vuota. I campi vuoti
+  ricadono sulla config salvata. La chiave sta nel body, non nella query
+  string.
+- `albumListError`: `status 401` nudo (`immich.go`) diventa 401/403/502 con un
+  messaggio che dice se il problema è la chiave.
+- `ConfigDTO`: `LibraryDTO.ApiKey` (`ImmichAPIKeyDTO`: url, api_key
+  write-only + `api_key_set`, album_ids, sync_interval). `applyLibraryDTO`
+  cambia firma per coprire `config.Immich`, che sta fuori `LibraryConfig`.
+  `toDTO` non restituisce mai la chiave.
+- `LibraryCard.svelte`: selettore modalità (API key / Share link) che pulisce
+  i campi dell'altra — `validateImmich` li rifiuta insieme. Il picker sposta
+  l'ordine di `album_ids` in quello mostrato, che è l'ordine di merge lato
+  backend.
+- `validate.ts`: `validateImmich` rispecchia la XOR Go. Prima l'UI impediva di
+  salvare `backend = "immich"` senza share_url.
+- Docs: `manual/photos.md` riscritto (api-key + share), `reference/configuration.md`
+  con `[immich]`, `index.mdx` non dice più "never an API key".
+- Non è Tier-1: cambiare gli album richiede restart (test dedicato).
+- Verifica: `make test` (coverage 93%, Go + 453 Vitest), `make test-e2e`
+  (110), `npm run lint`, `npm run check`, `go vet`, `gofmt` puliti.

@@ -42,6 +42,12 @@ const sampleConfig = {
 			share_url: '',
 			share_password_set: false,
 			sync_interval: ''
+		},
+		immich_api_key: {
+			url: '',
+			api_key_set: false,
+			album_ids: [],
+			sync_interval: ''
 		}
 	},
 	sensors: null,

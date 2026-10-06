@@ -31,7 +31,19 @@ export function createEmptyConfig(): ConfigResponseBody {
 		slideshow: { interval: '2m', randomize: false, split_screen: true, images_dir: 'images' },
 		library: {
 			backend: 'fs',
-			immich: { share_url: '', share_password: '', share_password_set: false, sync_interval: '15m' }
+			immich: {
+				share_url: '',
+				share_password: '',
+				share_password_set: false,
+				sync_interval: '15m'
+			},
+			immich_api_key: {
+				url: '',
+				api_key: '',
+				api_key_set: false,
+				album_ids: [],
+				sync_interval: '15m'
+			}
 		},
 		sensors: [],
 		weather: {

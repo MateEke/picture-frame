@@ -71,13 +71,33 @@ To choose which two photos appear side by side under
 ## Using Immich instead
 
 To pull photos from [Immich](https://immich.app) rather than uploading them, switch the backend
-to **immich** in **Settings → Photo library** and give it a shared-album link:
+to **immich** in **Settings → Photo library**, then pick a connection mode:
+
+### API key (pick your albums)
+
+Use this to show one or more albums. The frame lists them for you, so there are no UUIDs to
+copy.
+
+1. In Immich, open **Account settings → API keys** and create a key with access to your
+   albums.
+2. Choose **API key**, then paste your server URL (`https://photos.example.com`, no trailing
+   slash) and the key.
+3. Press **Load albums**, tick every album the frame should show, and save.
+4. Restart the frame. Album changes need a restart, so the new selection shows after one.
+
+Albums are merged in the order you picked them, and a photo in several albums is stored once.
+The key is stored on the frame and never sent anywhere except your Immich server; it is
+write-only in the API, so the settings page shows it as a placeholder rather than text.
+
+### Share link (single album)
 
 1. In Immich, create a shared link for the album you want on the frame. A password is optional.
-2. Paste the share URL (and password, if any) into the Photo library settings. Either link shape
-   works: `https://your-server/share/<key>`, or `https://your-server/s/<slug>` if the link has a
+2. Choose **Share link** and paste the URL (and password, if any). Either link shape works:
+   `https://your-server/share/<key>`, or `https://your-server/s/<slug>` if the link has a
    custom URL.
 3. Set how often the frame reconciles with the album, then save and restart.
+
+The two modes are mutually exclusive: configure one or the other, not both.
 
 The frame then keeps a local copy of the album in sync, and the Images page becomes read-only:
 

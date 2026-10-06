@@ -214,6 +214,50 @@ export type ImagePayload = {
     next?: Array<string> | null;
 };
 
+export type ImmichApiKeyDto = {
+    /**
+     * Album IDs to display, merged in this order
+     */
+    album_ids: Array<string> | null;
+    /**
+     * Write-only; leave blank to keep current
+     */
+    api_key?: string;
+    /**
+     * true if an API key is stored; set false on PUT to clear
+     */
+    api_key_set: boolean;
+    sync_interval: string;
+    /**
+     * Immich server base URL, e.g. https://immich.example.com
+     */
+    url: string;
+};
+
+export type ImmichAlbum = {
+    asset_count: number;
+    /**
+     * Immich album UUID; store in immich_api_key.album_ids
+     */
+    id: string;
+    name: string;
+};
+
+export type ImmichAlbumsRequest = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    /**
+     * Overrides the saved API key when set
+     */
+    api_key?: string;
+    /**
+     * Overrides the saved Immich URL when set
+     */
+    url?: string;
+};
+
 export type ImmichLibraryDto = {
     /**
      * Write-only; leave blank to keep current
@@ -261,6 +305,7 @@ export type KioskPayload = {
 export type LibraryDto = {
     backend: 'fs' | 'immich';
     immich: ImmichLibraryDto;
+    immich_api_key: ImmichApiKeyDto;
 };
 
 export type LibraryResponse = {
@@ -758,6 +803,17 @@ export type ImageItemWritable = {
      * Image filename
      */
     name: string;
+};
+
+export type ImmichAlbumsRequestWritable = {
+    /**
+     * Overrides the saved API key when set
+     */
+    api_key?: string;
+    /**
+     * Overrides the saved Immich URL when set
+     */
+    url?: string;
 };
 
 export type LibraryResponseWritable = {
@@ -1262,6 +1318,31 @@ export type DeleteImageResponses = {
 };
 
 export type DeleteImageResponse = DeleteImageResponses[keyof DeleteImageResponses];
+
+export type ListImmichAlbumsData = {
+    body: ImmichAlbumsRequestWritable;
+    path?: never;
+    query?: never;
+    url: '/api/immich/albums';
+};
+
+export type ListImmichAlbumsErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type ListImmichAlbumsError = ListImmichAlbumsErrors[keyof ListImmichAlbumsErrors];
+
+export type ListImmichAlbumsResponses = {
+    /**
+     * OK
+     */
+    200: Array<ImmichAlbum> | null;
+};
+
+export type ListImmichAlbumsResponse = ListImmichAlbumsResponses[keyof ListImmichAlbumsResponses];
 
 export type GetLibraryData = {
     body?: never;

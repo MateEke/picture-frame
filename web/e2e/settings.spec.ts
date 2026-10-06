@@ -154,11 +154,46 @@ test.describe('settings', () => {
 	test('immich backend reveals share fields and requires a URL', async ({ settings }) => {
 		await settings.openSection('library');
 		await settings.libraryBackend.selectOption('immich');
+		await settings.libraryImmichMode.selectOption('share');
 		await expect(settings.libraryShareUrl).toBeVisible();
 		await expect(settings.save).toBeDisabled();
 
 		await settings.libraryShareUrl.fill('https://immich.example.com/share/abc');
 		await expect(settings.save).toBeEnabled();
+	});
+
+	test('immich api-key mode reveals the URL, key and album picker', async ({ settings }) => {
+		await settings.openSection('library');
+		await settings.libraryBackend.selectOption('immich');
+		await expect(settings.libraryImmichUrl).toBeVisible();
+		await expect(settings.libraryImmichApiKey).toBeVisible();
+		await expect(settings.libraryShareUrl).toBeHidden();
+
+		// A URL alone isn't a connection: the key and an album are still missing.
+		await settings.libraryImmichUrl.fill('https://immich.example.com');
+		await expect(settings.save).toBeDisabled();
+
+		await settings.libraryImmichApiKey.fill('secret-key');
+		await expect(settings.save).toBeDisabled();
+		// The dummy host is unreachable in e2e, so the picker surfaces the failure
+		// inline instead of listing anything.
+		await settings.libraryAlbumsLoad.click();
+		await expect(settings.libraryAlbumsError).toBeVisible();
+		await expect(settings.libraryAlbumsList).toBeHidden();
+	});
+
+	test('switching to share mode clears the api-key fields', async ({ settings }) => {
+		await settings.openSection('library');
+		await settings.libraryBackend.selectOption('immich');
+		await settings.libraryImmichUrl.fill('https://immich.example.com');
+		await settings.libraryImmichApiKey.fill('secret-key');
+
+		await settings.libraryImmichMode.selectOption('share');
+		await expect(settings.libraryShareUrl).toBeVisible();
+		await settings.libraryImmichMode.selectOption('api');
+		// Back in api mode the key was dropped, so the connection is incomplete again.
+		await expect(settings.libraryImmichUrl).toHaveValue('');
+		await expect(settings.save).toBeDisabled();
 	});
 
 	test('mqtt bridge needs a broker, then reveals HA fields that are required', async ({

@@ -2,11 +2,16 @@ package httpapi
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/MateEke/picture-frame/internal/config"
+	"github.com/MateEke/picture-frame/internal/library/adapter/immich"
+	"github.com/MateEke/picture-frame/internal/redact"
 	"github.com/MateEke/picture-frame/internal/state"
 )
 
@@ -164,6 +169,33 @@ type GetLibraryOutput struct {
 	Body LibraryResponse
 }
 
+// ImmichAlbum is one album offered by GET /api/immich/albums: the subset of
+// Immich's album object the picker needs.
+type ImmichAlbum struct {
+	ID         string `json:"id" doc:"Immich album UUID; store in immich_api_key.album_ids"`
+	Name       string `json:"name"`
+	AssetCount int    `json:"asset_count"`
+}
+
+// ImmichAlbumsRequest carries unsaved connection details so the picker can
+// list albums before the first save — saving requires an album selection, so a
+// GET-only endpoint would deadlock. The key travels in the body rather than the
+// query string so it stays out of access logs.
+type ImmichAlbumsRequest struct {
+	URL    string `json:"url,omitempty" doc:"Overrides the saved Immich URL when set"`
+	APIKey string `json:"api_key,omitempty" doc:"Overrides the saved API key when set"`
+}
+
+// ImmichAlbumsInput is the POST /api/immich/albums input.
+type ImmichAlbumsInput struct {
+	Body ImmichAlbumsRequest
+}
+
+// ImmichAlbumsOutput is the POST /api/immich/albums output.
+type ImmichAlbumsOutput struct {
+	Body []ImmichAlbum
+}
+
 func (s *server) registerLibraryRoutes(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID: "get-library",
@@ -196,6 +228,71 @@ func (s *server) registerLibraryRoutes(api huma.API) {
 		s.syncer.Trigger()
 		return nil, nil
 	})
+}
+
+// registerImmichAlbumsRoute lists the albums an Immich API key can see, so the
+// settings UI can offer a picker instead of asking for pasted UUIDs.
+//
+// POST with an optional body, not GET: saving api-key mode requires an album
+// selection, so the picker must be able to use credentials the user has typed
+// but not yet saved. Empty fields fall back to the persisted config, which is
+// the common case for editing an existing connection.
+func (s *server) registerImmichAlbumsRoute(api huma.API) {
+	huma.Register(api, huma.Operation{
+		OperationID: "list-immich-albums",
+		Method:      http.MethodPost,
+		Path:        "/api/immich/albums",
+		Summary:     "List Immich albums for the album picker",
+	}, func(ctx context.Context, input *ImmichAlbumsInput) (*ImmichAlbumsOutput, error) {
+		im := s.savedConfig().Immich
+		if v := strings.TrimSpace(input.Body.URL); v != "" {
+			im.URL = v
+		}
+		if v := strings.TrimSpace(input.Body.APIKey); v != "" {
+			im.APIKey = v
+		}
+		if im.URL == "" || im.APIKey == "" {
+			return nil, huma.Error409Conflict("immich url and api_key are required to list albums")
+		}
+		albums, err := immich.ListAlbums(ctx, im.URL, im.APIKey, nil)
+		if err != nil {
+			return nil, albumListError(err)
+		}
+		out := make([]ImmichAlbum, 0, len(albums))
+		for _, a := range albums {
+			out = append(out, ImmichAlbum{ID: a.ID, Name: a.AlbumName, AssetCount: a.AssetCount})
+		}
+		return &ImmichAlbumsOutput{Body: out}, nil
+	})
+}
+
+// albumListError maps an Immich failure to an HTTP status with a message the UI
+// can act on. httpError renders as a bare "status 401", which tells an admin
+// nothing about whether the key or the URL is at fault.
+func albumListError(err error) error {
+	var hErr interface{ Error() string }
+	if errors.As(err, &hErr) && strings.HasPrefix(hErr.Error(), "status ") {
+		switch strings.TrimPrefix(hErr.Error(), "status ") {
+		case "401":
+			return huma.Error401Unauthorized("Immich rejected the API key; create a full-access key in the Immich UI")
+		case "403":
+			return huma.Error403Forbidden("the API key cannot read albums on this Immich server")
+		default:
+			return huma.Error502BadGateway("Immich returned " + hErr.Error())
+		}
+	}
+	return huma.Error502BadGateway(redact.Path(err.Error()))
+}
+
+// savedConfig snapshots the persisted config (what the settings form last
+// wrote), falling back to the running snapshot when no store is wired.
+func (s *server) savedConfig() config.Config {
+	if s.store != nil {
+		return s.store.Snapshot()
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.running
 }
 
 // --- Health ---

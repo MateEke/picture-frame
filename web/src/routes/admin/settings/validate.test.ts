@@ -18,11 +18,11 @@ describe('settings validate', () => {
 	});
 
 	describe('library', () => {
-		it('requires a share URL for the immich backend', () => {
+		it('requires some connection for the immich backend', () => {
 			const cfg = createEmptyConfig();
 			cfg.library.backend = 'immich';
 			const r = validate(cfg);
-			expect(r.library.share_url).toMatch(/required/i);
+			expect(r.library.share_url).toMatch(/choose api key|provide a share url/i);
 			expect(r.issues).toContainEqual({ section: 'library', message: expect.any(String) });
 		});
 
@@ -37,7 +37,7 @@ describe('settings validate', () => {
 			const cfg = createEmptyConfig();
 			cfg.library.backend = 'immich';
 			cfg.library.immich.share_url = '   ';
-			expect(validate(cfg).library.share_url).toMatch(/required/i);
+			expect(validate(cfg).library.share_url).toMatch(/choose api key|provide a share url/i);
 		});
 
 		it('does not require a share URL for the fs backend', () => {
@@ -52,8 +52,54 @@ describe('settings validate', () => {
 			cfg.library.backend = 'immich';
 			expect(validate(cfg).issues).toContainEqual({
 				section: 'library',
-				message: 'Library: Immich share URL is required.'
+				message: 'Library: an Immich connection is required (API key or Share URL).'
 			});
+		});
+
+		it('accepts a complete api-key selection', () => {
+			const cfg = createEmptyConfig();
+			cfg.library.backend = 'immich';
+			cfg.library.immich_api_key.url = 'https://immich.example.com';
+			cfg.library.immich_api_key.api_key_set = true;
+			cfg.library.immich_api_key.album_ids = ['a1', 'a2'];
+			expect(validate(cfg).library).toEqual({});
+		});
+
+		it('rejects setting both a share URL and the api-key block', () => {
+			const cfg = createEmptyConfig();
+			cfg.library.backend = 'immich';
+			cfg.library.immich.share_url = 'https://immich.example/share/x';
+			cfg.library.immich_api_key.url = 'https://immich.example.com';
+			cfg.library.immich_api_key.api_key_set = true;
+			cfg.library.immich_api_key.album_ids = ['a1'];
+			expect(validate(cfg).library.share_url).toMatch(/mutually exclusive/i);
+		});
+
+		it('requires an album selection in api-key mode', () => {
+			const cfg = createEmptyConfig();
+			cfg.library.backend = 'immich';
+			cfg.library.immich_api_key.url = 'https://immich.example.com';
+			cfg.library.immich_api_key.api_key_set = true;
+			expect(validate(cfg).library.album_ids).toMatch(/at least one album/i);
+		});
+
+		it('requires a URL and key alongside the album selection', () => {
+			const noURL = createEmptyConfig();
+			noURL.library.backend = 'immich';
+			noURL.library.immich_api_key.album_ids = ['a1'];
+			expect(validate(noURL).library.url).toMatch(/url is required/i);
+
+			const noKey = createEmptyConfig();
+			noKey.library.backend = 'immich';
+			noKey.library.immich_api_key.url = 'https://immich.example.com';
+			noKey.library.immich_api_key.album_ids = ['a1'];
+			expect(validate(noKey).library.album_ids).toMatch(/api key is required/i);
+		});
+
+		it('does not require any immich connection for the fs backend', () => {
+			const cfg = createEmptyConfig();
+			cfg.library.backend = 'fs';
+			expect(validate(cfg).library).toEqual({});
 		});
 	});
 

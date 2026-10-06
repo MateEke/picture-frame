@@ -50,6 +50,7 @@
 		temp.weather.api_key ??= '';
 		temp.mqtt.password ??= '';
 		temp.library.immich.share_password ??= '';
+		temp.library.immich_api_key.api_key ??= '';
 		temp.updater.github_token ??= '';
 		untrack(() => {
 			draft = temp;

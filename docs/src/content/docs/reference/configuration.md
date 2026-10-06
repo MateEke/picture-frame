@@ -60,13 +60,29 @@ Captions under the readings on the frame. An empty value hides that caption. **(
 
 See [Photos](/manual/photos/).
 
-| Key       | Type   | Default | Description                                                        |
-| --------- | ------ | ------- | ------------------------------------------------------------------ |
-| `backend` | string | `fs`    | `fs` for local uploads, or `immich` to sync a shared Immich album. |
+| Key       | Type   | Default | Description                                                              |
+| --------- | ------ | ------- | ------------------------------------------------------------------------ |
+| `backend` | string | `fs`    | `fs` for local uploads, or `immich` to sync from your Immich server.    |
+
+The two Immich connection modes are mutually exclusive: configure either `[immich]` (below) or
+`[library.immich]`, never both.
+
+### `[immich]`
+
+API-key mode, for showing one or more albums. Preferable to the share link, and the only mode
+that can combine albums. Manageable from **Settings → Photo library**, which lists your albums
+instead of asking for UUIDs.
+
+| Key             | Type     | Default | Description                                                            |
+| --------------- | -------- | ------- | ---------------------------------------------------------------------- |
+| `url`           | string   | (empty) | Immich base URL, e.g. `https://immich.example.com`. Required.           |
+| `api_key`       | string   | (empty) | Full-access API key from Immich. Required. Sent as `x-api-key` only.    |
+| `album_ids`     | list     | `[]`    | Album UUIDs to display, merged in this order. At least one is required. |
+| `sync_interval` | duration | `15m`   | How often to reconcile with the albums.                                 |
 
 ### `[library.immich]`
 
-Used only when `backend = "immich"`.
+Legacy shared-link mode, for a single album.
 
 | Key              | Type     | Default | Description                                                              |
 | ---------------- | -------- | ------- | ------------------------------------------------------------------------ |
