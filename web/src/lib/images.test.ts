@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { invalidate } from '$app/navigation';
 import { toaster } from './toaster';
-import { loadImages, deleteImage, deleteImages, uploadImage } from './images';
+import { loadImages, deleteImage, deleteImages, uploadImage, uploadImages } from './images';
 
 vi.mock('$app/navigation', () => ({
 	invalidate: vi.fn().mockResolvedValue(undefined)
@@ -10,6 +10,16 @@ vi.mock('$app/navigation', () => ({
 vi.mock('./toaster', () => ({
 	toaster: { error: vi.fn(), success: vi.fn() }
 }));
+
+const mockFileToJpegBlob = vi.fn();
+
+vi.mock('./imageProcessing', () => ({
+	fileToJpegBlob: (...args: unknown[]) => mockFileToJpegBlob(...args)
+}));
+
+function jpegs(...names: string[]): File[] {
+	return names.map((name) => new File(['x'], name, { type: 'image/jpeg' }));
+}
 
 const mockListImages = vi.fn();
 const mockDeleteImage = vi.fn();
@@ -168,6 +178,194 @@ describe('images', () => {
 				description: 'Server returned an error'
 			});
 			expect(invalidate).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('uploadImages', () => {
+		it('uploads every file and invalidates only once', async () => {
+			mockFileToJpegBlob.mockResolvedValue(new Blob());
+			mockUploadImage.mockResolvedValue({ error: undefined });
+
+			const result = await uploadImages(jpegs('a.jpg', 'b.jpg', 'c.jpg'));
+
+			expect(mockUploadImage).toHaveBeenCalledTimes(3);
+			expect(mockUploadImage).toHaveBeenCalledWith(
+				expect.objectContaining({ body: { image: expect.any(Blob) } })
+			);
+			expect(invalidate).toHaveBeenCalledExactlyOnceWith('/api/images');
+			expect(result.added).toBe(3);
+		});
+
+		it('skips a file that cannot be decoded and keeps going', async () => {
+			mockFileToJpegBlob.mockImplementation((file: File) =>
+				file.name === 'b.jpg' ? Promise.reject(new Error('bad')) : Promise.resolve(new Blob())
+			);
+			mockUploadImage.mockResolvedValue({ error: undefined });
+
+			const result = await uploadImages(jpegs('a.jpg', 'b.jpg', 'c.jpg'));
+
+			expect(mockUploadImage).toHaveBeenCalledTimes(2);
+			expect(result.added).toBe(2);
+			expect(result.failed).toEqual(['b.jpg']);
+		});
+
+		it('gives up after three uploads in a row fail', async () => {
+			mockFileToJpegBlob.mockResolvedValue(new Blob());
+			mockUploadImage.mockResolvedValue({ error: new Error('offline') });
+
+			const result = await uploadImages(jpegs('a.jpg', 'b.jpg', 'c.jpg', 'd.jpg', 'e.jpg'));
+
+			expect(mockUploadImage).toHaveBeenCalledTimes(3);
+			expect(result.outcome).toBe('unreachable');
+		});
+
+		it('does not let photos the frame refuses trip the give-up counter', async () => {
+			// A run of refusals must not read as the frame going away.
+			mockFileToJpegBlob.mockResolvedValue(new Blob());
+			mockUploadImage.mockResolvedValue({
+				error: new Error('unsupported'),
+				response: new Response('', { status: 415 })
+			});
+
+			const result = await uploadImages(jpegs('a.jpg', 'b.jpg', 'c.jpg', 'd.jpg'));
+
+			expect(result.outcome).toBe('complete');
+			expect(result.failed).toHaveLength(4);
+		});
+
+		it('still reports a result when the gallery refresh fails', async () => {
+			// A throw would leave the caller's progress panel up for good.
+			mockFileToJpegBlob.mockResolvedValue(new Blob());
+			mockUploadImage.mockResolvedValue({ error: undefined });
+			vi.mocked(invalidate).mockRejectedValueOnce(new Error('navigation failed'));
+
+			const result = await uploadImages(jpegs('a.jpg'));
+
+			expect(result.added).toBe(1);
+			expect(toaster.error).toHaveBeenCalledWith({
+				title: 'Photos added, but the list did not refresh',
+				description: 'Reload the page to see them.'
+			});
+		});
+
+		it('does not let unreadable files trip the give-up counter', async () => {
+			// Unreadable files cluster (a run of HEICs off one phone), so counting
+			// them would abort a batch the frame is happily accepting.
+			mockFileToJpegBlob.mockImplementation((file: File) =>
+				file.name === 'ok.jpg' ? Promise.resolve(new Blob()) : Promise.reject(new Error('bad'))
+			);
+			mockUploadImage.mockResolvedValue({ error: undefined });
+
+			const result = await uploadImages(jpegs('1.heic', '2.heic', '3.heic', '4.heic', 'ok.jpg'));
+
+			expect(result.outcome).toBe('complete');
+			expect(result.added).toBe(1);
+		});
+
+		it('reports progress after every file, readable and unreadable alike', async () => {
+			mockFileToJpegBlob.mockImplementation((file: File) =>
+				file.name === 'b.jpg' ? Promise.reject(new Error('bad')) : Promise.resolve(new Blob())
+			);
+			mockUploadImage.mockResolvedValue({ error: undefined });
+			const seen: number[] = [];
+
+			await uploadImages(jpegs('a.jpg', 'b.jpg', 'c.jpg'), {
+				onProgress: (done, total) => {
+					expect(total).toBe(3);
+					seen.push(done);
+				}
+			});
+
+			expect(seen).toEqual([1, 2, 3]);
+		});
+
+		it('stops when the caller aborts', async () => {
+			const controller = new AbortController();
+			mockFileToJpegBlob.mockResolvedValue(new Blob());
+			mockUploadImage.mockImplementation(() => {
+				controller.abort();
+				return Promise.resolve({ error: undefined });
+			});
+
+			const result = await uploadImages(jpegs('a.jpg', 'b.jpg', 'c.jpg'), {
+				signal: controller.signal
+			});
+
+			expect(mockUploadImage).toHaveBeenCalledTimes(1);
+			expect(result.outcome).toBe('stopped');
+			// The frame stored this one before the stop landed, so it counts.
+			expect(result.added).toBe(1);
+		});
+
+		it('gives up when the frame itself keeps erroring', async () => {
+			mockFileToJpegBlob.mockResolvedValue(new Blob());
+			mockUploadImage.mockResolvedValue({
+				error: new Error('boom'),
+				response: new Response('', { status: 500 })
+			});
+
+			const result = await uploadImages(jpegs('a.jpg', 'b.jpg', 'c.jpg', 'd.jpg'));
+
+			expect(mockUploadImage).toHaveBeenCalledTimes(3);
+			expect(result.outcome).toBe('unreachable');
+		});
+
+		it('treats the lowest refusal status as a refusal, not a broken frame', async () => {
+			mockFileToJpegBlob.mockResolvedValue(new Blob());
+			mockUploadImage.mockResolvedValue({
+				error: new Error('bad request'),
+				response: new Response('', { status: 400 })
+			});
+
+			const result = await uploadImages(jpegs('a.jpg', 'b.jpg', 'c.jpg', 'd.jpg'));
+
+			expect(mockUploadImage).toHaveBeenCalledTimes(4);
+			expect(result.outcome).toBe('complete');
+		});
+
+		it('hands the abort signal to the request, so a stalled upload can be cut off', async () => {
+			const controller = new AbortController();
+			mockFileToJpegBlob.mockResolvedValue(new Blob());
+			mockUploadImage.mockResolvedValue({ error: undefined });
+
+			await uploadImages(jpegs('a.jpg'), { signal: controller.signal });
+
+			expect(mockUploadImage).toHaveBeenCalledWith(
+				expect.objectContaining({ signal: controller.signal })
+			);
+		});
+
+		it('does not blame a photo that was interrupted mid-upload', async () => {
+			const controller = new AbortController();
+			mockFileToJpegBlob.mockResolvedValue(new Blob());
+			mockUploadImage.mockImplementation(() => {
+				controller.abort();
+				return Promise.reject(new DOMException('aborted', 'AbortError'));
+			});
+
+			const result = await uploadImages(jpegs('a.jpg', 'b.jpg'), { signal: controller.signal });
+
+			expect(result.outcome).toBe('stopped');
+			expect(result.failed).toEqual([]);
+		});
+
+		it('counts a thrown upload as a failure when there is no signal to blame', async () => {
+			mockFileToJpegBlob.mockResolvedValue(new Blob());
+			mockUploadImage.mockRejectedValue(new Error('socket hung up'));
+
+			const result = await uploadImages(jpegs('a.jpg', 'b.jpg', 'c.jpg', 'd.jpg'));
+
+			expect(mockUploadImage).toHaveBeenCalledTimes(3);
+			expect(result.outcome).toBe('unreachable');
+		});
+
+		it('does not invalidate when nothing was added', async () => {
+			mockFileToJpegBlob.mockRejectedValue(new Error('bad'));
+
+			const result = await uploadImages(jpegs('a.heic', 'b.heic'));
+
+			expect(invalidate).not.toHaveBeenCalled();
+			expect(result.failed).toEqual(['a.heic', 'b.heic']);
 		});
 	});
 

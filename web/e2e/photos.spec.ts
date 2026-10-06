@@ -8,6 +8,7 @@ import type { PhotosPage } from './pages/photos.page';
 const UPLOAD = path.join(seedImagesDir(), '..', 'square.jpg');
 // Landscape pixels with an EXIF rotate-90 tag (displayed portrait).
 const ROTATED = path.join(seedImagesDir(), '..', 'rotated.jpg');
+const BULK = [UPLOAD, ROTATED, path.join(seedImagesDir(), 'blue.jpg')];
 
 // Size of the stored image that appeared since `before`.
 async function uploadedSize(page: Page, photos: PhotosPage, before: string[]) {
@@ -59,6 +60,85 @@ test.describe('photos', () => {
 		await expect(photos.thumbs).toHaveCount(4);
 		const { width, height } = await uploadedSize(page, photos, before);
 		expect(height).toBeGreaterThan(width);
+	});
+
+	test('adds several photos at once, skipping the cropper', async ({ photos }) => {
+		const before = (await photos.thumbSrcs()).length;
+
+		await photos.uploadInput.setInputFiles(BULK);
+
+		await expect(photos.thumbs).toHaveCount(before + 3);
+		await expect(photos.cropperUpload).toHaveCount(0);
+	});
+
+	test('Stop ends a batch, keeping what it already added', async ({ photos, page }) => {
+		const before = (await photos.thumbSrcs()).length;
+		// Hold each upload so there is room to press Stop mid-batch.
+		await page.route('**/api/images', async (route) => {
+			if (route.request().method() !== 'POST') return route.fallback();
+			await new Promise((resolve) => setTimeout(resolve, 1200));
+			await route.fallback();
+		});
+
+		await photos.uploadInput.setInputFiles(BULK);
+		// Sync on the counter, not the panel: the panel shows before the first upload
+		// starts, so clicking then races whichever photo happens to be in flight.
+		await expect(photos.bulkCount).toHaveText('Adding photo 2 of 3');
+		await photos.bulkStop.click();
+
+		await expect(photos.bulkProgress).toHaveCount(0);
+		await expect(photos.thumbs).toHaveCount(before + 1);
+		await expect(page.getByText('Stopped. Added 1 photo')).toBeVisible();
+	});
+
+	test('gives up and says so when the frame stops accepting photos', async ({ photos, page }) => {
+		const before = (await photos.thumbSrcs()).length;
+		await page.route('**/api/images', async (route) => {
+			if (route.request().method() !== 'POST') return route.fallback();
+			await route.abort('connectionrefused');
+		});
+
+		await photos.uploadInput.setInputFiles(BULK);
+
+		await expect(page.getByText('The frame stopped accepting photos')).toBeVisible();
+		await expect(photos.bulkProgress).toHaveCount(0);
+		await expect(photos.thumbs).toHaveCount(before);
+	});
+
+	test('leaving the page mid-batch stops it and still reports', async ({ photos, page }) => {
+		await page.route('**/api/images', async (route) => {
+			if (route.request().method() !== 'POST') return route.fallback();
+			await new Promise((resolve) => setTimeout(resolve, 1200));
+			await route.fallback();
+		});
+
+		await photos.uploadInput.setInputFiles(BULK);
+		await expect(photos.bulkCount).toHaveText('Adding photo 2 of 3');
+		// Client-side navigation, so the component unmounts rather than the tab reloading.
+		await page.getByRole('link', { name: 'Dashboard' }).click();
+
+		await expect(page.getByText('Stopped. Added 1 photo')).toBeVisible();
+	});
+
+	test('names the photos that did not make it, without ending the batch', async ({
+		photos,
+		page
+	}) => {
+		const before = (await photos.thumbSrcs()).length;
+		let seen = 0;
+		await page.route('**/api/images', async (route) => {
+			if (route.request().method() !== 'POST') return route.fallback();
+			seen++;
+			// One refusal on its merits: the other two must still go up.
+			if (seen === 2) return route.fulfill({ status: 415, body: 'nope' });
+			await route.fallback();
+		});
+
+		await photos.uploadInput.setInputFiles(BULK);
+
+		await expect(page.getByText('Added 2 photos')).toBeVisible();
+		await expect(page.getByText(/Could not add .+\./)).toBeVisible();
+		await expect(photos.thumbs).toHaveCount(before + 2);
 	});
 
 	test('remembers the chosen crop ratio across reloads', async ({ photos, page }) => {

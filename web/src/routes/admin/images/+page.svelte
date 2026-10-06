@@ -3,7 +3,7 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import { invalidate } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { flip } from 'svelte/animate';
 	import {
 		ImageIcon,
@@ -16,13 +16,16 @@
 		ChevronsDownIcon
 	} from '@lucide/svelte';
 	import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME, type DndEvent } from 'svelte-dnd-action';
-	import { deleteImage, deleteImages, setImageOrder } from '$lib/images';
+	import { deleteImage, deleteImages, setImageOrder, uploadImages } from '$lib/images';
+	import { toaster } from '$lib/toaster';
+	import { bulkUploadMessage } from './uploadFeedback';
 	import { moveUp, moveDown, moveToStart, moveToEnd } from '$lib/reorder';
 	import { syncLibrary } from '$lib/library';
 	import { getSSEContext } from '$lib/sse.svelte';
 	import ConfirmDialog from '$lib/ConfirmDialog.svelte';
 	import Cropper from './components/Cropper.svelte';
 	import UploadDropzone from './components/UploadDropzone.svelte';
+	import UploadProgress from './components/UploadProgress.svelte';
 	import ImmichStatus from './components/ImmichStatus.svelte';
 	import Lightbox from './components/Lightbox.svelte';
 
@@ -30,6 +33,8 @@
 	const sse = getSSEContext();
 
 	let currentFile = $state<File | null>(null);
+	let bulk = $state<{ done: number; total: number } | null>(null);
+	let bulkAbort: AbortController | null = null;
 	let pendingDelete = $state<string | null>(null);
 	let deleting = $state(false);
 	let brokenImages = new SvelteSet<string>();
@@ -46,6 +51,34 @@
 	const images = $derived(data.images ?? []);
 
 	let arranging = $state(false);
+
+	function handleFiles(files: File[]) {
+		if (files.length === 1) {
+			currentFile = files[0];
+			return;
+		}
+		startBulkUpload(files);
+	}
+
+	async function startBulkUpload(files: File[]) {
+		const controller = new AbortController();
+		bulkAbort = controller;
+		bulk = { done: 0, total: files.length };
+		const result = await uploadImages(files, {
+			signal: controller.signal,
+			onProgress: (done, total) => (bulk = { done, total })
+		});
+		bulkAbort = null;
+		bulk = null;
+		const { type, ...message } = bulkUploadMessage(result);
+		toaster[type](message);
+	}
+
+	function stopBulkUpload() {
+		bulkAbort?.abort();
+	}
+
+	onDestroy(() => bulkAbort?.abort());
 
 	type DndItem = { id: string; [key: string]: unknown };
 
@@ -312,8 +345,12 @@
 					onCancel={() => (currentFile = null)}
 				/>
 			</div>
+		{:else if bulk}
+			<div class="reveal">
+				<UploadProgress done={bulk.done} total={bulk.total} onStop={stopBulkUpload} />
+			</div>
 		{:else}
-			<div class="reveal"><UploadDropzone onFile={(f) => (currentFile = f)} /></div>
+			<div class="reveal"><UploadDropzone onFiles={handleFiles} /></div>
 		{/if}
 	{:else}
 		<ImmichStatus sync={data.library.sync} shareUrl={data.shareUrl} {syncing} onSync={handleSync} />

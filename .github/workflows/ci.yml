@@ -226,6 +226,7 @@ jobs:
         working-directory: web
         run: npx playwright install --with-deps --only-shell
 
+      # v2: drops results recorded while the vitest-runner separator bug (#117) was live.
       # Split restore/save so the incremental cache persists even when the score gate
       # fails the job (its normal failure mode). PR runs reuse their own branch's cache
       # and fall back to the main baseline, which the push-to-main runs keep fresh
@@ -234,10 +235,10 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: web/reports/mutation
-          key: stryker-incremental-${{ github.head_ref || github.ref_name }}-${{ github.sha }}
+          key: stryker-incremental-v2-${{ github.head_ref || github.ref_name }}-${{ github.sha }}
           restore-keys: |
-            stryker-incremental-${{ github.head_ref || github.ref_name }}-
-            stryker-incremental-main-
+            stryker-incremental-v2-${{ github.head_ref || github.ref_name }}-
+            stryker-incremental-v2-main-
 
       # PRs diff vs their base branch (checkout doesn't create origin/<base>, fetch it);
       # main pushes diff vs the pre-push commit (already present with fetch-depth 0).
@@ -255,7 +256,7 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: web/reports/mutation
-          key: stryker-incremental-${{ github.head_ref || github.ref_name }}-${{ github.sha }}
+          key: stryker-incremental-v2-${{ github.head_ref || github.ref_name }}-${{ github.sha }}
 
   # Known-CVE gate: govulncheck (reachable Go) + osv-scanner on the bundled-npm SBOM.
   vuln:
