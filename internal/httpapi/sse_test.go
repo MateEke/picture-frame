@@ -58,8 +58,8 @@ func TestSSEReconcilesOnConnect(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer resp.Body.Close()
+	awaitReady(t, resp.Body, 2*time.Second)
 
-	// Headers arrive only after handleEvents runs Reconcile + flushes, so it has fired once.
 	if got := m.reconciles.Load(); got != 1 {
 		t.Errorf("expected exactly 1 reconcile on connect, got %d", got)
 	}
@@ -185,6 +185,30 @@ func readSSELine(t *testing.T, r io.Reader, timeout time.Duration) string {
 	}
 }
 
+// huma flushes headers before the handler runs; "ready" follows the reconciles.
+func awaitReady(t *testing.T, r io.Reader, timeout time.Duration) {
+	t.Helper()
+	ready := make(chan struct{})
+	scanErr := make(chan error, 1)
+	go func() {
+		scanner := bufio.NewScanner(r)
+		for scanner.Scan() {
+			if scanner.Text() == "event: ready" {
+				close(ready)
+				return
+			}
+		}
+		scanErr <- scanner.Err()
+	}()
+	select {
+	case <-ready:
+	case err := <-scanErr:
+		t.Fatalf("stream closed before ready (scanner err: %v)", err)
+	case <-time.After(timeout):
+		t.Fatal("timeout waiting for SSE ready event")
+	}
+}
+
 // collectSSEBlock reads SSE blocks (terminated by a blank line) and returns
 // the first block that is not the bootstrap "ready" event, or fails on timeout.
 func collectSSEBlock(t *testing.T, scanner *bufio.Scanner, timeout time.Duration) string {
@@ -236,8 +260,8 @@ func TestSSERotatorReconcilesOnConnect(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer resp.Body.Close()
+	awaitReady(t, resp.Body, 2*time.Second)
 
-	// Headers arrive only after handleEvents runs the reconciles + flushes.
 	if got := rot.Reconciles(); got != 1 {
 		t.Errorf("expected exactly 1 rotator reconcile on connect, got %d", got)
 	}
@@ -286,6 +310,7 @@ func TestSSERotatorReconcilesBeforeScreen(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer resp.Body.Close()
+	awaitReady(t, resp.Body, 2*time.Second)
 
 	if got := ord.get(); !slices.Equal(got, []string{"rotator", "screen"}) {
 		t.Errorf("reconcile order = %v, want [rotator screen]", got)
