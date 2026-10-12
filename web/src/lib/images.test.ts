@@ -26,7 +26,7 @@ const mockDeleteImage = vi.fn();
 const mockUploadImage = vi.fn();
 const mockSetImageOrder = vi.fn();
 
-vi.mock('$lib/api/sdk.gen', () => ({
+vi.mock('#lib/api/sdk.gen.js', () => ({
 	apiListImages: (...args: unknown[]) => mockListImages(...args),
 	apiDeleteImage: (...args: unknown[]) => mockDeleteImage(...args),
 	apiUploadImage: (...args: unknown[]) => mockUploadImage(...args),

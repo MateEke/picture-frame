@@ -6,7 +6,7 @@ import type {
 	ScreenPayload,
 	SensorPayload,
 	WeatherPayload
-} from '$lib/api/types.gen';
+} from '#lib/api/types.gen.js';
 import { SSESubscriber, IDLE_GRACE_MS } from './sse.svelte';
 
 type SSEEvent =
@@ -36,7 +36,7 @@ let emitRaw: (raw: unknown) => void;
 let endStream: () => void;
 let connectCount = 0;
 
-vi.mock('$lib/api/sdk.gen', () => ({
+vi.mock('#lib/api/sdk.gen.js', () => ({
 	apiEvents: (options?: { signal?: AbortSignal; onSseEvent?: (e: unknown) => void }) => {
 		let resolve: (value: IteratorResult<unknown>) => void;
 		let reject: (err: unknown) => void;

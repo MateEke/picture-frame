@@ -1,5 +1,10 @@
-import { apiAuthStatus, apiAuthLogin, apiAuthLogout, apiAuthSetPassword } from '$lib/api/sdk.gen';
-import type { AuthStatusResponse } from '$lib/api/types.gen';
+import {
+	apiAuthStatus,
+	apiAuthLogin,
+	apiAuthLogout,
+	apiAuthSetPassword
+} from '#lib/api/sdk.gen.js';
+import type { AuthStatusResponse } from '#lib/api/types.gen.js';
 import { toaster } from './toaster';
 
 // Fails open to "not required" so a backend hiccup can't hard-lock the UI.

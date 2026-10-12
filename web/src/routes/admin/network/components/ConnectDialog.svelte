@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
-	import type { WiFiNetwork } from '$lib/api/types.gen';
-	import PasswordInput from '$lib/PasswordInput.svelte';
+	import type { WiFiNetwork } from '#lib/api/types.gen.js';
+	import PasswordInput from '#lib/PasswordInput.svelte';
 
 	let {
 		network,

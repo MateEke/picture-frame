@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { LibraryDto } from '$lib/api/types.gen';
-	import { DURATION_STOPS } from '$lib/duration';
-	import SecretField from '$lib/SecretField.svelte';
+	import type { LibraryDto } from '#lib/api/types.gen.js';
+	import { DURATION_STOPS } from '#lib/duration.js';
+	import SecretField from '#lib/SecretField.svelte';
 	import DurationSlider from './DurationSlider.svelte';
 	import Field from './Field.svelte';
 

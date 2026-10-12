@@ -15,7 +15,7 @@ const mockApiGetConfigMeta = vi.fn();
 const mockApiPutConfig = vi.fn();
 const mockApiSystemRestart = vi.fn();
 
-vi.mock('$lib/api/sdk.gen', () => ({
+vi.mock('#lib/api/sdk.gen.js', () => ({
 	apiGetConfig: (...args: unknown[]) => mockApiGetConfig(...args),
 	apiGetConfigMeta: (...args: unknown[]) => mockApiGetConfigMeta(...args),
 	apiPutConfig: (...args: unknown[]) => mockApiPutConfig(...args),

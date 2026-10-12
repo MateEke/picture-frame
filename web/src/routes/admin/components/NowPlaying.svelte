@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { ImagePayload } from '$lib/api/types.gen';
+	import type { ImagePayload } from '#lib/api/types.gen.js';
 	import { ImageOffIcon, ShuffleIcon, ArrowRightIcon } from '@lucide/svelte';
-	import { formatDuration } from '$lib/duration';
-	import Slide from '$lib/Slide.svelte';
+	import { formatDuration } from '#lib/duration.js';
+	import Slide from '#lib/Slide.svelte';
 	import { fade } from 'svelte/transition';
 	import { sineInOut } from 'svelte/easing';
 

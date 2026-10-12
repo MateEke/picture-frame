@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { MqttDto } from '$lib/api/types.gen';
+	import type { MqttDto } from '#lib/api/types.gen.js';
 	import { Switch } from '@skeletonlabs/skeleton-svelte';
-	import { DURATION_STOPS } from '$lib/duration';
-	import SecretField from '$lib/SecretField.svelte';
+	import { DURATION_STOPS } from '#lib/duration.js';
+	import SecretField from '#lib/SecretField.svelte';
 	import DurationSlider from './DurationSlider.svelte';
 	import Field from './Field.svelte';
 

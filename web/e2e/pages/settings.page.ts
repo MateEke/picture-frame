@@ -12,6 +12,7 @@ export class SettingsPage {
 	readonly rotation: Locator;
 	readonly rotationHint: Locator;
 	readonly weatherLat: Locator;
+	readonly weatherApiKey: Locator;
 	readonly sensorAdd: Locator;
 	readonly dialogId: Locator;
 	readonly dialogRole: Locator;
@@ -51,6 +52,7 @@ export class SettingsPage {
 		this.rotation = page.getByTestId('setting-rotation');
 		this.rotationHint = page.getByTestId('setting-rotation-hint');
 		this.weatherLat = page.getByTestId('setting-weather-lat');
+		this.weatherApiKey = page.getByTestId('setting-weather-api-key');
 		this.sensorAdd = page.getByTestId('sensor-add');
 		this.dialogId = page.getByTestId('sensor-dialog-id');
 		this.dialogRole = page.getByTestId('sensor-dialog-role');

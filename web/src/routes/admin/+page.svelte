@@ -18,11 +18,11 @@
 		InfoIcon
 	} from '@lucide/svelte';
 	import { resolve } from '$app/paths';
-	import { isSensorStale } from '$lib/helpers';
-	import { formatDuration } from '$lib/duration';
-	import { setScreen } from '$lib/screen';
-	import { networkTile } from '$lib/wifi';
-	import { getSSEContext } from '$lib/sse.svelte';
+	import { isSensorStale } from '#lib/helpers.js';
+	import { formatDuration } from '#lib/duration.js';
+	import { setScreen } from '#lib/screen.js';
+	import { networkTile } from '#lib/wifi.js';
+	import { getSSEContext } from '#lib/sse.svelte.js';
 	import NowPlaying from './components/NowPlaying.svelte';
 	import StatTile from './components/StatTile.svelte';
 	import SensorReadings from './components/SensorReadings.svelte';
@@ -30,7 +30,7 @@
 	import UpdatePanel from './components/UpdatePanel.svelte';
 	import RestartConfirmDialog from './settings/components/RestartConfirmDialog.svelte';
 	import PowerConfirmDialog from './components/PowerConfirmDialog.svelte';
-	import type { PowerAction } from '$lib/power';
+	import type { PowerAction } from '#lib/power.js';
 
 	let { data }: PageProps = $props();
 	const sse = getSSEContext();
@@ -153,7 +153,7 @@
 					sub={wifi.sub}
 					Icon={wifiIcon}
 					tone={wifi.tone}
-					href={resolve('/admin/network')}
+					href={resolve('admin/network')}
 					data-testid="tile-network"
 				/>
 				<StatTile
@@ -177,7 +177,7 @@
 					sub={librarySyncIssue ? 'Sync issue' : undefined}
 					Icon={librarySyncIssue ? CloudAlertIcon : ImagesIcon}
 					tone={librarySyncIssue ? 'warning' : 'primary'}
-					href={resolve('/admin/images')}
+					href={resolve('admin/images')}
 					data-testid="tile-library"
 				/>
 			</div>

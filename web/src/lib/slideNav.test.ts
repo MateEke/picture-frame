@@ -5,7 +5,7 @@ const mockNext = vi.fn();
 const mockPrev = vi.fn();
 const mockWake = vi.fn();
 
-vi.mock('$lib/api/sdk.gen', () => ({
+vi.mock('#lib/api/sdk.gen.js', () => ({
 	apiSlideshowNext: (...args: unknown[]) => mockNext(...args),
 	apiSlideshowPrev: (...args: unknown[]) => mockPrev(...args),
 	apiScreenWake: (...args: unknown[]) => mockWake(...args)

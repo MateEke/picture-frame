@@ -1,9 +1,9 @@
-import { loadScreen } from '$lib/screen';
-import { loadConfig } from '$lib/config';
-import { loadWiFiStatus } from '$lib/wifi';
-import { loadSystemInfo } from '$lib/system';
-import { loadLibrary } from '$lib/library';
-import { loadUpdate } from '$lib/updater';
+import { loadScreen } from '#lib/screen.js';
+import { loadConfig } from '#lib/config.js';
+import { loadWiFiStatus } from '#lib/wifi.js';
+import { loadSystemInfo } from '#lib/system.js';
+import { loadLibrary } from '#lib/library.js';
+import { loadUpdate } from '#lib/updater.js';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ fetch }) => {

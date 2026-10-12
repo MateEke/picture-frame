@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { SlideshowDto, DisplayDto, SensorDto } from '$lib/api/types.gen';
+	import type { SlideshowDto, DisplayDto, SensorDto } from '#lib/api/types.gen.js';
 	import { SlidersHorizontalIcon } from '@lucide/svelte';
-	import { DURATION_STOPS } from '$lib/duration';
+	import { DURATION_STOPS } from '#lib/duration.js';
 	import { eq, hasMotionSensor } from '../utils';
 	import DurationSlider from './DurationSlider.svelte';
 	import LocaleCombobox from './LocaleCombobox.svelte';

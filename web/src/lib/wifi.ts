@@ -4,8 +4,8 @@ import {
 	apiWifiConnect,
 	apiWifiForget,
 	apiConfigureAp
-} from '$lib/api/sdk.gen';
-import type { WiFiState, WiFiNetwork } from '$lib/api/types.gen';
+} from '#lib/api/sdk.gen.js';
+import type { WiFiState, WiFiNetwork } from '#lib/api/types.gen.js';
 import { toaster } from './toaster';
 export type WiFiMode = 'connected' | 'ethernet' | 'ap' | 'disconnected' | 'connecting';
 

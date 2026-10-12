@@ -1,5 +1,6 @@
 <script lang="ts">
-	import PasswordInput from '$lib/PasswordInput.svelte';
+	import type { HTMLInputAttributes } from 'svelte/elements';
+	import PasswordInput from '#lib/PasswordInput.svelte';
 
 	let {
 		value = $bindable(''),
@@ -8,8 +9,9 @@
 		label,
 		placeholder = 'Not set',
 		warningText = 'Will be removed on save.',
-		clearTestid
-	}: {
+		clearTestid,
+		...rest
+	}: Omit<HTMLInputAttributes, 'value' | 'placeholder'> & {
 		value?: string;
 		isSet: boolean;
 		wasSet: boolean;
@@ -24,7 +26,7 @@
 	<label class="label">
 		<span class="label-text">{label}</span>
 		<div class="flex w-full gap-2">
-			<PasswordInput bind:value placeholder={isSet ? '••••••••' : placeholder} />
+			<PasswordInput {...rest} bind:value placeholder={isSet ? '••••••••' : placeholder} />
 			{#if isSet}
 				<button
 					type="button"

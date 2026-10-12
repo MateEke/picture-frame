@@ -20,8 +20,8 @@
 		BookOpenIcon,
 		ExternalLinkIcon
 	} from '@lucide/svelte';
-	import { MANUAL_URL } from '$lib/links';
-	import { saveConfig } from '$lib/config';
+	import { MANUAL_URL } from '#lib/links.js';
+	import { saveConfig, type ConfigResponseBody } from '#lib/config.js';
 	import { createEmptyConfig, createEmptyMeta, configPayload, eq } from './utils';
 	import { validate, sectionFromDetail } from './validate';
 	import EssentialsCard from './components/EssentialsCard.svelte';
@@ -41,20 +41,30 @@
 
 	let draft = $state(createEmptyConfig());
 	let savedConfig = $state(createEmptyConfig());
-	let restartPending = $state(false);
+	const restartPending = $derived(data.config?.restart_pending ?? false);
 
-	$effect(() => {
-		const cfg = data.config;
+	function normalize(cfg: ConfigResponseBody | null): ConfigResponseBody {
 		const temp = cfg ? structuredClone(cfg) : createEmptyConfig();
 		// Secrets are write-only, so the server omits them; PasswordInput needs a string.
 		temp.weather.api_key ??= '';
 		temp.mqtt.password ??= '';
 		temp.library.immich.share_password ??= '';
 		temp.updater.github_token ??= '';
+		return temp;
+	}
+
+	function seed(cfg: ConfigResponseBody | null) {
+		const temp = normalize(cfg);
+		draft = temp;
+		savedConfig = structuredClone(temp);
+	}
+
+	$effect(() => {
+		const cfg = data.config;
 		untrack(() => {
-			draft = temp;
-			savedConfig = structuredClone(temp);
-			restartPending = cfg?.restart_pending ?? false;
+			// Unchanged config (e.g. a same-page link refresh) keeps unsaved edits.
+			if (eq(configPayload(normalize(cfg)), configPayload(savedConfig))) return;
+			seed(cfg);
 		});
 	});
 
@@ -153,6 +163,8 @@
 		const result = await saveConfig(draft);
 		saving = false;
 		if (result.ok) {
+			// A replaced secret round-trips unchanged, so the effect alone would skip it.
+			seed(data.config);
 			if (result.restart_pending) showRestartDialog = true;
 			return;
 		}

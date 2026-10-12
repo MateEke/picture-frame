@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
-	import { restartFrame } from '$lib/config';
+	import { restartFrame } from '#lib/config.js';
 
 	let {
 		oncancel

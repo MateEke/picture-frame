@@ -5,6 +5,7 @@ import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { sveltekit } from '@sveltejs/kit/vite';
 import sbom from 'rollup-plugin-sbom';
+import { kitConfig } from './kit.config.ts';
 import { meteocons, themeColor } from './src/lib/build/meteocons.ts';
 
 // anchored to this file, not the cwd, so invoking vite from elsewhere still works
@@ -46,7 +47,7 @@ export default defineConfig({
 		...apiPlugins,
 		tailwindcss(),
 		meteocons(themeColor(kioskCss, '--color-kiosk-fg')),
-		sveltekit(),
+		sveltekit(kitConfig),
 		// Bundle-truth CycloneDX SBOM, only what survives tree-shaking (cf. build.license).
 		sbom()
 	],
