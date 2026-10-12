@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
-	import PasswordInput from '$lib/PasswordInput.svelte';
+	import PasswordInput from '#lib/PasswordInput.svelte';
 
 	let {
 		onconnect,

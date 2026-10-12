@@ -1,6 +1,6 @@
 import { invalidate } from '$app/navigation';
-import { apiGetLibrary, apiSyncLibrary } from '$lib/api/sdk.gen';
-import type { LibrarySync } from '$lib/api/types.gen';
+import { apiGetLibrary, apiSyncLibrary } from '#lib/api/sdk.gen.js';
+import type { LibrarySync } from '#lib/api/types.gen.js';
 import { toaster } from './toaster';
 
 export async function loadLibrary(fetch: typeof globalThis.fetch) {

@@ -1,7 +1,7 @@
 import { createContext } from 'svelte';
 import { createSubscriber } from 'svelte/reactivity';
 import { sensorKey } from './helpers';
-import { apiEvents } from '$lib/api/sdk.gen';
+import { apiEvents } from '#lib/api/sdk.gen.js';
 import type {
 	EventsResponse,
 	SensorPayload,
@@ -9,7 +9,7 @@ import type {
 	ImagePayload,
 	ScreenPayload,
 	KioskPayload
-} from '$lib/api/types.gen';
+} from '#lib/api/types.gen.js';
 
 type SSEEvent = NonNullable<EventsResponse>[number];
 

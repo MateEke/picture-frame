@@ -1,6 +1,6 @@
 <script lang="ts">
-	import ConfirmDialog from '$lib/ConfirmDialog.svelte';
-	import { requestPower, type PowerAction } from '$lib/power';
+	import ConfirmDialog from '#lib/ConfirmDialog.svelte';
+	import { requestPower, type PowerAction } from '#lib/power.js';
 
 	let {
 		action,

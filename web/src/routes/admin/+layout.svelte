@@ -1,5 +1,5 @@
 <script lang="ts">
-	import '$lib/admin-theme.css';
+	import '#lib/admin-theme.css';
 
 	import {
 		HouseIcon,
@@ -13,10 +13,10 @@
 	import { page } from '$app/state';
 
 	import type { LayoutProps } from './$types';
-	import { SSESubscriber, setSSEContext } from '$lib/sse.svelte';
-	import { reloadOnBackendVersionChange } from '$lib/versionReload.svelte';
-	import { toaster } from '$lib/toaster';
-	import { logout } from '$lib/auth';
+	import { SSESubscriber, setSSEContext } from '#lib/sse.svelte.js';
+	import { reloadOnBackendVersionChange } from '#lib/versionReload.svelte.js';
+	import { toaster } from '#lib/toaster.js';
+	import { logout } from '#lib/auth.js';
 
 	const sse = new SSESubscriber();
 	setSSEContext(sse);

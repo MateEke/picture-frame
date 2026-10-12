@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { WeatherDto } from '$lib/api/types.gen';
-	import { DURATION_STOPS } from '$lib/duration';
-	import SecretField from '$lib/SecretField.svelte';
+	import type { WeatherDto } from '#lib/api/types.gen.js';
+	import { DURATION_STOPS } from '#lib/duration.js';
+	import SecretField from '#lib/SecretField.svelte';
 	import DurationSlider from './DurationSlider.svelte';
 	import Field from './Field.svelte';
 
@@ -25,6 +25,7 @@
 		bind:value={weather.api_key}
 		bind:isSet={weather.api_key_set}
 		wasSet={savedWeather.api_key_set}
+		data-testid="setting-weather-api-key"
 	/>
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 		<Field

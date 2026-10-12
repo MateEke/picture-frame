@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { Component } from 'svelte';
 	import { WifiIcon, WifiOffIcon, RadioIcon, LoaderIcon, EthernetPortIcon } from '@lucide/svelte';
-	import type { WiFiState } from '$lib/api/types.gen';
-	import SignalBars from '$lib/SignalBars.svelte';
+	import type { WiFiState } from '#lib/api/types.gen.js';
+	import SignalBars from '#lib/SignalBars.svelte';
 
 	let { status }: { status: WiFiState } = $props();
 

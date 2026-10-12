@@ -1,4 +1,4 @@
-import type { ConfigResponseBody, SensorDto } from '$lib/api/types.gen';
+import type { ConfigResponseBody, SensorDto } from '#lib/api/types.gen.js';
 
 // Matches the Accordion.Item values so an issue can open its section.
 export type IssueSection = 'library' | 'weather' | 'mqtt' | 'sensors';

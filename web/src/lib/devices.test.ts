@@ -3,7 +3,7 @@ import { loadDevices } from './devices';
 
 const mockGetSystemDevices = vi.fn();
 
-vi.mock('$lib/api/sdk.gen', () => ({
+vi.mock('#lib/api/sdk.gen.js', () => ({
 	apiGetSystemDevices: (...args: unknown[]) => mockGetSystemDevices(...args)
 }));
 

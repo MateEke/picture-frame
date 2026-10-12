@@ -1,5 +1,5 @@
-import { apiGetSystemDevices } from '$lib/api/sdk.gen';
-import type { SystemDevicesBody } from '$lib/api/types.gen';
+import { apiGetSystemDevices } from '#lib/api/sdk.gen.js';
+import type { SystemDevicesBody } from '#lib/api/types.gen.js';
 
 export type { SystemDevicesBody };
 

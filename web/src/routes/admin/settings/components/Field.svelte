@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { Undo2Icon } from '@lucide/svelte';
-	import InfoTip from '$lib/InfoTip.svelte';
+	import InfoTip from '#lib/InfoTip.svelte';
 
 	let {
 		label,

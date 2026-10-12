@@ -3,7 +3,7 @@ import { Heartbeat } from './heartbeat';
 
 const mockHeartbeat = vi.fn();
 
-vi.mock('$lib/api/sdk.gen', () => ({
+vi.mock('#lib/api/sdk.gen.js', () => ({
 	apiHeartbeat: (...args: unknown[]) => mockHeartbeat(...args)
 }));
 

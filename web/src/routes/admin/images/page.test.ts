@@ -5,9 +5,9 @@ const mockLoadImages = vi.fn();
 const mockLoadLibrary = vi.fn();
 const mockLoadConfig = vi.fn();
 
-vi.mock('$lib/images', () => ({ loadImages: (...a: unknown[]) => mockLoadImages(...a) }));
-vi.mock('$lib/library', () => ({ loadLibrary: (...a: unknown[]) => mockLoadLibrary(...a) }));
-vi.mock('$lib/config', () => ({ loadConfig: (...a: unknown[]) => mockLoadConfig(...a) }));
+vi.mock('#lib/images.js', () => ({ loadImages: (...a: unknown[]) => mockLoadImages(...a) }));
+vi.mock('#lib/library.js', () => ({ loadLibrary: (...a: unknown[]) => mockLoadLibrary(...a) }));
+vi.mock('#lib/config.js', () => ({ loadConfig: (...a: unknown[]) => mockLoadConfig(...a) }));
 
 // The loader only reads `fetch`; cast the minimal event once.
 function event() {

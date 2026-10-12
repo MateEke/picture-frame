@@ -1,4 +1,4 @@
-import { apiSystemReboot, apiSystemShutdown } from '$lib/api/sdk.gen';
+import { apiSystemReboot, apiSystemShutdown } from '#lib/api/sdk.gen.js';
 import { toaster } from './toaster';
 
 export type PowerAction = 'reboot' | 'shutdown';

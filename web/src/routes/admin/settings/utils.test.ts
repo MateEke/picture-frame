@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { eq, hasMotionSensor, createEmptyConfig, createEmptyMeta, configPayload } from './utils';
-import type { SensorDto } from '$lib/api/types.gen';
+import type { SensorDto } from '#lib/api/types.gen.js';
 
 describe('settings utils', () => {
 	describe('eq', () => {

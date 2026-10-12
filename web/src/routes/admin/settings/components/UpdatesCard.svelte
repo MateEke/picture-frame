@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Switch } from '@skeletonlabs/skeleton-svelte';
-	import type { UpdaterDto } from '$lib/api/types.gen';
-	import SecretField from '$lib/SecretField.svelte';
+	import type { UpdaterDto } from '#lib/api/types.gen.js';
+	import SecretField from '#lib/SecretField.svelte';
 	import Field from './Field.svelte';
 
 	let {

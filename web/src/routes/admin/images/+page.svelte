@@ -16,13 +16,13 @@
 		ChevronsDownIcon
 	} from '@lucide/svelte';
 	import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME, type DndEvent } from 'svelte-dnd-action';
-	import { deleteImage, deleteImages, setImageOrder, uploadImages } from '$lib/images';
-	import { toaster } from '$lib/toaster';
+	import { deleteImage, deleteImages, setImageOrder, uploadImages } from '#lib/images.js';
+	import { toaster } from '#lib/toaster.js';
 	import { bulkUploadMessage } from './uploadFeedback';
-	import { moveUp, moveDown, moveToStart, moveToEnd } from '$lib/reorder';
-	import { syncLibrary } from '$lib/library';
-	import { getSSEContext } from '$lib/sse.svelte';
-	import ConfirmDialog from '$lib/ConfirmDialog.svelte';
+	import { moveUp, moveDown, moveToStart, moveToEnd } from '#lib/reorder.js';
+	import { syncLibrary } from '#lib/library.js';
+	import { getSSEContext } from '#lib/sse.svelte.js';
+	import ConfirmDialog from '#lib/ConfirmDialog.svelte';
 	import Cropper from './components/Cropper.svelte';
 	import UploadDropzone from './components/UploadDropzone.svelte';
 	import UploadProgress from './components/UploadProgress.svelte';
@@ -411,7 +411,8 @@
 			{#if arranging && shuffleOn}
 				<div class="card preset-tonal-warning p-3 text-sm" data-testid="photos-shuffle-hint">
 					Shuffle is on, so this order will not affect playback until you turn it off in
-					<a class="anchor" href={resolve('/admin/settings')}>Settings</a>.
+					<a class="anchor" href={resolve('admin/settings')}>Settings</a>
+					.
 				</div>
 			{/if}
 
@@ -480,6 +481,5 @@
 	confirmTestid="photos-bulk-confirm"
 	onconfirm={confirmBulkDelete}
 	onclose={() => (bulkConfirm = false)}
+	>This will permanently delete the selected photos.</ConfirmDialog
 >
-	This will permanently delete the selected photos.
-</ConfirmDialog>

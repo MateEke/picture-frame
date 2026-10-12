@@ -11,7 +11,7 @@ import {
 	timeAgo,
 	resolveOutsideTemp
 } from './helpers';
-import type { SensorPayload, WeatherPayload } from '$lib/api/types.gen';
+import type { SensorPayload, WeatherPayload } from '#lib/api/types.gen.js';
 
 const base: SensorPayload = {
 	device_id: 'living_room',

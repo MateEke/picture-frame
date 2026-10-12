@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { SensorDto, CharacteristicDto, ConfigMetaBody } from '$lib/api/types.gen';
+	import type { SensorDto, CharacteristicDto, ConfigMetaBody } from '#lib/api/types.gen.js';
 	import { PlusIcon, XIcon } from '@lucide/svelte';
-	import { DURATION_STOPS } from '$lib/duration';
+	import { DURATION_STOPS } from '#lib/duration.js';
 	import DurationSlider from './DurationSlider.svelte';
 
 	let {

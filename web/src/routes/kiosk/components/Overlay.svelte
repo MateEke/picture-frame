@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { getSSEContext } from '$lib/sse.svelte';
+	import { getSSEContext } from '#lib/sse.svelte.js';
 	import {
 		formatClockParts,
 		formatMonthDay,
 		formatWeekday,
 		isSensorStale,
 		resolveOutsideTemp
-	} from '$lib/helpers';
+	} from '#lib/helpers.js';
 	import { onMount } from 'svelte';
 	import { weatherIconFor } from './weather-icons';
 	import { overlayShiftPair } from './overlayShift';

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { DisplayDto } from '$lib/api/types.gen';
+	import type { DisplayDto } from '#lib/api/types.gen.js';
 	import Field from './Field.svelte';
 	import DeviceCombobox from './DeviceCombobox.svelte';
 

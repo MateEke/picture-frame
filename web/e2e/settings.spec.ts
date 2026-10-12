@@ -113,6 +113,36 @@ test.describe('settings', () => {
 		await expect(settings.labelOutside).toHaveValue('E2E Outside');
 	});
 
+	// Kit 3 re-runs loads on a same-page link click; that must not wipe a draft.
+	test('keeps unsaved edits when the current nav link is clicked', async ({
+		page,
+		settings,
+		nav
+	}) => {
+		await settings.labelOutside.fill('E2E Draft');
+		await expect(settings.saveBar).toContainText('Unsaved changes');
+
+		// Assert only after the refreshed config lands, or the check races it.
+		const refreshed = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/config');
+		await nav.link('Settings').click();
+		await refreshed;
+		await expect(settings.labelOutside).toHaveValue('E2E Draft');
+		await expect(settings.saveBar).toContainText('Unsaved changes');
+	});
+
+	// A replaced secret round-trips identically (omitted, *_set true), so the
+	// save itself must reseed or the bar sticks.
+	test('clears the save bar after replacing an already-set secret', async ({ settings }) => {
+		await settings.openSection('weather');
+		for (const key of ['e2e-key-one', 'e2e-key-two']) {
+			await settings.weatherApiKey.fill(key);
+			await settings.save.click();
+			await expect(settings.saveBar).toBeHidden();
+			await settings.restartCancel.click();
+			await expect(settings.weatherApiKey).toHaveValue('');
+		}
+	});
+
 	test.describe('sensor dialog', () => {
 		test.beforeEach(async ({ settings }) => {
 			await settings.openSection('sensors');

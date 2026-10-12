@@ -1,6 +1,6 @@
 <script lang="ts">
 	import SearchCombobox from './SearchCombobox.svelte';
-	import LOCALE_TAGS from '$lib/locales.json';
+	import LOCALE_TAGS from '#lib/locales.json';
 
 	let {
 		value = $bindable(),

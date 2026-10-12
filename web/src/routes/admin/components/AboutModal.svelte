@@ -8,8 +8,8 @@
 		BookOpenIcon,
 		ExternalLinkIcon
 	} from '@lucide/svelte';
-	import { loadLicenses, checkForUpdate } from '$lib/updater';
-	import { REPO_URL, DOCS_URL } from '$lib/links';
+	import { loadLicenses, checkForUpdate } from '#lib/updater.js';
+	import { REPO_URL, DOCS_URL } from '#lib/links.js';
 
 	let {
 		open,

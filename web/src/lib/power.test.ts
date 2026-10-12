@@ -9,7 +9,7 @@ vi.mock('./toaster', () => ({
 const mockReboot = vi.fn();
 const mockShutdown = vi.fn();
 
-vi.mock('$lib/api/sdk.gen', () => ({
+vi.mock('#lib/api/sdk.gen.js', () => ({
 	apiSystemReboot: (...args: unknown[]) => mockReboot(...args),
 	apiSystemShutdown: (...args: unknown[]) => mockShutdown(...args)
 }));
