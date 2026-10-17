@@ -19,6 +19,12 @@ type ReadyEvent struct{}
 // PingEvent is an empty keep-alive event.
 type PingEvent struct{}
 
+// ScreenEvent is the bus's ScreenPayload plus the next scheduled change.
+type ScreenEvent struct {
+	state.ScreenPayload
+	NextChange *NextChangeDTO `json:"next_change,omitempty" doc:"Next scheduled screen change; absent without a schedule"`
+}
+
 func (s *server) registerSSERoutes(api huma.API) {
 	s.kioskExempt("/events")
 	sse.Register(api, huma.Operation{
@@ -37,7 +43,7 @@ func (s *server) registerSSERoutes(api huma.API) {
 		"sensor":        state.SensorPayload{},
 		"weather":       state.WeatherPayload{},
 		"image":         state.ImagePayload{},
-		"screen":        state.ScreenPayload{},
+		"screen":        ScreenEvent{},
 		"screen_aspect": state.ScreenAspectPayload{},
 		"kiosk":         state.KioskPayload{},
 		"touch":         state.TouchPayload{},
@@ -85,7 +91,7 @@ func (s *server) streamEvents(ctx context.Context, send sse.Sender) {
 			if _, isImage := event.Payload.(state.ImagePayload); isImage && !s.screen.State() {
 				continue
 			}
-			if err := send(sse.Message{ID: int(event.ID), Data: event.Payload}); err != nil { //nolint:gosec // ID won't overflow int on 64-bit
+			if err := send(sse.Message{ID: int(event.ID), Data: s.ssePayload(event.Payload)}); err != nil { //nolint:gosec // ID won't overflow int on 64-bit
 				s.log.Warn("sse: write failed", "err", err)
 				return
 			}
@@ -104,10 +110,20 @@ func (s *server) sendSnapshot(send sse.Sender) uint64 {
 		if e.ID > maxID {
 			maxID = e.ID
 		}
-		if err := send(sse.Message{ID: int(e.ID), Data: e.Payload}); err != nil { //nolint:gosec // ID won't overflow int on 64-bit
+		if err := send(sse.Message{ID: int(e.ID), Data: s.ssePayload(e.Payload)}); err != nil { //nolint:gosec // ID won't overflow int on 64-bit
 			s.log.Warn("sse: snapshot write failed", "err", err)
 			return 0
 		}
 	}
 	return maxID
+}
+
+// ssePayload computes a screen event's next change at send time, so a replayed
+// snapshot is current.
+func (s *server) ssePayload(p state.Payload) any {
+	sp, ok := p.(state.ScreenPayload)
+	if !ok {
+		return p
+	}
+	return ScreenEvent{ScreenPayload: sp, NextChange: s.nextChange()}
 }

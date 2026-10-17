@@ -18,6 +18,7 @@ import (
 
 	"github.com/MateEke/picture-frame/internal/auth"
 	"github.com/MateEke/picture-frame/internal/config"
+	"github.com/MateEke/picture-frame/internal/display"
 	"github.com/MateEke/picture-frame/internal/hostmetrics"
 	"github.com/MateEke/picture-frame/internal/library"
 	"github.com/MateEke/picture-frame/internal/power"
@@ -37,6 +38,11 @@ type ScreenController interface {
 	// Reconcile re-asserts desired power; the SSE handler calls it on connect
 	// (a kiosk reconnect may follow a compositor restart).
 	Reconcile(ctx context.Context)
+}
+
+// ScreenSchedule is implemented by *display.Scheduler.
+type ScreenSchedule interface {
+	Next() (display.NextChange, bool)
 }
 
 // RotationController is implemented by display.Rotator; nil when the backend
@@ -76,6 +82,7 @@ type SyncerStatus = library.SyncerStatus
 type Config struct {
 	Log         *slog.Logger
 	Screen      ScreenController
+	Schedule    ScreenSchedule     // nil hides next_change
 	Rotator     RotationController // nil when the display backend can't rotate
 	Bus         *state.Bus
 	Library     *library.Library
@@ -130,6 +137,7 @@ type PowerController interface {
 type server struct {
 	log           *slog.Logger
 	screen        ScreenController
+	schedule      ScreenSchedule
 	rotator       RotationController
 	bus           *state.Bus
 	lib           *library.Library
@@ -175,6 +183,7 @@ func NewServer(cfg Config) http.Handler {
 	s := &server{
 		log:           cfg.Log,
 		screen:        cfg.Screen,
+		schedule:      cfg.Schedule,
 		rotator:       cfg.Rotator,
 		bus:           cfg.Bus,
 		lib:           cfg.Library,

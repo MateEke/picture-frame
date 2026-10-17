@@ -142,6 +142,23 @@ func (d DisplayConfig) validate() error {
 	default:
 		return fmt.Errorf("rotation must be 0, 90, 180 or 270, got %d", d.Rotation)
 	}
+	return d.Schedule.validate()
+}
+
+func (s ScheduleConfig) validate() error {
+	if s.OffAt != "" {
+		if _, err := ParseClock(s.OffAt); err != nil {
+			return fmt.Errorf("schedule.off_at: %w", err)
+		}
+	}
+	if s.OnAt != "" {
+		if _, err := ParseClock(s.OnAt); err != nil {
+			return fmt.Errorf("schedule.on_at: %w", err)
+		}
+	}
+	if s.OffAt != "" && s.OffAt == s.OnAt {
+		return fmt.Errorf("schedule: off and on times can't be the same")
+	}
 	return nil
 }
 

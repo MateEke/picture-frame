@@ -4,9 +4,9 @@ description: Set how photos advance, when the screen sleeps, the language on the
 ---
 
 The slideshow and the screen's behavior are set on the **Settings** page, in two groups.
-**Essentials** holds the photo rotation and pairing, the idle screen-off, the language, and the
-reading labels. These apply the moment you save. **Display** holds the screen output and which
-screen-power backend the frame uses. See [Configuration basics](/getting-started/configuration/)
+**Essentials** holds the photo rotation and pairing, the idle screen-off, the screen schedule, the
+language, and the reading labels. These apply the moment you save. **Display** holds the screen
+output and which screen-power backend the frame uses. See [Configuration basics](/getting-started/configuration/)
 for how saving and restarts work.
 
 ![The Settings page, with the Essentials group showing the slideshow and display controls](../../../assets/screenshots/settings.png)
@@ -55,6 +55,36 @@ the toggle on the [Dashboard](/manual/dashboard/) or the switch exposed to
 A monitor or a laptop panel cuts its backlight when the screen blanks. Some TVs ignore the
 signal and stay lit on a black screen. Powering a TV down fully takes HDMI-CEC, which is
 outside what the frame controls.
+:::
+
+## Turning the screen off on a schedule
+
+**Screen schedule** turns the screen off and on at the same times every day
+(`display.schedule`). Set **Turn off at** to blank it each night and **Turn on at** to light it
+each morning. It works with or without a motion sensor. A saved change acts from the next
+scheduled time; the screen doesn't switch the moment you save.
+
+Each time works on its own, and a cleared time does nothing:
+
+- **Both times** give a quiet window, such as off from 11:00 PM to 7:00 AM.
+- **Only an off time** blanks the screen each night and leaves turning it back on to you, from
+  the dashboard, Home Assistant, or a tap on a touchscreen.
+- **Only an on time** lights the screen each morning, handy if you switch it off by hand at
+  night.
+
+The schedule acts like the dashboard toggle. At the off time the screen goes dark and motion
+won't wake it. At the on time it comes back and motion sensing resumes, so with a motion sensor
+it may blank again after the idle timeout. In between, you can still override it: turn the
+screen on from the dashboard or tap a touchscreen, and the next scheduled time takes over again.
+
+The times follow the frame's **Time zone** setting, or the device's own zone when that is
+empty, and daylight saving time is handled. If the frame was unplugged across a scheduled time,
+a full off-and-on window catches up when it starts again. A lone off or on time that was missed
+is skipped instead, so plugging the frame in at noon never blanks it.
+
+:::caution[The frame needs the correct time]
+A Raspberry Pi has no battery-backed clock and sets its time from the network. While it runs
+its own Wi-Fi hotspot with no internet, its clock can be wrong and so can the schedule.
 :::
 
 ## Language and labels

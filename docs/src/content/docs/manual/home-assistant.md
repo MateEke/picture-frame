@@ -56,7 +56,14 @@ it publishes entity states to the broker, then read them back as [MQTT sensors](
 The switch reflects intent, not the live panel. Motion and idle blanking move the screen-power
 sensor but leave the switch alone. Turning the switch on re-enables motion auto-wake. Turning it
 off forces the screen off and holds it there. With no motion sensor, it is a plain on-and-off.
-See [Slideshow & display](/manual/slideshow-display/).
+A [screen schedule](/manual/slideshow-display/#turning-the-screen-off-on-a-schedule) flips the
+switch the same way, so it reads off overnight. See
+[Slideshow & display](/manual/slideshow-display/).
+
+:::tip[Schedules beyond one daily window]
+The frame's own schedule is the same every day. For anything richer, such as weekends, holidays,
+or sunrise, leave it empty and drive the **Screen** switch from a Home Assistant automation.
+:::
 
 ## Bridge settings
 

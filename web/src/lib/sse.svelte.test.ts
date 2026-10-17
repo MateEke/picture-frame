@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type {
 	ImagePayload,
 	KioskPayload,
-	ScreenPayload,
+	ScreenEvent,
 	SensorPayload,
 	WeatherPayload
 } from '#lib/api/types.gen.js';
@@ -13,7 +13,7 @@ type SSEEvent =
 	| { event: 'sensor'; data: SensorPayload }
 	| { event: 'weather'; data: WeatherPayload }
 	| { event: 'image'; data: ImagePayload }
-	| { event: 'screen'; data: ScreenPayload }
+	| { event: 'screen'; data: ScreenEvent }
 	| { event: 'screen_aspect'; data: { aspect: number } }
 	| { event: 'kiosk'; data: KioskPayload }
 	| { event: 'ready'; data: Record<string, never> }
@@ -23,7 +23,7 @@ type Snapshot = {
 	sensors: Record<string, SensorPayload>;
 	weather: WeatherPayload | null;
 	image: ImagePayload | null;
-	screen: ScreenPayload | null;
+	screen: ScreenEvent | null;
 	screenAspect: number | null;
 	kiosk: KioskPayload | null;
 	ready: boolean;

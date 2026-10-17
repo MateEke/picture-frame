@@ -33,7 +33,8 @@ const sampleConfig = {
 		locale: 'en-US',
 		hide_clock_date: false,
 		timezone: '',
-		labels: { outside: '', inside: '', humidity: '' }
+		labels: { outside: '', inside: '', humidity: '' },
+		schedule: { off_at: '', on_at: '' }
 	},
 	slideshow: { interval: '2m0s', randomize: false, split_screen: true, images_dir: 'images' },
 	library: {

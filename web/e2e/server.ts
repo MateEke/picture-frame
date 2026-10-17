@@ -26,6 +26,8 @@ export type ServerOptions = {
 	hideClockDate?: boolean;
 	/** IANA timezone for the kiosk clock/date. */
 	timezone?: string;
+	scheduleOff?: string;
+	scheduleOn?: string;
 	/** Drop sensors and the [weather] block so the overlay can go fully empty. */
 	minimalOverlay?: boolean;
 	/** ROTATION_MOCK=unsupported → rotation select disabled with the install hint. */
@@ -72,6 +74,8 @@ async function spawnOnce(opts: ServerOptions): Promise<PfServer> {
 			immich: opts.immich,
 			hideClockDate: opts.hideClockDate,
 			timezone: opts.timezone,
+			scheduleOff: opts.scheduleOff,
+			scheduleOn: opts.scheduleOn,
 			minimalOverlay: opts.minimalOverlay,
 			slideshowInterval: opts.slideshowInterval
 		})

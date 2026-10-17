@@ -130,7 +130,26 @@ type DisplayConfig struct {
 	Timezone string `toml:"timezone"`
 	// Labels are the owner-provided captions under the kiosk readings;
 	// an empty string hides that caption.
-	Labels KioskLabelsConfig `toml:"labels"`
+	Labels   KioskLabelsConfig `toml:"labels"`
+	Schedule ScheduleConfig    `toml:"schedule"`
+}
+
+// Location is the configured timezone, else the system's.
+func (d DisplayConfig) Location() *time.Location {
+	if d.Timezone == "" {
+		return time.Local
+	}
+	loc, err := time.LoadLocation(d.Timezone)
+	if err != nil {
+		return time.Local
+	}
+	return loc
+}
+
+// ScheduleConfig holds daily "HH:MM" times in the display timezone; empty skips that half.
+type ScheduleConfig struct {
+	OffAt string `toml:"off_at"`
+	OnAt  string `toml:"on_at"`
 }
 
 // KioskLabelsConfig holds free-text captions, owner wording, not translations.

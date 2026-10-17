@@ -596,6 +596,12 @@ func TestValidateDisplay(t *testing.T) {
 		{"rotation 270 ok", config.DisplayConfig{Rotation: 270}, ""},
 		{"rotation invalid", config.DisplayConfig{Rotation: 45}, "rotation must be"},
 		{"rotation negative", config.DisplayConfig{Rotation: -90}, "rotation must be"},
+		{"schedule both", config.DisplayConfig{Schedule: config.ScheduleConfig{OffAt: "23:00", OnAt: "07:00"}}, ""},
+		{"schedule off only", config.DisplayConfig{Schedule: config.ScheduleConfig{OffAt: "23:00"}}, ""},
+		{"schedule on only", config.DisplayConfig{Schedule: config.ScheduleConfig{OnAt: "07:00"}}, ""},
+		{"schedule bad off", config.DisplayConfig{Schedule: config.ScheduleConfig{OffAt: "7pm"}}, "schedule.off_at"},
+		{"schedule bad on", config.DisplayConfig{Schedule: config.ScheduleConfig{OnAt: "25:00"}}, "schedule.on_at"},
+		{"schedule equal", config.DisplayConfig{Schedule: config.ScheduleConfig{OffAt: "07:00", OnAt: "07:00"}}, "can't be the same"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -873,5 +879,34 @@ func TestHasMotionSensor(t *testing.T) {
 				t.Errorf("HasMotionSensor = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestDisplayLocation(t *testing.T) {
+	if got := (config.DisplayConfig{}).Location(); got != time.Local {
+		t.Errorf("empty timezone: got %v, want Local", got)
+	}
+	if got := (config.DisplayConfig{Timezone: "Not/AZone"}).Location(); got != time.Local {
+		t.Errorf("unknown timezone: got %v, want Local", got)
+	}
+	if got := (config.DisplayConfig{Timezone: "Europe/Budapest"}).Location().String(); got != "Europe/Budapest" {
+		t.Errorf("got %q, want Europe/Budapest", got)
+	}
+}
+
+func TestScheduleConfigLoads(t *testing.T) {
+	dir := t.TempDir()
+	path := write(t, dir, "config.toml", `
+[display.schedule]
+off_at = "23:00"
+on_at = "07:00"
+`)
+	cfg, err := config.Load(path, filepath.Join(dir, "o.toml"))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	want := config.ScheduleConfig{OffAt: "23:00", OnAt: "07:00"}
+	if cfg.Display.Schedule != want {
+		t.Errorf("schedule: got %+v, want %+v", cfg.Display.Schedule, want)
 	}
 }

@@ -83,7 +83,10 @@
 	let openSections = $state<string[]>([]);
 
 	function openSection(value: string) {
-		if (!openSections.includes(value)) openSections = [...openSections, value];
+		// Essentials is always open; it isn't an accordion item.
+		if (value !== 'essentials' && !openSections.includes(value)) {
+			openSections = [...openSections, value];
+		}
 		// Scroll after the panel expands.
 		requestAnimationFrame(() =>
 			document
@@ -280,6 +283,7 @@
 				savedSlideshow={savedConfig.slideshow}
 				savedDisplay={savedConfig.display}
 				sensors={draft.sensors}
+				errors={validation.essentials}
 			/>
 		</div>
 

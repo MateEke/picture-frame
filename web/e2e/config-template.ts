@@ -9,6 +9,9 @@ export type ConfigOptions = {
 	hideClockDate?: boolean;
 	/** IANA timezone for the kiosk clock/date; empty follows the device. */
 	timezone?: string;
+	/** Daily screen schedule times, HH:MM. */
+	scheduleOff?: string;
+	scheduleOn?: string;
 	/** Drop all sensors and weather so the overlay can go fully empty. */
 	minimalOverlay?: boolean;
 	/** Slideshow dwell; defaults to the fast 2s the other specs rely on. */
@@ -32,9 +35,13 @@ export function renderConfig(opts: ConfigOptions): string {
 	const displayExtra =
 		(opts.hideClockDate ? 'hide_clock_date = true\n' : '') +
 		(opts.timezone ? `timezone = "${opts.timezone}"\n` : '');
+	const schedule =
+		opts.scheduleOff || opts.scheduleOn
+			? `[display.schedule]\noff_at = "${opts.scheduleOff ?? ''}"\non_at = "${opts.scheduleOn ?? ''}"\n`
+			: '';
 	const display = `[display]
 blank_after = "20m"
-${displayExtra}`;
+${displayExtra}${schedule}`;
 	const slideshow = `[slideshow]
 interval   = "${opts.slideshowInterval ?? '2s'}"
 images_dir = "${opts.imagesDir}"`;

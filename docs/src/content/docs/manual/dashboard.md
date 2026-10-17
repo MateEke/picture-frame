@@ -39,6 +39,10 @@ switches between two modes.
   motion and wakes when motion returns. Without one, the screen stays on.
 - **Off.** Forces the screen off and ignores motion until you switch back to Auto.
 
+With a [screen schedule](/manual/slideshow-display/#turning-the-screen-off-on-a-schedule), the
+note also says when the schedule next acts, such as "Turns off at 11:00 PM". The schedule moves
+the toggle too: it reads Off overnight and Auto again in the morning.
+
 The idle timeout and motion sensing behind this are covered on
 [Slideshow & display](/manual/slideshow-display/) and [Sensors](/manual/sensors/).
 
