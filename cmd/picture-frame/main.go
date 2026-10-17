@@ -50,6 +50,7 @@ func run() error {
 	configPath := flag.String("config", "config.toml", "path to user config file")
 	overridesPath := flag.String("overrides", "runtime-overrides.toml", "path to runtime overrides file")
 	screenStatePath := flag.String("screen-state", "screen-state", "path to the persisted manual screen on/off state")
+	scheduleStatePath := flag.String("schedule-state", "schedule-state", "path to the persisted screen schedule progress")
 	healthCheck := flag.Bool("health-check", false, "run a startup self-test and exit (the updater's pre-flight)")
 	hashPW := flag.Bool("hash-password", false, "read a password from stdin, print its bcrypt hash, and exit (used by install.sh)")
 	flag.Parse()
@@ -95,7 +96,7 @@ func run() error {
 	restartCh := make(chan struct{}, 1)
 	production := isProduction()
 
-	display, intentStore, err := newDisplay(production, log, cfg, *screenStatePath)
+	display, intentStore, scheduleStore, err := newDisplay(production, log, cfg, *screenStatePath, *scheduleStatePath)
 	if err != nil {
 		return fmt.Errorf("init display: %w", err)
 	}
@@ -119,8 +120,18 @@ func run() error {
 	policy.Start(ctx)
 	go policy.Run(ctx)
 
-	// Screen: manual on/off shared by the HTTP API and MQTT bridge.
+	// Screen: manual on/off shared by the HTTP API, MQTT bridge, and schedule.
 	screen := displaypkg.NewScreen(policy)
+
+	scheduler := displaypkg.NewScheduler(displaypkg.SchedulerConfig{
+		Log:      log,
+		Screen:   screen,
+		Store:    scheduleStore,
+		Schedule: cfg.Display.Schedule,
+		Location: cfg.Display.Location(),
+	})
+	scheduler.Start(ctx)
+	go scheduler.Run(ctx)
 
 	// Apply configured rotation; if labwc isn't up yet the SSE-connect reconcile heals it.
 	rotator := newRotator(production, log, cfg)
@@ -227,7 +238,7 @@ func run() error {
 		go mqttHub.Connect(ctx)
 	}
 
-	liveCfg := &liveConfigImpl{slideshow: slides, policy: policy, rotator: rotator, weather: weatherPoller, logLevel: &levelVar, log: log}
+	liveCfg := &liveConfigImpl{slideshow: slides, policy: policy, scheduler: scheduler, rotator: rotator, weather: weatherPoller, logLevel: &levelVar, log: log}
 
 	restartFn := startup.MakeRestartFunc(restartCh)
 	updaterSvc := startUpdater(ctx, log, cfg, production, restartFn)
@@ -238,6 +249,7 @@ func run() error {
 		Handler: httpapi.NewServer(httpapi.Config{
 			Log:           log,
 			Screen:        screen,
+			Schedule:      scheduler,
 			Rotator:       rotator,
 			Bus:           bus,
 			Library:       lib,

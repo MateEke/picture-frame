@@ -302,6 +302,15 @@ func (p *Policy) applyLocked(ctx context.Context) error {
 	return nil
 }
 
+// Announce re-publishes the screen state, so clients refresh what they derive
+// from it (e.g. the next scheduled change).
+func (p *Policy) Announce() {
+	p.mu.Lock()
+	on, auto := p.on, !p.manualOff
+	p.mu.Unlock()
+	p.publish(on, auto)
+}
+
 // publish emits the current screen state: on is live panel power, auto is the
 // manual intent. Call after releasing p.mu, never hold the lock across bus I/O.
 // Bus is required (see PolicyConfig), so no nil guard.

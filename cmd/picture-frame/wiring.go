@@ -32,20 +32,20 @@ func isProduction() bool {
 	return strings.EqualFold(env, "prod") || strings.EqualFold(env, "production")
 }
 
-// newDisplay returns the panel controller and intent store: real hardware plus a
-// persisted intent store in prod, a no-op mock (no store) in development.
-func newDisplay(production bool, log *slog.Logger, cfg *config.Config, screenStatePath string) (displaypkg.Controller, displaypkg.IntentStore, error) {
+// newDisplay returns real hardware plus persisted stores in prod, a no-op mock
+// (no stores) in development.
+func newDisplay(production bool, log *slog.Logger, cfg *config.Config, screenStatePath, scheduleStatePath string) (displaypkg.Controller, displaypkg.IntentStore, displaypkg.ScheduleStore, error) {
 	if !production {
 		log.Info("using no-op display controller (development mode)")
 		m := &displaypkg.Mock{}
 		m.SetOn(true)
-		return m, nil, nil
+		return m, nil, nil, nil
 	}
 	display, err := startup.NewDisplayController(log, cfg.Display)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return display, displaypkg.NewFileIntentStore(screenStatePath), nil
+	return display, displaypkg.NewFileIntentStore(screenStatePath), displaypkg.NewFileScheduleStore(scheduleStatePath), nil
 }
 
 // newRotator: wlr-randr in prod (nil on vcgencmd), a mock in dev;
@@ -212,6 +212,7 @@ func mockUpdaterDelay() time.Duration {
 type liveConfigImpl struct {
 	slideshow *slideshow.Slideshow
 	policy    *displaypkg.Policy
+	scheduler *displaypkg.Scheduler
 	rotator   displaypkg.Rotator // nil on vcgencmd
 	weather   *weather.Poller    // may be nil if api_key not configured
 	logLevel  *slog.LevelVar
@@ -223,6 +224,9 @@ func (l *liveConfigImpl) ApplyLive(cfg config.Config) {
 	l.slideshow.SetRandomize(cfg.Slideshow.Randomize)
 	l.slideshow.SetSplitConfig(cfg.Slideshow.SplitScreen, slideplan.Threshold{Factor: cfg.Slideshow.PairThreshold})
 	l.policy.SetBlankAfter(cfg.Display.BlankAfter.Duration)
+	if l.scheduler.Set(cfg.Display.Schedule, cfg.Display.Location()) {
+		l.policy.Announce()
+	}
 	if l.rotator != nil {
 		if err := l.rotator.Set(context.Background(), cfg.Display.Rotation); err != nil {
 			l.log.Warn("rotation apply failed", "err", err)

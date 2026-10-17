@@ -13,8 +13,15 @@ import (
 // --- Screen ---
 
 type ScreenStateResponse struct {
-	State string `json:"state" enum:"on,off" doc:"Current screen power state"`
-	Auto  bool   `json:"auto" doc:"Whether automatic power management is active"`
+	State      string         `json:"state" enum:"on,off" doc:"Current screen power state"`
+	Auto       bool           `json:"auto" doc:"Whether automatic power management is active"`
+	NextChange *NextChangeDTO `json:"next_change,omitempty" doc:"Next scheduled screen change; absent without a schedule"`
+}
+
+type NextChangeDTO struct {
+	At   time.Time `json:"at" doc:"When the change happens"`
+	On   bool      `json:"on" doc:"Whether the screen turns on (true) or off"`
+	Time string    `json:"time" doc:"The scheduled time of day, HH:MM in the frame's timezone"`
 }
 
 type GetScreenOutput struct {
@@ -29,6 +36,17 @@ type SetScreenInput struct {
 	Body SetScreenRequest
 }
 
+func (s *server) nextChange() *NextChangeDTO {
+	if s.schedule == nil {
+		return nil
+	}
+	next, ok := s.schedule.Next()
+	if !ok {
+		return nil
+	}
+	return &NextChangeDTO{At: next.At, On: next.On, Time: next.Clock.String()}
+}
+
 func (s *server) registerScreenRoutes(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID: "get-screen",
@@ -40,7 +58,9 @@ func (s *server) registerScreenRoutes(api huma.API) {
 		if s.screen.State() {
 			screenState = "on"
 		}
-		return &GetScreenOutput{Body: ScreenStateResponse{State: screenState, Auto: s.screen.Auto()}}, nil
+		return &GetScreenOutput{Body: ScreenStateResponse{
+			State: screenState, Auto: s.screen.Auto(), NextChange: s.nextChange(),
+		}}, nil
 	})
 
 	huma.Register(api, huma.Operation{

@@ -46,6 +46,16 @@ Captions under the readings on the frame. An empty value hides that caption. **(
 | `inside`   | string | (empty) | Caption for the inside reading.   |
 | `humidity` | string | (empty) | Caption for the humidity reading. |
 
+### `[display.schedule]`
+
+Daily times to turn the screen off and on, as 24-hour `HH:MM` in the display `timezone`. An empty
+value skips that half; the two can't be equal. **(live)**
+
+| Key      | Type   | Default | Description                       |
+| -------- | ------ | ------- | --------------------------------- |
+| `off_at` | string | (empty) | Turn the screen off at this time. |
+| `on_at`  | string | (empty) | Turn the screen on at this time.  |
+
 ## `[slideshow]`
 
 | Key              | Type     | Default  | Description                                                                                           |

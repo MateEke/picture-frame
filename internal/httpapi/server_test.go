@@ -3,15 +3,19 @@ package httpapi_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/MateEke/picture-frame/internal/config"
+	"github.com/MateEke/picture-frame/internal/display"
 	"github.com/MateEke/picture-frame/internal/httpapi"
 	"github.com/MateEke/picture-frame/internal/library"
 	"github.com/MateEke/picture-frame/internal/state"
@@ -125,6 +129,46 @@ func TestGetScreenState(t *testing.T) {
 	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/screen", nil))
 	if !strings.Contains(rec.Body.String(), `"on"`) {
 		t.Errorf("expected on in body, got %s", rec.Body.String())
+	}
+}
+
+type fakeSchedule struct {
+	next display.NextChange
+	ok   bool
+}
+
+func (f fakeSchedule) Next() (display.NextChange, bool) { return f.next, f.ok }
+
+func getScreenWithSchedule(t *testing.T, sched httpapi.ScreenSchedule) map[string]any {
+	t.Helper()
+	srv := httpapi.NewServer(httpapi.Config{Log: testutil.NopLogger(), Screen: &mockScreen{}, Schedule: sched, Bus: state.NewBus()})
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/screen", nil))
+	var body map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode %q: %v", rec.Body.String(), err)
+	}
+	return body
+}
+
+func TestGetScreenNextChange(t *testing.T) {
+	at := time.Date(2026, 10, 18, 7, 0, 0, 0, time.UTC)
+	body := getScreenWithSchedule(t, fakeSchedule{
+		next: display.NextChange{At: at, On: true, Clock: config.Clock{Hour: 7}}, ok: true,
+	})
+	want := map[string]any{"at": "2026-10-18T07:00:00Z", "on": true, "time": "07:00"}
+	if !reflect.DeepEqual(body["next_change"], want) {
+		t.Errorf("next_change = %v, want %v", body["next_change"], want)
+	}
+}
+
+func TestGetScreenNoNextChange(t *testing.T) {
+	for name, sched := range map[string]httpapi.ScreenSchedule{"no scheduler": nil, "empty schedule": fakeSchedule{}} {
+		t.Run(name, func(t *testing.T) {
+			if body := getScreenWithSchedule(t, sched); body["next_change"] != nil {
+				t.Errorf("next_change = %v, want absent", body["next_change"])
+			}
+		})
 	}
 }
 

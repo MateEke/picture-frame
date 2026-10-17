@@ -17,6 +17,24 @@ describe('settings validate', () => {
 		expect(validate(createEmptyConfig()).issues).toEqual([]);
 	});
 
+	describe('essentials', () => {
+		it('flags equal schedule times inline and in the issue list', () => {
+			const cfg = createEmptyConfig();
+			cfg.display.schedule = { off_at: '07:00', on_at: '07:00' };
+			const result = validate(cfg);
+			expect(result.essentials.schedule).toBe("Off and on times can't be the same.");
+			expect(result.issues).toEqual([
+				{ section: 'essentials', message: "Screen schedule: Off and on times can't be the same." }
+			]);
+		});
+
+		it('accepts a one-sided schedule', () => {
+			const cfg = createEmptyConfig();
+			cfg.display.schedule = { off_at: '23:00', on_at: '' };
+			expect(validate(cfg).issues).toEqual([]);
+		});
+	});
+
 	describe('library', () => {
 		it('requires a share URL for the immich backend', () => {
 			const cfg = createEmptyConfig();
@@ -376,14 +394,15 @@ describe('settings validate', () => {
 	});
 
 	describe('issue ordering', () => {
-		it('lists issues in accordion (UI) order: library, weather, mqtt, sensors', () => {
+		it('lists issues in page order: essentials, library, weather, mqtt, sensors', () => {
 			const cfg = createEmptyConfig();
+			cfg.display.schedule = { off_at: '07:00', on_at: '07:00' };
 			cfg.library.backend = 'immich';
 			cfg.weather.lat = 200;
 			cfg.mqtt.bridge.enabled = true;
 			cfg.sensors = [ble({ mac: '' })];
 			const sections = validate(cfg).issues.map((i) => i.section);
-			expect(sections).toEqual(['library', 'weather', 'mqtt', 'sensors']);
+			expect(sections).toEqual(['essentials', 'library', 'weather', 'mqtt', 'sensors']);
 		});
 	});
 
@@ -494,6 +513,15 @@ describe('settings validate', () => {
 			expect(sectionFromDetail('weather-poll: x')).toBe('weather');
 			expect(sectionFromDetail('mqtt_bridge: x')).toBe('mqtt');
 			expect(sectionFromDetail('display_output: x')).toBe('display');
+		});
+
+		it('maps a display schedule error to essentials', () => {
+			expect(sectionFromDetail("display: schedule: off and on times can't be the same")).toBe(
+				'essentials'
+			);
+			expect(sectionFromDetail('display: schedule.off_at: invalid time "7pm", want HH:MM')).toBe(
+				'essentials'
+			);
 		});
 
 		it('uses only the text before the first colon', () => {

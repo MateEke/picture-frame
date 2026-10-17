@@ -73,6 +73,13 @@ type DisplayDTO struct {
 	HideClockDate bool           `json:"hide_clock_date" doc:"Hide the clock and date block on the kiosk overlay"`
 	Timezone      string         `json:"timezone" doc:"IANA timezone for the kiosk clock/date, e.g. Europe/Budapest; empty uses the browser timezone"`
 	Labels        KioskLabelsDTO `json:"labels"`
+	Schedule      ScheduleDTO    `json:"schedule"`
+}
+
+// ScheduleDTO maps config.ScheduleConfig.
+type ScheduleDTO struct {
+	OffAt string `json:"off_at" pattern:"^$|^([01][0-9]|2[0-3]):[0-5][0-9]$" doc:"Daily screen-off time, HH:MM; empty disables"`
+	OnAt  string `json:"on_at" pattern:"^$|^([01][0-9]|2[0-3]):[0-5][0-9]$" doc:"Daily screen-on time, HH:MM; empty disables"`
 }
 
 // KioskLabelsDTO maps config.KioskLabelsConfig.
@@ -197,6 +204,7 @@ func toDTO(cfg config.Config) ConfigDTO {
 			HideClockDate: cfg.Display.HideClockDate,
 			Timezone:      cfg.Display.Timezone,
 			Labels:        labelsToDTO(cfg.Display.Labels),
+			Schedule:      ScheduleDTO{OffAt: cfg.Display.Schedule.OffAt, OnAt: cfg.Display.Schedule.OnAt},
 		},
 		Slideshow: SlideshowDTO{
 			Interval:    durString(cfg.Slideshow.Interval.Duration),
@@ -327,6 +335,7 @@ func applyDisplayDTO(dst *config.DisplayConfig, dto DisplayDTO) error {
 	dst.HideClockDate = dto.HideClockDate
 	dst.Timezone = dto.Timezone
 	dst.Labels = labelsFromDTO(dto.Labels)
+	dst.Schedule = config.ScheduleConfig{OffAt: dto.Schedule.OffAt, OnAt: dto.Schedule.OnAt}
 	return nil
 }
 

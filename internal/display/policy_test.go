@@ -720,6 +720,21 @@ func assertScreenEvent(t *testing.T, ch <-chan state.Event, wantOn, wantAuto boo
 	}
 }
 
+func TestPolicyAnnounceRepublishesState(t *testing.T) {
+	ctrl := &display.Mock{}
+	ctrl.SetOn(true)
+	bus := state.NewBus()
+	pol := newPolicy(ctrl, bus, nil, testBlankAfter)
+	if err := pol.SetManual(context.Background(), false); err != nil {
+		t.Fatal(err)
+	}
+	ch, unsub := bus.Subscribe()
+	defer unsub()
+
+	pol.Announce()
+	assertScreenEvent(t, ch, false, false)
+}
+
 func TestPolicyWakeFromIdleBlank(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		ctrl := &display.Mock{}

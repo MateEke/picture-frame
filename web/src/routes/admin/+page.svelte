@@ -20,7 +20,7 @@
 	import { resolve } from '$app/paths';
 	import { isSensorStale } from '#lib/helpers.js';
 	import { formatDuration } from '#lib/duration.js';
-	import { setScreen } from '#lib/screen.js';
+	import { screenReason, setScreen } from '#lib/screen.js';
 	import { networkTile } from '#lib/wifi.js';
 	import { getSSEContext } from '#lib/sse.svelte.js';
 	import NowPlaying from './components/NowPlaying.svelte';
@@ -56,11 +56,10 @@
 
 	const version = $derived(data.system?.version ?? data.update?.current ?? '—');
 
-	function screenReason(auto: boolean, on: boolean): string {
-		if (!auto) return 'Turned off manually.';
-		if (on) return 'Showing photos.';
-		return 'Asleep. Wakes on motion or activity.';
-	}
+	const nextChange = $derived(
+		sse.screen ? (sse.screen.next_change ?? null) : (data.screen?.next_change ?? null)
+	);
+	const locale = $derived(data.config?.display.locale ?? '');
 
 	async function handleToggle(checked: boolean) {
 		toggleScreenBusy = true;
@@ -197,7 +196,9 @@
 								<p class="font-medium" data-testid="screen-status">
 									Screen {screenLiveOn ? 'on' : 'off'}
 								</p>
-								<p class="text-surface-500-400 text-sm">{screenReason(screenAuto, screenLiveOn)}</p>
+								<p class="text-surface-500-400 text-sm" data-testid="screen-reason">
+									{screenReason(screenAuto, screenLiveOn, nextChange, locale, now)}
+								</p>
 							</div>
 						</div>
 						<Switch

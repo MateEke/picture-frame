@@ -56,7 +56,9 @@ layout (a modeset flash plus view-placement errors).
   re-run install.sh to get the buttons.
 - **Persisted intent.** The backend stores the manual on/off state in
   `@@INSTALL_DIR@@/screen-state` (flag `-screen-state`) so a manually-off screen stays off across a
-  backend restart.
+  backend restart. The screen schedule records its progress in `@@INSTALL_DIR@@/schedule-state`
+  (flag `-schedule-state`), so a restart applies a missed off or on time without replaying one it
+  already applied.
 - **Uploads / PrivateTmp.** `ProtectSystem=strict` makes the host `/tmp` read-only,
   so upload multipart spills fail ("read-only file system"). `PrivateTmp=true` gives
   the backend its own writable `/tmp` (a private tmpfs, wiped on restart).

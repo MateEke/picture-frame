@@ -146,6 +146,7 @@ export type DisplayDto = {
      * Counter-clockwise screen rotation in degrees (wlopm only); applied live via wlr-randr
      */
     rotation: 0 | 90 | 180 | 270;
+    schedule: ScheduleDto;
     /**
      * IANA timezone for the kiosk clock/date, e.g. Europe/Budapest; empty uses the browser timezone
      */
@@ -329,6 +330,21 @@ export type MqttDto = {
     username: string;
 };
 
+export type NextChangeDto = {
+    /**
+     * When the change happens
+     */
+    at: string;
+    /**
+     * Whether the screen turns on (true) or off
+     */
+    on: boolean;
+    /**
+     * The scheduled time of day, HH:MM in the frame's timezone
+     */
+    time: string;
+};
+
 export type PingEvent = {
     [key: string]: never;
 };
@@ -345,12 +361,27 @@ export type ReadyEvent = {
     [key: string]: never;
 };
 
+export type ScheduleDto = {
+    /**
+     * Daily screen-off time, HH:MM; empty disables
+     */
+    off_at: string;
+    /**
+     * Daily screen-on time, HH:MM; empty disables
+     */
+    on_at: string;
+};
+
 export type ScreenAspectPayload = {
     aspect: number;
 };
 
-export type ScreenPayload = {
+export type ScreenEvent = {
     auto: boolean;
+    /**
+     * Next scheduled screen change; absent without a schedule
+     */
+    next_change?: NextChangeDto;
     on: boolean;
 };
 
@@ -363,6 +394,10 @@ export type ScreenStateResponse = {
      * Whether automatic power management is active
      */
     auto: boolean;
+    /**
+     * Next scheduled screen change; absent without a schedule
+     */
+    next_change?: NextChangeDto;
     /**
      * Current screen power state
      */
@@ -783,6 +818,10 @@ export type ScreenStateResponseWritable = {
      * Whether automatic power management is active
      */
     auto: boolean;
+    /**
+     * Next scheduled screen change; absent without a schedule
+     */
+    next_change?: NextChangeDto;
     /**
      * Current screen power state
      */
@@ -1857,7 +1896,7 @@ export type EventsResponses = {
          */
         retry?: number;
     } | {
-        data: ScreenPayload;
+        data: ScreenEvent;
         /**
          * The event name.
          */

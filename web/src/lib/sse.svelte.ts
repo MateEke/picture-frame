@@ -7,7 +7,7 @@ import type {
 	SensorPayload,
 	WeatherPayload,
 	ImagePayload,
-	ScreenPayload,
+	ScreenEvent,
 	KioskPayload
 } from '#lib/api/types.gen.js';
 
@@ -34,7 +34,7 @@ export class SSESubscriber {
 	private _image = $state<ImagePayload | null>(null);
 	private _sensors = $state<Record<string, SensorPayload>>({});
 	private _weather = $state<WeatherPayload | null>(null);
-	private _screen = $state<ScreenPayload | null>(null);
+	private _screen = $state<ScreenEvent | null>(null);
 	private _screenAspect = $state<number | null>(null);
 	private _kiosk = $state<KioskPayload | null>(null);
 

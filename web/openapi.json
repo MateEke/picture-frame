@@ -418,6 +418,9 @@
             "format": "int64",
             "type": "integer"
           },
+          "schedule": {
+            "$ref": "#/components/schemas/ScheduleDTO"
+          },
           "timezone": {
             "description": "IANA timezone for the kiosk clock/date, e.g. Europe/Budapest; empty uses the browser timezone",
             "type": "string"
@@ -431,7 +434,8 @@
           "locale",
           "hide_clock_date",
           "timezone",
-          "labels"
+          "labels",
+          "schedule"
         ],
         "type": "object"
       },
@@ -838,6 +842,30 @@
         ],
         "type": "object"
       },
+      "NextChangeDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "description": "When the change happens",
+            "format": "date-time",
+            "type": "string"
+          },
+          "on": {
+            "description": "Whether the screen turns on (true) or off",
+            "type": "boolean"
+          },
+          "time": {
+            "description": "The scheduled time of day, HH:MM in the frame's timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "on",
+          "time"
+        ],
+        "type": "object"
+      },
       "PingEvent": {
         "additionalProperties": false,
         "type": "object"
@@ -867,6 +895,26 @@
         "additionalProperties": false,
         "type": "object"
       },
+      "ScheduleDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "off_at": {
+            "description": "Daily screen-off time, HH:MM; empty disables",
+            "pattern": "^$|^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "on_at": {
+            "description": "Daily screen-on time, HH:MM; empty disables",
+            "pattern": "^$|^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "off_at",
+          "on_at"
+        ],
+        "type": "object"
+      },
       "ScreenAspectPayload": {
         "additionalProperties": false,
         "properties": {
@@ -880,11 +928,15 @@
         ],
         "type": "object"
       },
-      "ScreenPayload": {
+      "ScreenEvent": {
         "additionalProperties": false,
         "properties": {
           "auto": {
             "type": "boolean"
+          },
+          "next_change": {
+            "$ref": "#/components/schemas/NextChangeDTO",
+            "description": "Next scheduled screen change; absent without a schedule"
           },
           "on": {
             "type": "boolean"
@@ -911,6 +963,10 @@
           "auto": {
             "description": "Whether automatic power management is active",
             "type": "boolean"
+          },
+          "next_change": {
+            "$ref": "#/components/schemas/NextChangeDTO",
+            "description": "Next scheduled screen change; absent without a schedule"
           },
           "state": {
             "description": "Current screen power state",
@@ -2659,7 +2715,7 @@
                       {
                         "properties": {
                           "data": {
-                            "$ref": "#/components/schemas/ScreenPayload"
+                            "$ref": "#/components/schemas/ScreenEvent"
                           },
                           "event": {
                             "const": "screen",

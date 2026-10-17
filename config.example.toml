@@ -33,6 +33,12 @@ blank_after = "20m"
 # outside = "Outside"
 # inside = "Inside"
 # humidity = "Humidity"
+#
+# Turn the screen off and on at the same times every day, as 24-hour "HH:MM" in
+# the display timezone. Leave one out to skip that half.
+# [display.schedule]
+# off_at = "23:00"
+# on_at = "07:00"
 
 # Slideshow
 

@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MateEke/picture-frame/internal/config"
 	displaypkg "github.com/MateEke/picture-frame/internal/display"
 	"github.com/MateEke/picture-frame/internal/httpapi"
 	"github.com/MateEke/picture-frame/internal/state"
@@ -335,5 +336,35 @@ func TestSSEStreamsTouchEvent(t *testing.T) {
 	line := readSSELine(t, resp.Body, 2*time.Second)
 	if !strings.Contains(line, "event: touch") {
 		t.Errorf("expected event: touch line, got: %q", line)
+	}
+}
+
+func TestSSEScreenEventCarriesNextChange(t *testing.T) {
+	bus := state.NewBus()
+	sched := fakeSchedule{
+		next: displaypkg.NextChange{At: time.Date(2026, 10, 18, 7, 0, 0, 0, time.UTC), On: true, Clock: config.Clock{Hour: 7}},
+		ok:   true,
+	}
+	srv := httptest.NewServer(httpapi.NewServer(httpapi.Config{
+		Log: testutil.NopLogger(), Screen: &mockScreen{}, Schedule: sched, Bus: bus,
+	}))
+	t.Cleanup(srv.Close)
+	bus.Publish(state.Event{Kind: state.KindScreen, Payload: state.ScreenPayload{On: false, Auto: false}})
+
+	resp, err := http.Get(srv.URL + "/events")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	scanner := bufio.NewScanner(resp.Body)
+
+	want := `"next_change":{"at":"2026-10-18T07:00:00Z","on":true,"time":"07:00"}`
+	if snap := collectSSEBlock(t, scanner, 2*time.Second); !strings.Contains(snap, "event: screen") || !strings.Contains(snap, want) {
+		t.Fatalf("snapshot block = %q, want a screen event with %s", snap, want)
+	}
+
+	bus.Publish(state.Event{Kind: state.KindScreen, Payload: state.ScreenPayload{On: true, Auto: true}})
+	if live := collectSSEBlock(t, scanner, 2*time.Second); !strings.Contains(live, `"on":true,"auto":true`) || !strings.Contains(live, want) {
+		t.Fatalf("live block = %q, want on/auto with %s", live, want)
 	}
 }

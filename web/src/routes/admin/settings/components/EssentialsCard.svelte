@@ -8,19 +8,22 @@
 	import TimezoneCombobox from './TimezoneCombobox.svelte';
 	import Field from './Field.svelte';
 	import ToggleRow from './ToggleRow.svelte';
+	import ScheduleField from './ScheduleField.svelte';
 
 	let {
 		slideshow = $bindable(),
 		display = $bindable(),
 		savedSlideshow,
 		savedDisplay,
-		sensors
+		sensors,
+		errors
 	}: {
 		slideshow: SlideshowDto;
 		display: DisplayDto;
 		savedSlideshow: SlideshowDto;
 		savedDisplay: DisplayDto;
 		sensors: SensorDto[] | null;
+		errors: { schedule?: string };
 	} = $props();
 
 	const motion = $derived(hasMotionSensor(sensors));
@@ -30,7 +33,7 @@
 	const labelsChanged = $derived(!eq(display.labels, savedDisplay.labels));
 </script>
 
-<div class="card bg-surface-100-900 space-y-5 p-6">
+<div id="sec-essentials" class="card bg-surface-100-900 scroll-mt-20 space-y-5 p-6">
 	<h2 class="h4 flex items-center gap-2">
 		<SlidersHorizontalIcon class="text-primary-500 size-5" /> Essentials
 	</h2>
@@ -75,6 +78,13 @@
 			Add a motion sensor to enable idle blanking. Without one, the screen couldn't wake again.
 		</p>
 	{/if}
+
+	<ScheduleField
+		bind:schedule={display.schedule}
+		saved={savedDisplay.schedule}
+		locale={display.locale}
+		error={errors.schedule}
+	/>
 
 	<Field
 		label="Language"

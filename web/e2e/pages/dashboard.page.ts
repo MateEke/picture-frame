@@ -8,6 +8,7 @@ export class DashboardPage {
 	readonly sensorReadings: Locator;
 	readonly screenStatus: Locator;
 	readonly screenSwitch: Locator;
+	readonly screenReason: Locator;
 	readonly systemHostname: Locator;
 	readonly systemUptime: Locator;
 	readonly systemCpuTemp: Locator;
@@ -51,6 +52,7 @@ export class DashboardPage {
 		this.sensorReadings = page.getByTestId('sensor-reading');
 		this.screenStatus = page.getByTestId('screen-status');
 		this.screenSwitch = page.getByTestId('screen-switch');
+		this.screenReason = page.getByTestId('screen-reason');
 		this.systemHostname = page.getByTestId('system-hostname');
 		this.systemUptime = page.getByTestId('system-uptime');
 		this.systemCpuTemp = page.getByTestId('system-cpu-temp');

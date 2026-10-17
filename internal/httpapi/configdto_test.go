@@ -53,6 +53,7 @@ func fullTestConfig() config.Config {
 			HideClockDate: true,
 			Timezone:      "Europe/Budapest",
 			Labels:        config.KioskLabelsConfig{Outside: "Kint", Inside: "Bent", Humidity: "Pára"},
+			Schedule:      config.ScheduleConfig{OffAt: "23:00", OnAt: "07:00"},
 		},
 		Slideshow: config.SlideshowConfig{
 			Interval:  config.Duration{Duration: 2 * time.Minute},
@@ -394,6 +395,9 @@ func TestApplyDTORoundTrip(t *testing.T) {
 	if out.Display.Labels != current.Display.Labels {
 		t.Errorf("display.labels: got %+v, want %+v", out.Display.Labels, current.Display.Labels)
 	}
+	if out.Display.Schedule != current.Display.Schedule {
+		t.Errorf("display.schedule: got %+v, want %+v", out.Display.Schedule, current.Display.Schedule)
+	}
 	if out.Weather.Lat != current.Weather.Lat {
 		t.Errorf("lat: got %v, want %v", out.Weather.Lat, current.Weather.Lat)
 	}
@@ -495,6 +499,7 @@ func TestApplyTier1CoversAllTier1Fields(t *testing.T) {
 	saved.Display.BlankAfter = config.Duration{Duration: 5 * time.Minute}
 	saved.Display.Locale = "hu-HU"
 	saved.Display.Labels = config.KioskLabelsConfig{Outside: "Udvar", Inside: "Nappali", Humidity: "Pára"}
+	saved.Display.Schedule = config.ScheduleConfig{OffAt: "22:30", OnAt: "06:45"}
 	saved.Slideshow.Interval = config.Duration{Duration: 5 * time.Minute}
 	saved.Slideshow.Randomize = !saved.Slideshow.Randomize
 	saved.Weather.PollInterval = config.Duration{Duration: 5 * time.Minute}
@@ -521,6 +526,7 @@ func TestNeedsRestartTier1FieldsAreLive(t *testing.T) {
 		{"display.timezone", func(c *config.Config) { c.Display.Timezone = "America/New_York" }},
 		{"display.rotation", func(c *config.Config) { c.Display.Rotation = 90 }},
 		{"display.labels", func(c *config.Config) { c.Display.Labels.Outside = "Garden" }},
+		{"display.schedule", func(c *config.Config) { c.Display.Schedule.OffAt = "21:00" }},
 		{"slideshow.interval", func(c *config.Config) { c.Slideshow.Interval = config.Duration{Duration: 5 * time.Minute} }},
 		{"slideshow.randomize", func(c *config.Config) { c.Slideshow.Randomize = !c.Slideshow.Randomize }},
 		{"weather.poll_interval", func(c *config.Config) { c.Weather.PollInterval = config.Duration{Duration: 5 * time.Minute} }},

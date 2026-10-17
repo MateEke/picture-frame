@@ -1,13 +1,15 @@
 import type { ConfigResponseBody, SensorDto } from '#lib/api/types.gen.js';
+import { scheduleError } from '#lib/schedule.js';
 
-// Matches the Accordion.Item values so an issue can open its section.
-export type IssueSection = 'library' | 'weather' | 'mqtt' | 'sensors';
+// The page section (sec-<value>) an issue jumps to; all but essentials are accordion items.
+export type IssueSection = 'essentials' | 'library' | 'weather' | 'mqtt' | 'sensors';
 
 export type Issue = { section: IssueSection; message: string };
 
 // Flat UI-ordered list for the count/jump, plus per-field maps for inline errors.
 export type ValidationResult = {
 	issues: Issue[];
+	essentials: { schedule?: string };
 	library: { share_url?: string };
 	weather: { lat?: string; lon?: string };
 	mqtt: { broker?: string; node_id?: string; base_topic?: string; discovery_prefix?: string };
@@ -99,9 +101,22 @@ function sensorIssue(
 	return null;
 }
 
-// Mirrors the Go config.Validate(); issues are in accordion order.
+// Mirrors the Go config.Validate(); issues are in page order.
 export function validate(cfg: ConfigResponseBody): ValidationResult {
-	const result: ValidationResult = { issues: [], library: {}, weather: {}, mqtt: {}, sensors: {} };
+	const result: ValidationResult = {
+		issues: [],
+		essentials: {},
+		library: {},
+		weather: {},
+		mqtt: {},
+		sensors: {}
+	};
+
+	const schedErr = scheduleError(cfg.display.schedule.off_at, cfg.display.schedule.on_at);
+	if (schedErr) {
+		result.essentials.schedule = schedErr;
+		result.issues.push({ section: 'essentials', message: `Screen schedule: ${schedErr}` });
+	}
 
 	if (cfg.library.backend === 'immich' && !(cfg.library.immich.share_url ?? '').trim()) {
 		result.library.share_url = 'Share URL is required for the Immich backend.';
@@ -160,6 +175,7 @@ export function sectionFromDetail(detail: string): IssueSection | 'display' | nu
 	if (prefix.startsWith('weather')) return 'weather';
 	if (prefix.startsWith('mqtt')) return 'mqtt';
 	if (prefix.startsWith('sensor')) return 'sensors';
-	if (prefix.startsWith('display')) return 'display';
+	// The schedule is a display setting but lives in Essentials.
+	if (prefix.startsWith('display')) return detail.includes('schedule') ? 'essentials' : 'display';
 	return null;
 }

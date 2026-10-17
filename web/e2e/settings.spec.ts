@@ -53,6 +53,44 @@ test.describe('settings', () => {
 		});
 	});
 
+	test('sets a screen schedule live and persists across reload', async ({ page, settings }) => {
+		await expect(settings.scheduleSummary).toHaveText(
+			'No schedule. Set a time to turn the screen off or on every day.'
+		);
+		await settings.scheduleOff.fill('23:00');
+		await expect(settings.scheduleSummary).toHaveText(
+			'Turns off every day at 11:00 PM and stays off until you turn it back on.'
+		);
+		await settings.scheduleOn.fill('07:00');
+		await expect(settings.scheduleSummary).toHaveText('Off every night from 11:00 PM to 7:00 AM.');
+
+		await settings.save.click();
+		await expect(settings.saveBar).toBeHidden();
+		await expect(settings.restartDialog).toBeHidden();
+
+		await page.reload();
+		await expect(settings.scheduleOff).toHaveValue('23:00');
+		await expect(settings.scheduleOn).toHaveValue('07:00');
+	});
+
+	test('clears a schedule time', async ({ settings }) => {
+		await settings.scheduleOff.fill('23:00');
+		await settings.scheduleOffClear.click();
+		await expect(settings.scheduleOff).toHaveValue('');
+		await expect(settings.scheduleOffClear).toBeHidden();
+		await expect(settings.scheduleSummary).toHaveText(
+			'No schedule. Set a time to turn the screen off or on every day.'
+		);
+	});
+
+	test('blocks saving equal schedule times', async ({ settings }) => {
+		await settings.scheduleOff.fill('07:00');
+		await settings.scheduleOn.fill('07:00');
+		await expect(settings.scheduleSummary).toBeHidden();
+		await expect(settings.issues).toBeVisible();
+		await expect(settings.save).toBeDisabled();
+	});
+
 	test('selects a time zone and persists across reload', async ({ page, settings }) => {
 		await settings.timezone.click();
 		await settings.timezone.fill('Asia/Tokyo');

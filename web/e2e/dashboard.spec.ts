@@ -137,3 +137,30 @@ test.describe('host power denied', () => {
 		await expect(dashboard.restart).toBeVisible();
 	});
 });
+
+test.describe('screen schedule hint', () => {
+	test.describe('off time', () => {
+		test.use({ serverOptions: { scheduleOff: '23:00' } });
+
+		test('says when the schedule turns the screen off', async ({ dashboard }) => {
+			await dashboard.goto();
+			await expect(dashboard.screenReason).toHaveText(
+				/^Showing photos\. Turns off at 11:00 PM( tomorrow)?\.$/
+			);
+		});
+	});
+
+	test.describe('on time', () => {
+		test.use({ serverOptions: { scheduleOn: '07:00' } });
+
+		test('says when a manually-off screen comes back on', async ({ dashboard }) => {
+			await dashboard.goto();
+			await expect(dashboard.screenReason).toHaveText('Showing photos.');
+			await dashboard.toggleScreen();
+			await expect(dashboard.screenStatus).toHaveText('Screen off');
+			await expect(dashboard.screenReason).toHaveText(
+				/^Off\. Turns back on at 7:00 AM( tomorrow)?\.$/
+			);
+		});
+	});
+});
