@@ -138,10 +138,10 @@ mutation-diff: embed-seed ## Mutation testing scoped to changes vs BASE_REF (use
 	go tool gremlins unleash --diff $(BASE_REF) $(GREMLINS_FLAGS) ./internal
 
 # CI downloads the prebuilt binary (`go run` would compile it from scratch, ~2min) and
-# reads the version below, so this is the only place the pin lives. v2.5.0+ drops npm
-# scopes from CycloneDX components (@sveltejs/kit → "kit") so it misses CVEs;
-# osv-scanner#2978 is closed but v2.5.1 still breaks, so verify before bumping.
-OSV_SCANNER_VERSION := v2.4.0
+# reads the version below, so this is the only place the pin lives. v2.5.x dropped npm
+# scopes from CycloneDX components (@sveltejs/kit → "kit") and missed CVEs; before
+# bumping, check `scan source --all-packages` still reports @-scoped package names.
+OSV_SCANNER_VERSION := v2.7.0
 OSV_SCANNER := $(shell command -v osv-scanner 2>/dev/null || echo go run github.com/google/osv-scanner/v2/cmd/osv-scanner@$(OSV_SCANNER_VERSION))
 
 vuln: embed-seed ## Scan dependencies for known vulnerabilities (reachable Go + bundled npm)

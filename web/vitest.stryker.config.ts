@@ -22,6 +22,9 @@ export default defineConfig({
 	cacheDir: `node_modules/.vite/stryker-${process.env.STRYKER_MUTATOR_WORKER ?? '0'}`,
 	test: {
 		name: 'server',
+		// Concurrent runners share one sandbox fsModuleCache (on by default since
+		// vitest 5.0.5); Stryker's teardown races its writes with ENOTEMPTY.
+		fsModuleCache: false,
 		environment: 'node',
 		expect: { requireAssertions: true },
 		include: ['src/**/*.{test,spec}.{js,ts}'],
