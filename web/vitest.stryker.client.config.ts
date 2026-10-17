@@ -20,6 +20,8 @@ export default defineConfig({
 	cacheDir: `node_modules/.vite/stryker-${process.env.STRYKER_MUTATOR_WORKER ?? '0'}`,
 	test: {
 		name: 'client',
+		// See vitest.stryker.config.ts: shared fsModuleCache races Stryker's teardown.
+		fsModuleCache: false,
 		browser: {
 			enabled: true,
 			provider: playwright(),
