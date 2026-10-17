@@ -165,6 +165,17 @@ func TestReadInfoNoRevisionWhenAbsent(t *testing.T) {
 	}
 }
 
+func TestReadInfoFallsBackToDMIModel(t *testing.T) {
+	dir := t.TempDir()
+	dmi := filepath.Join(dir, "product_name")
+	mustWrite(t, dmi, "Surface 3\n")
+
+	info := New(Config{ModelPath: "/nonexistent/model", CPUInfoPath: "/nonexistent/cpuinfo", DMIPath: dmi}).ReadInfo()
+	if info.Model != "Surface 3" {
+		t.Errorf("DMI fallback failed: got %q, want %q", info.Model, "Surface 3")
+	}
+}
+
 func TestRevisionSuffixAtStart(t *testing.T) {
 	// A model that is only the revision keeps the match at index 0.
 	if got := revisionSuffix("Rev 1.0"); got != "Rev 1.0" {

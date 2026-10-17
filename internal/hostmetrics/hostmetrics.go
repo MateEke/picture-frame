@@ -45,6 +45,7 @@ type Config struct {
 	MeminfoPath string // default /proc/meminfo
 	StatPath    string // default /proc/stat
 	ModelPath   string // default /proc/device-tree/model
+	DMIPath     string // default /sys/class/dmi/id/product_name
 	CPUInfoPath string // default /proc/cpuinfo
 	Throttle    ThrottleReader
 }
@@ -62,6 +63,7 @@ func New(cfg Config) *Reader {
 	cfg.MeminfoPath = def(cfg.MeminfoPath, "/proc/meminfo")
 	cfg.StatPath = def(cfg.StatPath, "/proc/stat")
 	cfg.ModelPath = def(cfg.ModelPath, "/proc/device-tree/model")
+	cfg.DMIPath = def(cfg.DMIPath, "/sys/class/dmi/id/product_name")
 	cfg.CPUInfoPath = def(cfg.CPUInfoPath, "/proc/cpuinfo")
 	return &Reader{cfg: cfg}
 }
@@ -92,6 +94,11 @@ func (r *Reader) ReadInfo() HostInfo {
 	}
 	if info.Model == "" {
 		info.Model = cpuinfoValue(r.cfg.CPUInfoPath, "Model")
+	}
+	if info.Model == "" {
+		if raw, err := os.ReadFile(r.cfg.DMIPath); err == nil {
+			info.Model = strings.TrimSpace(string(bytes.TrimRight(raw, "\x00\r\n ")))
+		}
 	}
 	info.Revision = revisionSuffix(info.Model)
 	info.Serial = cpuinfoValue(r.cfg.CPUInfoPath, "Serial")

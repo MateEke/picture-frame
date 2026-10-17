@@ -57,6 +57,11 @@ build-go: embed-seed ## Build the static Go backend for ARMv6
 		echo "WARNING: embedded frontend ($$baked) != backend ($(VERSION)) — run 'make build VERSION=$(VERSION)' to rebuild the UI, or the frame will reload-loop."; \
 	fi
 
+build-go-amd64: embed-seed ## Build the static Go backend for Linux x86-64
+	@echo "==> Building Go backend for linux/amd64..."
+	@mkdir -p $(BUILD_DIR)
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w -X github.com/MateEke/picture-frame/internal/version.Version=$(VERSION) -X github.com/MateEke/picture-frame/internal/version.Platform=linux_amd64 -X github.com/MateEke/picture-frame/internal/version.UpdateRepo=$(UPDATE_REPO)" -o $(BUILD_DIR)/$(APP_NAME) $(CMD_DIR)
+
 # --- Release Targets ---
 
 # Regenerate the embedded internal/licenses/THIRD_PARTY_NOTICES.txt (Go deps via go-licenses,
