@@ -75,17 +75,17 @@ notices: ## Regenerate the embedded THIRD_PARTY_NOTICES.txt (run after build-ui)
 # Linked-modules-only (not the go.sum graph); release artifact — CI scans Go source
 # via govulncheck instead, which adds reachability.
 sbom-go: ## Generate the backend CycloneDX SBOM (linked Go modules)
-	@mkdir -p tmp
-	go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output tmp/sbom.backend.cyclonedx.json -main cmd/picture-frame .
+	@mkdir -p drafts
+	go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output drafts/sbom.backend.cyclonedx.json -main cmd/picture-frame .
 
 # Full multi-arch release locally without publishing (catches flag drift vs build-go).
-# goreleaser v2 can't skip signing on snapshot, so we sign with a throwaway key in tmp/.
+# goreleaser v2 can't skip signing on snapshot, so we sign with a throwaway key in drafts/.
 # Needs goreleaser + minisign on PATH (go install ...); CI uses goreleaser-action + real key.
 release-snapshot: ## Build a local multi-arch snapshot (no publish; throwaway-signed)
 	@command -v minisign >/dev/null 2>&1 || { echo "minisign not found: go install aead.dev/minisign/cmd/minisign"; exit 1; }
-	@mkdir -p tmp
-	@test -f tmp/minisign-snapshot.key || minisign -G -W -p tmp/minisign-snapshot.pub -s tmp/minisign-snapshot.key
-	GITHUB_REPOSITORY=$(UPDATE_REPO) MINISIGN_KEY_FILE=tmp/minisign-snapshot.key goreleaser release --snapshot --clean
+	@mkdir -p drafts
+	@test -f drafts/minisign-snapshot.key || minisign -G -W -p drafts/minisign-snapshot.pub -s drafts/minisign-snapshot.key
+	GITHUB_REPOSITORY=$(UPDATE_REPO) MINISIGN_KEY_FILE=drafts/minisign-snapshot.key goreleaser release --snapshot --clean
 
 # --- Development Targets ---
 
@@ -185,7 +185,8 @@ clean: ## Remove build artifacts
 	@echo "==> Cleaning up..."
 	rm -rf $(BUILD_DIR)
 	rm -rf $(UI_DIR)/build
-	rm -rf tmp/
+	# drafts/ also holds working notes, so remove only the artifacts tooling writes there.
+	rm -f drafts/main drafts/build-errors.log drafts/sbom.backend.cyclonedx.json drafts/minisign-snapshot.key drafts/minisign-snapshot.pub
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'

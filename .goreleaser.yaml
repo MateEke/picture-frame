@@ -113,7 +113,7 @@ release:
   extra_files:
     - glob: web/.svelte-kit/output/client/cyclonedx/bom.json
       name_template: sbom.frontend.cyclonedx.json
-    - glob: tmp/sbom.backend.cyclonedx.json
+    - glob: drafts/sbom.backend.cyclonedx.json
       name_template: sbom.backend.cyclonedx.json
     # Standalone bootstrap installer so `releases/latest/download/install.sh` resolves.
     - glob: deploy/install.sh
