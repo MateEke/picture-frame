@@ -10,6 +10,8 @@ addr = ":80"
 # Display
 
 [display]
+[web]
+addr = ":80"
 # Blank the screen after this much time with no motion detected.
 # Set to "0s" to disable idle-blank entirely, recommended when you have no
 # motion sensor, so the screen stays on until turned off (e.g. via the HA switch).
@@ -38,6 +40,13 @@ blank_after = "20m"
 # outside = "Outside"
 # inside = "Inside"
 # humidity = "Humidity"
+#
+# [display.brightness_schedule]
+# enabled = true
+# day_level = 85
+# night_level = 20
+# day_start = "07:00"
+# night_start = "22:00"
 
 # Slideshow
 

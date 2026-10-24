@@ -1,0 +1,14 @@
+// Grant the picture-frame service user full NetworkManager access.
+//
+// Debian's default NM polkit rule only permits netdev members for
+// subject.local+active sessions — neither condition holds for a systemd
+// service. This rule binds to the deploy user by name so that the same
+// account works both as the service and for SSH debugging.
+//
+// @@USER@@ is substituted by install.sh.
+polkit.addRule(function(action, subject) {
+    if (action.id.indexOf("org.freedesktop.NetworkManager.") == 0 &&
+        subject.user == "@@USER@@") {
+        return polkit.Result.YES;
+    }
+});

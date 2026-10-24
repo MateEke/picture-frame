@@ -1,0 +1,32 @@
+[Unit]
+Description=Digital Frame Wayland Compositor (labwc)
+# seatd brokers DRM/seat access; labwc can't become DRM master without it.
+After=systemd-user-sessions.service seatd.service
+Wants=seatd.service
+
+[Service]
+# @@USER@@ and @@INSTALL_DIR@@ are substituted by install.sh
+Type=simple
+User=@@USER@@
+
+# Persistent compositor: owns the DRM master and panel power, and survives the
+# browser restarting (unlike cage). No WAYLAND_DISPLAY here — it would force
+# wlroots into nested mode. Mode 0700: libwayland rejects a 0755 runtime dir.
+RuntimeDirectory=picture-frame
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
+Environment=XDG_RUNTIME_DIR=/run/picture-frame
+
+# Clear a stale socket from a crashed instance so the new one is wayland-0.
+ExecStartPre=/bin/sh -c 'rm -f "$XDG_RUNTIME_DIR"/wayland-*'
+# rc.xml: fullscreen + hide cursor.
+ExecStart=/usr/bin/labwc -C @@INSTALL_DIR@@/labwc
+
+Restart=on-failure
+RestartSec=5
+
+# GPU + libinput seat.
+SupplementaryGroups=video render input
+
+[Install]
+WantedBy=multi-user.target

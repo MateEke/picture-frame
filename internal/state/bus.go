@@ -17,6 +17,7 @@ const (
 	KindKiosk        Kind = "kiosk"
 	KindScreenAspect Kind = "screen_aspect"
 	KindTouch        Kind = "touch"
+	KindBattery      Kind = "battery"
 )
 
 // Event carries a single state change notification from a producer to subscribers.

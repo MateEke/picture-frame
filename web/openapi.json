@@ -59,6 +59,90 @@
         ],
         "type": "object"
       },
+      "BatteryPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "charging": {
+            "type": "boolean"
+          },
+          "percent": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "present": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "present",
+          "percent",
+          "charging",
+          "status"
+        ],
+        "type": "object"
+      },
+      "BrightnessRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/BrightnessRequest.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "level": {
+            "description": "Brightness 0-100, or -1 to clear override",
+            "format": "int64",
+            "maximum": 100,
+            "minimum": -1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "level"
+        ],
+        "type": "object"
+      },
+      "BrightnessScheduleDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "day_level": {
+            "format": "int64",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "day_start": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "night_level": {
+            "format": "int64",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "night_start": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "day_level",
+          "night_level",
+          "day_start",
+          "night_start"
+        ],
+        "type": "object"
+      },
       "CharacteristicDTO": {
         "additionalProperties": false,
         "properties": {
@@ -392,6 +476,9 @@
             "description": "Idle duration before screen blanks, e.g. \"20m\"",
             "type": "string"
           },
+          "brightness_schedule": {
+            "$ref": "#/components/schemas/BrightnessScheduleDTO"
+          },
           "hide_clock_date": {
             "description": "Hide the clock and date block on the kiosk overlay",
             "type": "boolean"
@@ -431,7 +518,8 @@
           "locale",
           "hide_clock_date",
           "timezone",
-          "labels"
+          "labels",
+          "brightness_schedule"
         ],
         "type": "object"
       },
@@ -514,6 +602,32 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "GetBrightnessResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/GetBrightnessResponse.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "level": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "available",
+          "level"
+        ],
         "type": "object"
       },
       "ImageItem": {
@@ -1306,6 +1420,19 @@
             "readOnly": true,
             "type": "string"
           },
+          "batteryCharging": {
+            "description": "Whether the battery is charging or connected to AC power",
+            "type": "boolean"
+          },
+          "batteryPct": {
+            "description": "Battery percentage (0-100)",
+            "format": "int64",
+            "type": "integer"
+          },
+          "batteryStatus": {
+            "description": "Battery charge status (e.g. Charging, Discharging, Full)",
+            "type": "string"
+          },
           "canPowerOff": {
             "description": "Host power-off is permitted (polkit rule present)",
             "type": "boolean"
@@ -1813,6 +1940,63 @@
           }
         },
         "summary": "Report whether auth is required and the caller is logged in"
+      }
+    },
+    "/api/brightness": {
+      "get": {
+        "operationId": "get-brightness",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetBrightnessResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Get brightness availability"
+      },
+      "post": {
+        "operationId": "set-brightness",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrightnessRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Set manual brightness override (0-100) or -1 to clear"
       }
     },
     "/api/config": {
@@ -2708,6 +2892,32 @@
                   "description": "Each oneOf object in the array represents one possible Server Sent Events (SSE) message, serialized as UTF-8 text according to the SSE specification.",
                   "items": {
                     "oneOf": [
+                      {
+                        "properties": {
+                          "data": {
+                            "$ref": "#/components/schemas/BatteryPayload"
+                          },
+                          "event": {
+                            "const": "battery",
+                            "description": "The event name.",
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "The event ID.",
+                            "type": "integer"
+                          },
+                          "retry": {
+                            "description": "The retry time in milliseconds.",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "data",
+                          "event"
+                        ],
+                        "title": "Event battery",
+                        "type": "object"
+                      },
                       {
                         "properties": {
                           "data": {

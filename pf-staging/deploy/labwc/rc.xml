@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!--
+  labwc doesn't auto-fullscreen its client (cage did), so this rule does, and
+  hides the pointer. "Fullscreen" is NOT a valid action — it's ToggleFullscreen.
+  HideCursor (labwc >= 0.8) hides until next motion; on a no-input frame, forever.
+-->
+<labwc_config>
+  <core>
+    <reuseOutputMode>yes</reuseOutputMode>
+  </core>
+  <windowRules>
+    <windowRule identifier="*" serverDecoration="no">
+      <action name="ToggleFullscreen"/>
+      <action name="HideCursor"/>
+    </windowRule>
+  </windowRules>
+</labwc_config>

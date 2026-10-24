@@ -112,6 +112,7 @@ type Config struct {
 	Restart       func() error      // nil in dev/tests; triggers an in-place re-exec.
 	HostMetrics   HostMetricsReader // nil in tests; supplies Pi telemetry for the system card
 	Power         PowerController   // nil in tests; reboots or powers off the host
+	Brightness    BrightnessController // nil when host has no writable backlight
 }
 
 // HostMetricsReader supplies Pi telemetry for the dashboard system card.
@@ -125,6 +126,13 @@ type PowerController interface {
 	Reboot(ctx context.Context) error
 	PowerOff(ctx context.Context) error
 	Capabilities() power.Capabilities
+}
+
+// BrightnessController allows the admin UI to apply a manual brightness override.
+// SetOverride(-1) clears the override and lets the schedule take over again.
+// Nil when the host has no writable backlight device.
+type BrightnessController interface {
+	SetOverride(ctx context.Context, level int) error
 }
 
 type server struct {
@@ -147,6 +155,7 @@ type server struct {
 	weatherActive bool
 	hostMetrics   HostMetricsReader
 	power         PowerController
+	brightness    BrightnessController
 	auth          *auth.Authenticator
 	authMu        sync.Mutex // serializes bcrypt work; see checkPasswordGated
 
@@ -192,6 +201,7 @@ func NewServer(cfg Config) http.Handler {
 		weatherActive: cfg.WeatherActive,
 		hostMetrics:   cfg.HostMetrics,
 		power:         cfg.Power,
+		brightness:    cfg.Brightness,
 		auth:          auth.New(),
 		store:         cfg.Store,
 		running:       cfg.RunningConfig,
@@ -234,6 +244,7 @@ func NewServer(cfg Config) http.Handler {
 
 func (s *server) registerRoutes(api huma.API) {
 	s.registerScreenRoutes(api)
+	s.registerBrightnessRoutes(api)
 	s.registerLibraryRoutes(api)
 	s.registerImmichAlbumsRoute(api)
 	s.registerImageRoutes(api)

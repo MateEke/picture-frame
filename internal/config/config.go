@@ -161,7 +161,32 @@ type DisplayConfig struct {
 	Timezone string `toml:"timezone"`
 	// Labels are the owner-provided captions under the kiosk readings;
 	// an empty string hides that caption.
-	Labels KioskLabelsConfig `toml:"labels"`
+	Labels             KioskLabelsConfig        `toml:"labels"`
+	BrightnessSchedule BrightnessScheduleConfig `toml:"brightness_schedule"`
+}
+
+// BrightnessScheduleConfig selects dim and bright panel levels at local 24-hour times.
+type BrightnessScheduleConfig struct {
+	Enabled    bool   `toml:"enabled"`
+	DayLevel   int    `toml:"day_level"`
+	NightLevel int    `toml:"night_level"`
+	DayStart   string `toml:"day_start"`
+	NightStart string `toml:"night_start"`
+}
+
+func (b BrightnessScheduleConfig) Validate() error {
+	if !b.Enabled {
+		return nil
+	}
+	if b.DayLevel < 0 || b.DayLevel > 100 || b.NightLevel < 0 || b.NightLevel > 100 {
+		return fmt.Errorf("brightness levels must be between 0 and 100")
+	}
+	for name, value := range map[string]string{"day_start": b.DayStart, "night_start": b.NightStart} {
+		if _, err := time.Parse("15:04", value); err != nil {
+			return fmt.Errorf("brightness_schedule.%s must be HH:MM", name)
+		}
+	}
+	return nil
 }
 
 // KioskLabelsConfig holds free-text captions, owner wording, not translations.
@@ -291,6 +316,9 @@ func defaults() Config {
 			Backend:    DisplayBackendWlopm,
 			Output:     "HDMI-A-1",
 			Locale:     "en-US",
+			BrightnessSchedule: BrightnessScheduleConfig{
+				DayLevel: 85, NightLevel: 20, DayStart: "07:00", NightStart: "22:00",
+			},
 		},
 		Slideshow: SlideshowConfig{
 			Interval:      Duration{120 * time.Second},

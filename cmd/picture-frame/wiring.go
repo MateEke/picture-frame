@@ -11,6 +11,7 @@ import (
 
 	"github.com/MateEke/picture-frame/internal/config"
 	displaypkg "github.com/MateEke/picture-frame/internal/display"
+	hardwarepower "github.com/MateEke/picture-frame/internal/hardware/power"
 	"github.com/MateEke/picture-frame/internal/httpapi"
 	"github.com/MateEke/picture-frame/internal/kioskwatch"
 	"github.com/MateEke/picture-frame/internal/library"
@@ -254,12 +255,13 @@ func mockUpdaterDelay() time.Duration {
 
 // liveConfigImpl calls Tier-1 setters on the running subsystems.
 type liveConfigImpl struct {
-	slideshow *slideshow.Slideshow
-	policy    *displaypkg.Policy
-	rotator   displaypkg.Rotator // nil on vcgencmd
-	weather   *weather.Poller    // may be nil if api_key not configured
-	logLevel  *slog.LevelVar
-	log       *slog.Logger
+	slideshow  *slideshow.Slideshow
+	policy     *displaypkg.Policy
+	rotator    displaypkg.Rotator       // nil on vcgencmd
+	weather    *weather.Poller          // may be nil if api_key not configured
+	brightness *hardwarepower.Scheduler // nil when the host has no writable panel backlight
+	logLevel   *slog.LevelVar
+	log        *slog.Logger
 }
 
 func (l *liveConfigImpl) ApplyLive(cfg config.Config) {
@@ -277,6 +279,9 @@ func (l *liveConfigImpl) ApplyLive(cfg config.Config) {
 	}
 	if l.weather != nil {
 		l.weather.SetIntervals(cfg.Weather.PollInterval.Duration, cfg.Weather.RetryInterval.Duration)
+	}
+	if l.brightness != nil {
+		l.brightness.SetConfig(cfg.Display)
 	}
 	l.applyLogLevel(cfg.LogLevel)
 }

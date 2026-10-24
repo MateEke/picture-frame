@@ -1,0 +1,10 @@
+[Unit]
+Description=Roll back a failed picture-frame update
+
+[Service]
+# Runs as root so it can replace the binary and drive systemctl. @@INSTALL_DIR@@ is
+# substituted by install.sh. Marker-gated: a no-op unless an update is mid-verification
+# (the .updating marker), so an unrelated crash-loop never triggers a spurious rollback.
+# Restores the backup, records the failed version for the UI, then restarts the backend.
+Type=oneshot
+ExecStart=/bin/sh -c 'D="@@INSTALL_DIR@@"; test -f "$D/.updating" || exit 0; cp -f "$D/.updating" "$D/.rolled-back"; chmod 0644 "$D/.rolled-back"; mv -f "$D/picture-frame.bak" "$D/picture-frame"; rm -f "$D/.updating"; systemctl reset-failed kiosk-backend.service; systemctl start kiosk-backend.service'

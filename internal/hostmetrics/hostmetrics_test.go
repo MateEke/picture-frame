@@ -189,3 +189,57 @@ func mustWrite(t *testing.T, path, content string) {
 		t.Fatal(err)
 	}
 }
+
+func TestReadBattery(t *testing.T) {
+	dir := t.TempDir()
+	batDir := filepath.Join(dir, "BAT0")
+	if err := os.MkdirAll(batDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustWrite(t, filepath.Join(batDir, "type"), "Battery\n")
+	mustWrite(t, filepath.Join(batDir, "capacity"), "81\n")
+	mustWrite(t, filepath.Join(batDir, "status"), "Discharging\n")
+
+	m := New(Config{PowerSupplyPath: dir}).Read(context.Background())
+	if !m.HasBattery {
+		t.Fatal("expected battery to be detected")
+	}
+	if m.BatteryPct != 81 {
+		t.Errorf("battery pct: got %d, want 81", m.BatteryPct)
+	}
+	if m.BatteryCharging {
+		t.Errorf("expected not charging")
+	}
+	if m.BatteryStatus != "Discharging" {
+		t.Errorf("battery status: got %q, want Discharging", m.BatteryStatus)
+	}
+}
+
+func TestReadBatteryChargingMains(t *testing.T) {
+	dir := t.TempDir()
+	batDir := filepath.Join(dir, "BAT0")
+	adpDir := filepath.Join(dir, "ADP1")
+	if err := os.MkdirAll(batDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(adpDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustWrite(t, filepath.Join(batDir, "type"), "Battery\n")
+	mustWrite(t, filepath.Join(batDir, "capacity"), "95\n")
+	mustWrite(t, filepath.Join(batDir, "status"), "Not charging\n")
+	mustWrite(t, filepath.Join(adpDir, "type"), "Mains\n")
+	mustWrite(t, filepath.Join(adpDir, "online"), "1\n")
+
+	m := New(Config{PowerSupplyPath: dir}).Read(context.Background())
+	if !m.HasBattery {
+		t.Fatal("expected battery to be detected")
+	}
+	if m.BatteryPct != 95 {
+		t.Errorf("battery pct: got %d, want 95", m.BatteryPct)
+	}
+	if !m.BatteryCharging {
+		t.Errorf("expected charging due to Mains online=1")
+	}
+}
+
