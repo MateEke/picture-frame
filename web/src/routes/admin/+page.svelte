@@ -28,6 +28,7 @@
 	import NowPlaying from './components/NowPlaying.svelte';
 	import StatTile from './components/StatTile.svelte';
 	import SensorReadings from './components/SensorReadings.svelte';
+	import BatteryAnalysis from './components/BatteryAnalysis.svelte';
 	import AboutModal from './components/AboutModal.svelte';
 	import UpdatePanel from './components/UpdatePanel.svelte';
 	import RestartConfirmDialog from './settings/components/RestartConfirmDialog.svelte';
@@ -51,6 +52,18 @@
 	let showRestartDialog = $state(false);
 	let showAbout = $state(false);
 	let powerAction: PowerAction | null = $state(null);
+	let batteryStats = $state<any>(null);
+
+	onMount(async () => {
+		try {
+			const res = await fetch('/api/system/battery-stats', { credentials: 'include' });
+			if (res.ok) {
+				batteryStats = await res.json();
+			}
+		} catch {
+			// Battery stats endpoint not available or error
+		}
+	});
 	// False unless the polkit rule permits the action, so a frame installed before
 	// the rule shipped shows nothing to press.
 	const canReboot = $derived(data.system?.canReboot ?? false);
@@ -306,6 +319,10 @@
 				{/if}
 			</div>
 		</div>
+	</div>
+
+	<div class="reveal space-y-3 delay-200">
+		<BatteryAnalysis stats={batteryStats} />
 	</div>
 
 	<div class="reveal space-y-3 delay-200">

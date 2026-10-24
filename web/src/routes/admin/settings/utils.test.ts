@@ -125,6 +125,13 @@ describe('settings utils', () => {
 					locale: 'en-US',
 					hide_clock_date: false,
 					timezone: '',
+					brightness_schedule: {
+						enabled: false,
+						day_level: 85,
+						night_level: 20,
+						day_start: '07:00',
+						night_start: '22:00'
+					},
 					labels: { outside: '', inside: '', humidity: '' }
 				},
 				slideshow: { interval: '2m', randomize: false, split_screen: true, images_dir: 'images' },
