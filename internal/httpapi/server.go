@@ -17,6 +17,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/MateEke/picture-frame/internal/auth"
+	"github.com/MateEke/picture-frame/internal/batterytracker"
 	"github.com/MateEke/picture-frame/internal/config"
 	"github.com/MateEke/picture-frame/internal/hostmetrics"
 	"github.com/MateEke/picture-frame/internal/library"
@@ -110,9 +111,10 @@ type Config struct {
 	RunningConfig config.Config     // initial snapshot of what live subsystems reflect (== saved at startup)
 	LiveConfig    LiveConfig        // nil in dev/tests; applies Tier-1 changes in-process
 	Restart       func() error      // nil in dev/tests; triggers an in-place re-exec.
-	HostMetrics   HostMetricsReader // nil in tests; supplies Pi telemetry for the system card
-	Power         PowerController   // nil in tests; reboots or powers off the host
-	Brightness    BrightnessController // nil when host has no writable backlight
+	HostMetrics    HostMetricsReader // nil in tests; supplies Pi telemetry for the system card
+	Power          PowerController   // nil in tests; reboots or powers off the host
+	Brightness     BrightnessController // nil when host has no writable backlight
+	BatteryTracker *batterytracker.Tracker // nil in tests; provides battery life analysis stats
 }
 
 // HostMetricsReader supplies Pi telemetry for the dashboard system card.
@@ -153,10 +155,11 @@ type server struct {
 	wifiMgr       WiFiManager
 	sysfsBase     string
 	weatherActive bool
-	hostMetrics   HostMetricsReader
-	power         PowerController
-	brightness    BrightnessController
-	auth          *auth.Authenticator
+	hostMetrics    HostMetricsReader
+	power          PowerController
+	brightness     BrightnessController
+	batteryTracker *batterytracker.Tracker
+	auth           *auth.Authenticator
 	authMu        sync.Mutex // serializes bcrypt work; see checkPasswordGated
 
 	// cookie-less kiosk routes; see kioskExempt
@@ -199,10 +202,11 @@ func NewServer(cfg Config) http.Handler {
 		wifiMgr:       cfg.WiFi,
 		sysfsBase:     sysfsBase,
 		weatherActive: cfg.WeatherActive,
-		hostMetrics:   cfg.HostMetrics,
-		power:         cfg.Power,
-		brightness:    cfg.Brightness,
-		auth:          auth.New(),
+		hostMetrics:    cfg.HostMetrics,
+		power:          cfg.Power,
+		brightness:     cfg.Brightness,
+		batteryTracker: cfg.BatteryTracker,
+		auth:           auth.New(),
 		store:         cfg.Store,
 		running:       cfg.RunningConfig,
 		liveConfig:    cfg.LiveConfig,
@@ -257,6 +261,7 @@ func (s *server) registerRoutes(api huma.API) {
 	s.registerDeviceRoutes(api)
 	s.registerSystemInfoRoutes(api)
 	s.registerPowerRoutes(api)
+	s.registerBatteryStatsRoute(api)
 	s.registerUpdateRoutes(api)
 	s.registerAuthRoutes(api)
 }
