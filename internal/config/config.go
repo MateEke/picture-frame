@@ -43,6 +43,7 @@ type Config struct {
 	WiFi             WiFiConfig      `toml:"wifi"`
 	Auth             AuthConfig      `toml:"auth"`
 	Updater          UpdaterConfig   `toml:"updater"`
+	SuspendSchedule  SuspendScheduleConfig `toml:"suspend_schedule"`
 }
 
 // UpdaterConfig controls the in-app updater. Enabled gates everything:
@@ -194,6 +195,28 @@ type KioskLabelsConfig struct {
 	Outside  string `toml:"outside"`
 	Inside   string `toml:"inside"`
 	Humidity string `toml:"humidity"`
+}
+
+// SuspendScheduleConfig selects suspend and wake times at local times.
+// The frame suspends at the first 30-min tick inside the window and wakes via
+// the RTC alarm at WAKE_AT. The window normally crosses midnight (e.g. 23:00-06:30).
+type SuspendScheduleConfig struct {
+	Enabled     bool   `toml:"enabled"`       // if false, no automatic suspend
+	SuspendStart string `toml:"suspend_start"` // e.g. "23:00"
+	SuspendEnd   string `toml:"suspend_end"`   // e.g. "06:30"
+	WakeAt       string `toml:"wake_at"`       // e.g. "07:00"
+}
+
+func (s SuspendScheduleConfig) Validate() error {
+	if !s.Enabled {
+		return nil
+	}
+	for name, value := range map[string]string{"suspend_start": s.SuspendStart, "suspend_end": s.SuspendEnd, "wake_at": s.WakeAt} {
+		if _, err := time.Parse("15:04", value); err != nil {
+			return fmt.Errorf("suspend_schedule.%s must be HH:MM", name)
+		}
+	}
+	return nil
 }
 
 // SensorConfig describes a single sensor source.
@@ -355,6 +378,8 @@ func defaults() Config {
 		},
 		// AutoUpdate on by default; the SameMajor gate keeps it to minor/patch.
 		Updater: UpdaterConfig{Enabled: true, AutoUpdate: true, UpdateHour: 2},
+		// Default suspend schedule: suspend at 23:00, wake at 07:00, retry until 06:30.
+		SuspendSchedule: SuspendScheduleConfig{Enabled: true, SuspendStart: "23:00", SuspendEnd: "06:30", WakeAt: "07:00"},
 	}
 }
 
