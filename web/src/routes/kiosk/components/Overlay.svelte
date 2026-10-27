@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getSSEContext } from '$lib/sse.svelte';
-	import { formatClockParts, formatMonthDay, formatWeekday } from '$lib/helpers';
+	import { formatClockParts, formatMonthDay, formatWeekday, formatAlbumLabel } from '$lib/helpers';
 	import { onMount } from 'svelte';
 	import { overlayShiftPair } from './overlayShift';
 
@@ -14,6 +14,7 @@
 	// have no album and leave it empty.
 	let album = $derived(sse.image?.album ?? '');
 	let year = $derived(sse.image?.year ?? 0);
+	let albumLabel = $derived(formatAlbumLabel(album, year));
 	let showOverlay = $derived(!hideClockDate || album !== '');
 
 	let now = $state(new Date());
@@ -81,7 +82,7 @@
 				class="text-3xl font-semibold tracking-widest uppercase opacity-94 portrait:max-w-full"
 				style="transform: {shift.trail}"
 			>
-				{album}{#if year} ({year}){/if}
+				{albumLabel}
 			</div>
 		{/if}
 	</div>

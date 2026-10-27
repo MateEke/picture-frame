@@ -187,22 +187,31 @@ func (s *Slideshow) allPresent(slide *slideplan.Slide) bool {
 }
 
 func (s *Slideshow) publish(slide *slideplan.Slide) {
-	year := s.slideYear(slide)
+	album, year := s.slideDetails(slide)
 	s.bus.Publish(state.Event{
 		Kind:    state.KindImage,
-		Payload: state.ImagePayload{Names: slide.Names, Album: slide.Album, Year: year, Next: s.preloadHint(slide)},
+		Payload: state.ImagePayload{Names: slide.Names, Album: album, Year: year, Next: s.preloadHint(slide)},
 	})
-	s.log.Debug("slideshow: displaying slide", "names", slide.Names, "album", slide.Album, "year", year)
+	s.log.Debug("slideshow: displaying slide", "names", slide.Names, "album", album, "year", year)
 }
 
-func (s *Slideshow) slideYear(slide *slideplan.Slide) int {
+// slideDetails returns the slide's album and earliest known year, read from
+// the library at publish time. The plan's own album is only a fallback: the
+// plan can be built from cached files before the syncer has attached details,
+// and it keeps that empty album until the next rebuild.
+func (s *Slideshow) slideDetails(slide *slideplan.Slide) (string, int) {
+	album := slide.Album
 	if s.lib == nil || len(slide.Names) == 0 {
-		return 0
+		return album, 0
 	}
 	minYear := math.MaxInt
+	cycle := s.lib.Cycle()
 	for _, name := range slide.Names {
-		for _, img := range s.lib.Cycle() {
+		for _, img := range cycle {
 			if img.Name == name {
+				if album == "" {
+					album = img.Album
+				}
 				if img.Year > 0 && img.Year < minYear {
 					minYear = img.Year
 				}
@@ -211,9 +220,9 @@ func (s *Slideshow) slideYear(slide *slideplan.Slide) int {
 		}
 	}
 	if minYear == math.MaxInt {
-		return 0
+		return album, 0
 	}
-	return minYear
+	return album, minYear
 }
 
 // preloadHint peeks at the slide after the published one so the kiosk can

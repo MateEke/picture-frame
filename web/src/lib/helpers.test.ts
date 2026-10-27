@@ -6,6 +6,7 @@ import {
 	formatMonthDay,
 	timezoneOffsetLabel,
 	isSensorStale,
+	formatAlbumLabel,
 	SENSOR_STALE_MS,
 	formatSensorValue,
 	timeAgo
@@ -248,6 +249,28 @@ describe('helpers', () => {
 			const ts = new Date(1_000_000).toISOString();
 			expect(isSensorStale(ts, SENSOR_STALE_MS, 1_000_000 + SENSOR_STALE_MS - 1)).toBe(false);
 			expect(isSensorStale(ts, SENSOR_STALE_MS, 1_000_000 + SENSOR_STALE_MS + 1)).toBe(true);
+		});
+
+		describe('formatAlbumLabel', () => {
+			it('omits album when empty', () => {
+				expect(formatAlbumLabel('', 2025)).toBe('');
+				expect(formatAlbumLabel('', 0)).toBe('');
+			});
+
+			it('shows album with 2-digit year when known', () => {
+				expect(formatAlbumLabel('Egitto', 2025)).toBe('Egitto 25\'');
+				expect(formatAlbumLabel('Egitto', 2000)).toBe('Egitto 00\'');
+				expect(formatAlbumLabel('Egitto', 1999)).toBe('Egitto 99\'');
+			});
+
+			it('shows album without year when year is zero', () => {
+				expect(formatAlbumLabel('Japan', 0)).toBe('Japan');
+			});
+
+			it('shows last two digits of year with apostrophe', () => {
+				expect(formatAlbumLabel('France', 2024)).toBe('France 24\'');
+				expect(formatAlbumLabel('France', 100)).toBe('France 00\'');
+			});
 		});
 	});
 });

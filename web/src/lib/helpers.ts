@@ -85,6 +85,20 @@ export function formatMonthDay(date: Date, locale: string, timeZone?: string): s
 	return dateTimeFormat(locale, { month: 'short', day: '2-digit' }, timeZone).format(date);
 }
 
+/**
+ * Slideshow album label: album name plus a two-digit year, e.g. "Egitto 25'".
+ * The year is omitted when unknown (zero); otherwise the last two digits
+ * are always shown with a trailing apostrophe.
+ */
+export function formatAlbumLabel(album: string, year: number): string {
+	if (!album) return '';
+	// Immich names like "Egitto (2025)" already arrive compacted to "Egitto 25'".
+	if (year > 0 && !/ \d{2}'$/.test(album)) {
+		return `${album} ${String(year % 100).padStart(2, '0')}'`;
+	}
+	return album;
+}
+
 /** Formats a raw sensor value with its unit for display. */
 export function formatSensorValue(kind: string, value: number): string {
 	if (kind === 'temperature') return `${value.toFixed(1)} °C`;
