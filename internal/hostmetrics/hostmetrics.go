@@ -18,14 +18,18 @@ const undervoltageBits = 0x1 | 0x10000
 
 // Metrics carries a presence flag per value so one failed read does not poison the rest.
 type Metrics struct {
-	CPUTempC     float64
-	HasCPUTemp   bool
-	MemUsedPct   float64
-	HasMem       bool
-	BootTime     time.Time
-	HasBootTime  bool
-	Undervoltage bool
-	HasThrottle  bool
+	CPUTempC        float64
+	HasCPUTemp      bool
+	MemUsedPct      float64
+	HasMem          bool
+	BootTime        time.Time
+	HasBootTime     bool
+	Undervoltage    bool
+	HasThrottle     bool
+	BatteryPct      int
+	BatteryCharging bool
+	BatteryStatus   string
+	HasBattery      bool
 }
 
 type HostInfo struct {
@@ -41,12 +45,14 @@ type ThrottleReader interface {
 
 // Config overrides the source paths (for tests) and supplies the throttle reader.
 type Config struct {
-	ThermalPath string // default /sys/class/thermal/thermal_zone0/temp
-	MeminfoPath string // default /proc/meminfo
-	StatPath    string // default /proc/stat
-	ModelPath   string // default /proc/device-tree/model
-	CPUInfoPath string // default /proc/cpuinfo
-	Throttle    ThrottleReader
+	ThermalPath     string // default /sys/class/thermal/thermal_zone0/temp
+	MeminfoPath     string // default /proc/meminfo
+	StatPath        string // default /proc/stat
+	ModelPath       string // default /proc/device-tree/model
+	DMIPath         string // default /sys/class/dmi/id/product_name
+	CPUInfoPath     string // default /proc/cpuinfo
+	PowerSupplyPath string // default /sys/class/power_supply
+	Throttle        ThrottleReader
 }
 
 type Reader struct{ cfg Config }
@@ -62,7 +68,9 @@ func New(cfg Config) *Reader {
 	cfg.MeminfoPath = def(cfg.MeminfoPath, "/proc/meminfo")
 	cfg.StatPath = def(cfg.StatPath, "/proc/stat")
 	cfg.ModelPath = def(cfg.ModelPath, "/proc/device-tree/model")
+	cfg.DMIPath = def(cfg.DMIPath, "/sys/class/dmi/id/product_name")
 	cfg.CPUInfoPath = def(cfg.CPUInfoPath, "/proc/cpuinfo")
+	cfg.PowerSupplyPath = def(cfg.PowerSupplyPath, "/sys/class/power_supply")
 	return &Reader{cfg: cfg}
 }
 
@@ -76,6 +84,12 @@ func (r *Reader) Read(ctx context.Context) Metrics {
 	}
 	if b, ok := readBootTime(r.cfg.StatPath); ok {
 		m.BootTime, m.HasBootTime = b, true
+	}
+	if pct, charging, status, ok := readBattery(r.cfg.PowerSupplyPath); ok {
+		m.BatteryPct = pct
+		m.BatteryCharging = charging
+		m.BatteryStatus = status
+		m.HasBattery = true
 	}
 	if r.cfg.Throttle != nil {
 		if bits, ok := r.cfg.Throttle.Throttled(ctx); ok {
@@ -92,6 +106,11 @@ func (r *Reader) ReadInfo() HostInfo {
 	}
 	if info.Model == "" {
 		info.Model = cpuinfoValue(r.cfg.CPUInfoPath, "Model")
+	}
+	if info.Model == "" {
+		if raw, err := os.ReadFile(r.cfg.DMIPath); err == nil {
+			info.Model = strings.TrimSpace(string(bytes.TrimRight(raw, "\x00\r\n ")))
+		}
 	}
 	info.Revision = revisionSuffix(info.Model)
 	info.Serial = cpuinfoValue(r.cfg.CPUInfoPath, "Serial")
@@ -184,3 +203,50 @@ func readLines(path string) []string {
 	}
 	return strings.Split(string(raw), "\n")
 }
+
+// readBattery inspects powerSupplyPath (typically /sys/class/power_supply) for
+// battery devices (e.g. BAT0). Returns capacity 0-100, charging flag, status string, and ok.
+func readBattery(basePath string) (int, bool, string, bool) {
+	entries, err := os.ReadDir(basePath)
+	if err != nil {
+		return 0, false, "", false
+	}
+	for _, entry := range entries {
+		dir := basePath + "/" + entry.Name()
+		typeRaw, err := os.ReadFile(dir + "/type")
+		if err != nil {
+			continue
+		}
+		if strings.TrimSpace(string(typeRaw)) != "Battery" {
+			continue
+		}
+		capRaw, err := os.ReadFile(dir + "/capacity")
+		if err != nil {
+			continue
+		}
+		pct, err := strconv.Atoi(strings.TrimSpace(string(capRaw)))
+		if err != nil {
+			continue
+		}
+		status := "Unknown"
+		if stRaw, err := os.ReadFile(dir + "/status"); err == nil {
+			status = strings.TrimSpace(string(stRaw))
+		}
+		charging := strings.EqualFold(status, "Charging")
+		// Also check AC adapter online if status is Not Charging / Full / Unknown
+		if !charging {
+			for _, other := range entries {
+				otherDir := basePath + "/" + other.Name()
+				if oType, err := os.ReadFile(otherDir + "/type"); err == nil && strings.TrimSpace(string(oType)) == "Mains" {
+					if online, err := os.ReadFile(otherDir + "/online"); err == nil && strings.TrimSpace(string(online)) == "1" {
+						charging = true
+						break
+					}
+				}
+			}
+		}
+		return pct, charging, status, true
+	}
+	return 0, false, "", false
+}
+

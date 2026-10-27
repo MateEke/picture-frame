@@ -65,14 +65,31 @@ type ConfigMetaBody struct {
 
 // DisplayDTO maps config.DisplayConfig.
 type DisplayDTO struct {
-	BlankAfter    string         `json:"blank_after" doc:"Idle duration before screen blanks, e.g. \"20m\""`
-	Backend       string         `json:"backend" enum:"wlopm,vcgencmd"`
-	Output        string         `json:"output" doc:"Wayland connector name, e.g. \"HDMI-A-1\" (wlopm only)"`
-	Rotation      int            `json:"rotation" enum:"0,90,180,270" doc:"Counter-clockwise screen rotation in degrees (wlopm only); applied live via wlr-randr"`
-	Locale        string         `json:"locale" doc:"BCP-47 date/time locale for the kiosk clock, e.g. en-US"`
-	HideClockDate bool           `json:"hide_clock_date" doc:"Hide the clock and date block on the kiosk overlay"`
-	Timezone      string         `json:"timezone" doc:"IANA timezone for the kiosk clock/date, e.g. Europe/Budapest; empty uses the browser timezone"`
-	Labels        KioskLabelsDTO `json:"labels"`
+	BlankAfter         string                `json:"blank_after" doc:"Idle duration before screen blanks, e.g. \"20m\""`
+	Backend            string                `json:"backend" enum:"wlopm,vcgencmd"`
+	Output             string                `json:"output" doc:"Wayland connector name, e.g. \"HDMI-A-1\" (wlopm only)"`
+	Rotation           int                   `json:"rotation" enum:"0,90,180,270" doc:"Counter-clockwise screen rotation in degrees (wlopm only); applied live via wlr-randr"`
+	Locale             string                `json:"locale" doc:"BCP-47 date/time locale for the kiosk clock, e.g. en-US"`
+	HideClockDate      bool                  `json:"hide_clock_date" doc:"Hide the clock and date block on the kiosk overlay"`
+	Timezone           string                `json:"timezone" doc:"IANA timezone for the kiosk clock/date, e.g. Europe/Budapest; empty uses the browser timezone"`
+	Labels             KioskLabelsDTO        `json:"labels"`
+	BrightnessSchedule BrightnessScheduleDTO `json:"brightness_schedule"`
+	ScreenSchedule     ScreenScheduleDTO     `json:"screen_schedule"`
+}
+
+type BrightnessScheduleDTO struct {
+	Enabled    bool   `json:"enabled"`
+	DayLevel   int    `json:"day_level" minimum:"0" maximum:"100"`
+	NightLevel int    `json:"night_level" minimum:"0" maximum:"100"`
+	DayStart   string `json:"day_start"`
+	NightStart string `json:"night_start"`
+}
+
+// ScreenScheduleDTO maps config.ScreenScheduleConfig.
+type ScreenScheduleDTO struct {
+	Enabled bool   `json:"enabled"`
+	OffAt   string `json:"off_at" doc:"Local HH:MM the screen turns off, e.g. \"23:00\""`
+	OnAt    string `json:"on_at" doc:"Local HH:MM the screen turns back on, e.g. \"07:00\""`
 }
 
 // KioskLabelsDTO maps config.KioskLabelsConfig.
@@ -204,14 +221,16 @@ func toDTO(cfg config.Config) ConfigDTO {
 		LogLevel:         logLevelOrDefault(cfg.LogLevel),
 		BluetoothAdapter: cfg.BluetoothAdapter,
 		Display: DisplayDTO{
-			BlankAfter:    durString(cfg.Display.BlankAfter.Duration),
-			Backend:       cfg.Display.Backend,
-			Output:        cfg.Display.Output,
-			Rotation:      cfg.Display.Rotation,
-			Locale:        cfg.Display.Locale,
-			HideClockDate: cfg.Display.HideClockDate,
-			Timezone:      cfg.Display.Timezone,
-			Labels:        labelsToDTO(cfg.Display.Labels),
+			BlankAfter:         durString(cfg.Display.BlankAfter.Duration),
+			Backend:            cfg.Display.Backend,
+			Output:             cfg.Display.Output,
+			Rotation:           cfg.Display.Rotation,
+			Locale:             cfg.Display.Locale,
+			HideClockDate:      cfg.Display.HideClockDate,
+			Timezone:           cfg.Display.Timezone,
+			Labels:             labelsToDTO(cfg.Display.Labels),
+			BrightnessSchedule: BrightnessScheduleDTO{Enabled: cfg.Display.BrightnessSchedule.Enabled, DayLevel: cfg.Display.BrightnessSchedule.DayLevel, NightLevel: cfg.Display.BrightnessSchedule.NightLevel, DayStart: cfg.Display.BrightnessSchedule.DayStart, NightStart: cfg.Display.BrightnessSchedule.NightStart},
+			ScreenSchedule:     ScreenScheduleDTO{Enabled: cfg.Display.ScreenSchedule.Enabled, OffAt: cfg.Display.ScreenSchedule.OffAt, OnAt: cfg.Display.ScreenSchedule.OnAt},
 		},
 		Slideshow: SlideshowDTO{
 			Interval:    durString(cfg.Slideshow.Interval.Duration),
@@ -349,6 +368,8 @@ func applyDisplayDTO(dst *config.DisplayConfig, dto DisplayDTO) error {
 	dst.HideClockDate = dto.HideClockDate
 	dst.Timezone = dto.Timezone
 	dst.Labels = labelsFromDTO(dto.Labels)
+	dst.BrightnessSchedule = config.BrightnessScheduleConfig{Enabled: dto.BrightnessSchedule.Enabled, DayLevel: dto.BrightnessSchedule.DayLevel, NightLevel: dto.BrightnessSchedule.NightLevel, DayStart: dto.BrightnessSchedule.DayStart, NightStart: dto.BrightnessSchedule.NightStart}
+	dst.ScreenSchedule = config.ScreenScheduleConfig{Enabled: dto.ScreenSchedule.Enabled, OffAt: dto.ScreenSchedule.OffAt, OnAt: dto.ScreenSchedule.OnAt}
 	return nil
 }
 

@@ -96,7 +96,9 @@
 	const displayDirty = $derived(
 		draft.display.backend !== savedConfig.display.backend ||
 			draft.display.output !== savedConfig.display.output ||
-			draft.display.rotation !== savedConfig.display.rotation
+			draft.display.rotation !== savedConfig.display.rotation ||
+			!eq(draft.display.brightness_schedule, savedConfig.display.brightness_schedule) ||
+			!eq(draft.display.screen_schedule, savedConfig.display.screen_schedule)
 	);
 	const libraryDirty = $derived(
 		!eq(draft.library, savedConfig.library) ||
@@ -123,6 +125,8 @@
 		draft.display.backend = savedConfig.display.backend;
 		draft.display.output = savedConfig.display.output;
 		draft.display.rotation = savedConfig.display.rotation;
+		draft.display.brightness_schedule = $state.snapshot(savedConfig.display.brightness_schedule);
+		draft.display.screen_schedule = $state.snapshot(savedConfig.display.screen_schedule);
 	}
 	function revertLibrary() {
 		draft.library = $state.snapshot(savedConfig.library);

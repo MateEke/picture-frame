@@ -153,7 +153,7 @@ Flags:
                               vcgencmd is a legacy fallback: lighter on RAM/CPU
                               (no compositor) but showed instability in testing
                               that labwc/wlopm does not.
-  --display-output <name>     Override detected HDMI connector (e.g. HDMI-A-2).
+  --display-output <name>     Override detected display connector (e.g. HDMI-A-1, eDP-1).
   --ssid <name>               Enable the WiFi-recovery AP with this SSID.
   --ap-password <pw>          AP password (optional; open AP if omitted).
   --no-ap                     Do not configure the AP fallback.
@@ -437,7 +437,8 @@ detect_hdmi_connector() {
     if [ -n "$DISPLAY_OUTPUT" ]; then HDMI_CONN="$DISPLAY_OUTPUT"; return; fi
     HDMI_CONN=""
     local st
-    for st in /sys/class/drm/card*-HDMI-A-*/status; do
+    # Check internal laptop/tablet panels (eDP), HDMI, and DP connectors
+    for st in /sys/class/drm/card*-eDP-*/status /sys/class/drm/card*-HDMI-A-*/status /sys/class/drm/card*-DP-*/status; do
         [ -e "$st" ] || continue
         if [ "$(cat "$st")" = "connected" ]; then
             HDMI_CONN="$(basename "$(dirname "$st")")"

@@ -89,3 +89,34 @@ func TestPlan(t *testing.T) {
 		})
 	}
 }
+
+func TestPlanAlbums(t *testing.T) {
+	thr := slideplan.Threshold{Factor: 1.5}
+	r := ratios(map[string]float64{
+		"P1": 0.66, "P2": 0.66, "P3": 0.66, "P4": 0.66,
+	})
+
+	order := []slideplan.Photo{
+		{Name: "P1", Album: "Trip"},
+		{Name: "P2", Album: "Wedding"},
+		{Name: "P3", Album: "Trip"},
+		{Name: "P4", Album: "Wedding"},
+	}
+
+	slides := slideplan.Plan(order, landscape, r, thr, true)
+	got := names(slides)
+	// P1 (Trip) pairs with P3 (Trip); P2 (Wedding) pairs with P4 (Wedding).
+	want := [][]string{{"P1", "P3"}, {"P2", "P4"}}
+
+	if !equal(got, want) {
+		t.Errorf("Plan with albums = %v, want %v", got, want)
+	}
+
+	for _, s := range slides {
+		if len(s.Names) == 2 {
+			if s.Album == "" {
+				t.Errorf("paired slide %v has empty album, expected shared album", s.Names)
+			}
+		}
+	}
+}

@@ -31,8 +31,11 @@ type SystemInfoBody struct {
 	MemUsedPct   *float64 `json:"memUsedPct,omitempty" doc:"Used memory percent"`
 	SystemUptime string   `json:"systemUptime,omitempty" doc:"System uptime since boot as a Go duration"`
 	Undervoltage *bool    `json:"undervoltage,omitempty" doc:"True if undervoltage detected"`
-	CanReboot    bool     `json:"canReboot" doc:"Host reboot is permitted (polkit rule present)"`
-	CanPowerOff  bool     `json:"canPowerOff" doc:"Host power-off is permitted (polkit rule present)"`
+	CanReboot       bool     `json:"canReboot" doc:"Host reboot is permitted (polkit rule present)"`
+	CanPowerOff     bool     `json:"canPowerOff" doc:"Host power-off is permitted (polkit rule present)"`
+	BatteryPct      *int     `json:"batteryPct,omitempty" doc:"Battery percentage (0-100)"`
+	BatteryCharging *bool    `json:"batteryCharging,omitempty" doc:"Whether the battery is charging or connected to AC power"`
+	BatteryStatus   *string  `json:"batteryStatus,omitempty" doc:"Battery charge status (e.g. Charging, Discharging, Full)"`
 }
 
 type getSystemInfoOutput struct {
@@ -84,6 +87,14 @@ func (s *server) systemInfo(ctx context.Context) SystemInfoBody {
 	if m.HasThrottle {
 		v := m.Undervoltage
 		body.Undervoltage = &v
+	}
+	if m.HasBattery {
+		pct := m.BatteryPct
+		body.BatteryPct = &pct
+		ch := m.BatteryCharging
+		body.BatteryCharging = &ch
+		st := m.BatteryStatus
+		body.BatteryStatus = &st
 	}
 	return body
 }

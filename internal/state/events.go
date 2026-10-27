@@ -65,6 +65,16 @@ type TouchPayload struct {
 
 func (TouchPayload) busPayload() {}
 
+// BatteryPayload carries the host's battery charge and status.
+type BatteryPayload struct {
+	Present  bool   `json:"present"`
+	Percent  int    `json:"percent"`
+	Charging bool   `json:"charging"`
+	Status   string `json:"status"`
+}
+
+func (BatteryPayload) busPayload() {}
+
 // KioskPayload carries the kiosk overlay's render inputs.
 type KioskPayload struct {
 	Version       string      `json:"version"` // running build; the kiosk reloads when it changes (post-update)

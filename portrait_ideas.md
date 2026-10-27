@@ -1,0 +1,2 @@
+- calendario condiviso M R
+- frigo tracker articoli in scadenza
