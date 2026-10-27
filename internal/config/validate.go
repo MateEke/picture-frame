@@ -152,6 +152,12 @@ func (d DisplayConfig) validate() error {
 	if d.Width < 0 || d.Height < 0 {
 		return fmt.Errorf("width and height must be >= 0 (0 = unspecified), got %dx%d", d.Width, d.Height)
 	}
+	if err := d.BrightnessSchedule.Validate(); err != nil {
+		return err
+	}
+	if err := d.ScreenSchedule.Validate(); err != nil {
+		return err
+	}
 	return nil
 }
 

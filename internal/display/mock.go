@@ -62,6 +62,13 @@ func (m *Mock) SetOn(v bool) {
 	m.on = v
 }
 
+// SetOffErr changes OffErr under the lock, for tests that flip it while Run is ticking.
+func (m *Mock) SetOffErr(err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.OffErr = err
+}
+
 // Calls returns how many times On and Off have been called successfully.
 func (m *Mock) Calls() (on, off int) {
 	m.mu.Lock()

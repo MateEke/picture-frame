@@ -17,6 +17,7 @@
 	import { reloadOnBackendVersionChange } from '$lib/versionReload.svelte';
 	import { toaster } from '$lib/toaster';
 	import { logout } from '$lib/auth';
+	import BatteryIndicator from '$lib/BatteryIndicator.svelte';
 
 	const sse = new SSESubscriber();
 	setSSEContext(sse);
@@ -48,6 +49,12 @@
 
 <!-- Window is the scroll root (navs are fixed); main's padding clears them. -->
 <main class="min-h-svh p-4 pb-20 md:pb-4 md:pl-24">
+	<!-- Battery indicator floating top-right on all admin pages -->
+	{#if sse.battery}
+		<div class="fixed top-3 right-4 z-50 pointer-events-none">
+			<BatteryIndicator battery={sse.battery} />
+		</div>
+	{/if}
 	{@render children()}
 </main>
 <Navigation layout="bar" class="fixed inset-x-0 bottom-0 z-40 md:hidden" data-testid="nav-bottom">

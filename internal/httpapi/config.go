@@ -31,6 +31,8 @@ func copyTier1(dst *config.Config, src config.Config) {
 	dst.Display.Timezone = src.Display.Timezone
 	dst.Display.Rotation = src.Display.Rotation // applied live via Rotator.Set
 	dst.Display.Labels = src.Display.Labels
+	dst.Display.BrightnessSchedule = src.Display.BrightnessSchedule
+	dst.Display.ScreenSchedule = src.Display.ScreenSchedule // policy.SetSchedule
 	dst.Slideshow.Interval = src.Slideshow.Interval
 	dst.Slideshow.Randomize = src.Slideshow.Randomize
 	dst.Slideshow.SplitScreen = src.Slideshow.SplitScreen // slideshow.SetSplitConfig

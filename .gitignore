@@ -43,7 +43,7 @@ go.work.sum
 
 # CI/local build output
 dist/
-tmp/
+drafts/
 
 # Signing keys — only the minisign PUBLIC key (deploy/minisign.pub) is ever committed.
 # The secret key lives in CI secrets / locally, never in the repo.

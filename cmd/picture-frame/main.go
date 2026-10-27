@@ -20,6 +20,7 @@ import (
 
 	"github.com/MateEke/picture-frame/internal/config"
 	displaypkg "github.com/MateEke/picture-frame/internal/display"
+	hardwarepower "github.com/MateEke/picture-frame/internal/hardware/power"
 	"github.com/MateEke/picture-frame/internal/httpapi"
 	"github.com/MateEke/picture-frame/internal/kioskwatch"
 	"github.com/MateEke/picture-frame/internal/library"
@@ -115,9 +116,22 @@ func run() error {
 		Store:           intentStore,
 		BlankAfter:      cfg.Display.BlankAfter.Duration,
 		MotionAvailable: config.HasMotionSensor(cfg.Sensors), // idle-blank needs a sensor to wake it
+		Schedule:        screenSchedule(cfg.Display),
 	})
 	policy.Start(ctx)
 	go policy.Run(ctx)
+
+	// Laptop panels (notably Surface 3) expose their real backlight in sysfs.
+	// Absence is normal on HDMI/Pi installs, so it must never block startup.
+	var brightness *hardwarepower.Scheduler
+	if production {
+		if backlight, err := hardwarepower.NewSysfsBacklight("", ""); err != nil {
+			log.Info("brightness schedule unavailable", "err", err)
+		} else {
+			brightness = hardwarepower.NewScheduler(backlight, log, cfg.Display)
+			go brightness.Run(ctx)
+		}
+	}
 
 	// Screen: manual on/off shared by the HTTP API and MQTT bridge.
 	screen := displaypkg.NewScreen(policy)
@@ -227,7 +241,34 @@ func run() error {
 		go mqttHub.Connect(ctx)
 	}
 
-	liveCfg := &liveConfigImpl{slideshow: slides, policy: policy, rotator: rotator, weather: weatherPoller, logLevel: &levelVar, log: log}
+	// Poll host battery periodically (if present) and publish to bus for kiosk/admin SSE.
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		publishBattery := func() {
+			m := hostReader.Read(ctx)
+			bus.Publish(state.Event{
+				Kind: state.KindBattery,
+				Payload: state.BatteryPayload{
+					Present:  m.HasBattery,
+					Percent:  m.BatteryPct,
+					Charging: m.BatteryCharging,
+					Status:   m.BatteryStatus,
+				},
+			})
+		}
+		publishBattery()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				publishBattery()
+			}
+		}
+	}()
+
+	liveCfg := &liveConfigImpl{slideshow: slides, policy: policy, rotator: rotator, weather: weatherPoller, brightness: brightness, logLevel: &levelVar, log: log}
 
 	restartFn := startup.MakeRestartFunc(restartCh)
 	updaterSvc := startUpdater(ctx, log, cfg, production, restartFn)
@@ -259,6 +300,7 @@ func run() error {
 			Restart:       restartFn,
 			HostMetrics:   hostReader,
 			Power:         powerMgr,
+			Brightness:    brightness,
 		}),
 	}
 

@@ -3,15 +3,15 @@
 env_files = []
 root = "."
 testdata_dir = "testdata"
-tmp_dir = "tmp"
+tmp_dir = "drafts"
 
 [build]
   args_bin = ["-config", "config.dev.toml"]
-  bin = "./tmp/main"
-  cmd = "go generate ./internal/httpapi && go build -o ./tmp/main ./cmd/picture-frame"
+  bin = "./drafts/main"
+  cmd = "go generate ./internal/httpapi && go build -o ./drafts/main ./cmd/picture-frame"
   delay = 1000
-  entrypoint = ["./tmp/main"]
-  exclude_dir = ["assets", "tmp", "vendor", "testdata", "web"]
+  entrypoint = ["./drafts/main"]
+  exclude_dir = ["assets", "drafts", "vendor", "testdata", "web"]
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = false
