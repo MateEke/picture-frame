@@ -102,4 +102,32 @@
 			<div class="flex items-center gap-3"><input class="input" type="time" bind:value={display.brightness_schedule.night_start} /><input class="input w-20" type="number" min="0" max="100" bind:value={display.brightness_schedule.night_level} aria-label="Night brightness percentage" /><span class="text-surface-500-400 text-sm">%</span></div>
 		</Field>
 	{/if}
+	<Field
+		label="Scheduled screen off"
+		help="Turn the screen off every night and back on in the morning. The frame keeps running, so it stays reachable. A touch lights it for the idle-blank time."
+		class="md:col-span-2"
+		changed={display.screen_schedule.enabled !== savedDisplay.screen_schedule.enabled}
+		onrevert={() => (display.screen_schedule.enabled = savedDisplay.screen_schedule.enabled)}
+	>
+		<label class="flex items-center gap-2 text-sm">
+			<input class="checkbox" type="checkbox" bind:checked={display.screen_schedule.enabled} />
+			Enable daily screen-off schedule
+		</label>
+	</Field>
+	{#if display.screen_schedule.enabled}
+		<Field
+			label="Screen off at"
+			changed={display.screen_schedule.off_at !== savedDisplay.screen_schedule.off_at}
+			onrevert={() => (display.screen_schedule.off_at = savedDisplay.screen_schedule.off_at)}
+		>
+			<input class="input" type="time" bind:value={display.screen_schedule.off_at} aria-label="Screen off time" />
+		</Field>
+		<Field
+			label="Screen on at"
+			changed={display.screen_schedule.on_at !== savedDisplay.screen_schedule.on_at}
+			onrevert={() => (display.screen_schedule.on_at = savedDisplay.screen_schedule.on_at)}
+		>
+			<input class="input" type="time" bind:value={display.screen_schedule.on_at} aria-label="Screen on time" />
+		</Field>
+	{/if}
 </div>

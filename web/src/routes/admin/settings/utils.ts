@@ -35,6 +35,7 @@ export function createEmptyConfig(): ConfigResponseBody {
 				day_start: '07:00',
 				night_start: '22:00'
 			},
+			screen_schedule: { enabled: false, off_at: '23:00', on_at: '07:00' },
 			labels: { outside: '', inside: '', humidity: '' }
 		},
 		slideshow: { interval: '2m', randomize: false, split_screen: true, images_dir: 'images' },

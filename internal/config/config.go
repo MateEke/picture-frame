@@ -43,7 +43,6 @@ type Config struct {
 	WiFi             WiFiConfig      `toml:"wifi"`
 	Auth             AuthConfig      `toml:"auth"`
 	Updater          UpdaterConfig   `toml:"updater"`
-	SuspendSchedule  SuspendScheduleConfig `toml:"suspend_schedule"`
 }
 
 // UpdaterConfig controls the in-app updater. Enabled gates everything:
@@ -164,6 +163,7 @@ type DisplayConfig struct {
 	// an empty string hides that caption.
 	Labels             KioskLabelsConfig        `toml:"labels"`
 	BrightnessSchedule BrightnessScheduleConfig `toml:"brightness_schedule"`
+	ScreenSchedule     ScreenScheduleConfig     `toml:"screen_schedule"`
 }
 
 // BrightnessScheduleConfig selects dim and bright panel levels at local 24-hour times.
@@ -190,33 +190,35 @@ func (b BrightnessScheduleConfig) Validate() error {
 	return nil
 }
 
+// ScreenScheduleConfig holds the panel off between local 24-hour times OffAt
+// and OnAt; the window may cross midnight. A kiosk touch inside the window
+// lights the panel for blank_after (5 minutes when blank_after is 0).
+type ScreenScheduleConfig struct {
+	Enabled bool   `toml:"enabled"`
+	OffAt   string `toml:"off_at"`
+	OnAt    string `toml:"on_at"`
+}
+
+func (s ScreenScheduleConfig) Validate() error {
+	if !s.Enabled {
+		return nil
+	}
+	for name, value := range map[string]string{"off_at": s.OffAt, "on_at": s.OnAt} {
+		if _, err := time.Parse("15:04", value); err != nil {
+			return fmt.Errorf("screen_schedule.%s must be HH:MM", name)
+		}
+	}
+	if s.OffAt == s.OnAt {
+		return fmt.Errorf("screen_schedule.off_at and on_at must differ")
+	}
+	return nil
+}
+
 // KioskLabelsConfig holds free-text captions, owner wording, not translations.
 type KioskLabelsConfig struct {
 	Outside  string `toml:"outside"`
 	Inside   string `toml:"inside"`
 	Humidity string `toml:"humidity"`
-}
-
-// SuspendScheduleConfig selects suspend and wake times at local times.
-// The frame suspends at the first 30-min tick inside the window and wakes via
-// the RTC alarm at WAKE_AT. The window normally crosses midnight (e.g. 23:00-06:30).
-type SuspendScheduleConfig struct {
-	Enabled     bool   `toml:"enabled"`       // if false, no automatic suspend
-	SuspendStart string `toml:"suspend_start"` // e.g. "23:00"
-	SuspendEnd   string `toml:"suspend_end"`   // e.g. "06:30"
-	WakeAt       string `toml:"wake_at"`       // e.g. "07:00"
-}
-
-func (s SuspendScheduleConfig) Validate() error {
-	if !s.Enabled {
-		return nil
-	}
-	for name, value := range map[string]string{"suspend_start": s.SuspendStart, "suspend_end": s.SuspendEnd, "wake_at": s.WakeAt} {
-		if _, err := time.Parse("15:04", value); err != nil {
-			return fmt.Errorf("suspend_schedule.%s must be HH:MM", name)
-		}
-	}
-	return nil
 }
 
 // SensorConfig describes a single sensor source.
@@ -342,6 +344,7 @@ func defaults() Config {
 			BrightnessSchedule: BrightnessScheduleConfig{
 				DayLevel: 85, NightLevel: 20, DayStart: "07:00", NightStart: "22:00",
 			},
+			ScreenSchedule: ScreenScheduleConfig{OffAt: "23:00", OnAt: "07:00"},
 		},
 		Slideshow: SlideshowConfig{
 			Interval:      Duration{120 * time.Second},
@@ -378,8 +381,6 @@ func defaults() Config {
 		},
 		// AutoUpdate on by default; the SameMajor gate keeps it to minor/patch.
 		Updater: UpdaterConfig{Enabled: true, AutoUpdate: true, UpdateHour: 2},
-		// Default suspend schedule: suspend at 23:00, wake at 07:00, retry until 06:30.
-		SuspendSchedule: SuspendScheduleConfig{Enabled: true, SuspendStart: "23:00", SuspendEnd: "06:30", WakeAt: "07:00"},
 	}
 }
 

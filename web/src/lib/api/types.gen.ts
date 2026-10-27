@@ -173,6 +173,7 @@ export type DisplayDto = {
      * Counter-clockwise screen rotation in degrees (wlopm only); applied live via wlr-randr
      */
     rotation: 0 | 90 | 180 | 270;
+    screen_schedule: ScreenScheduleDto;
     /**
      * IANA timezone for the kiosk clock/date, e.g. Europe/Budapest; empty uses the browser timezone
      */
@@ -436,6 +437,18 @@ export type ScreenAspectPayload = {
 export type ScreenPayload = {
     auto: boolean;
     on: boolean;
+};
+
+export type ScreenScheduleDto = {
+    enabled: boolean;
+    /**
+     * Local HH:MM the screen turns off, e.g. "23:00"
+     */
+    off_at: string;
+    /**
+     * Local HH:MM the screen turns back on, e.g. "07:00"
+     */
+    on_at: string;
 };
 
 export type ScreenStateResponse = {
