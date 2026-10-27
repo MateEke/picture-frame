@@ -15,8 +15,44 @@ const idleCheckInterval = 10 * time.Second
 // displayOpTimeout bounds one Controller call so a wedged compositor can't hang the policy.
 const displayOpTimeout = 5 * time.Second
 
+// scheduleRelockDefault is how long a touch keeps the panel lit inside the
+// schedule window when blank_after is 0; otherwise blank_after is used.
+const scheduleRelockDefault = 5 * time.Minute
+
+// Schedule is a daily window during which the panel is held off, e.g. overnight.
+// Off and On are "HH:MM" in Location (nil = time.Local); the window may cross
+// midnight. Validated by config; an unparseable or empty window never matches.
+type Schedule struct {
+	Enabled  bool
+	Off, On  string
+	Location *time.Location
+}
+
+func (s Schedule) contains(t time.Time) bool {
+	if !s.Enabled {
+		return false
+	}
+	off, err := time.Parse("15:04", s.Off)
+	if err != nil {
+		return false
+	}
+	on, err := time.Parse("15:04", s.On)
+	if err != nil {
+		return false
+	}
+	if s.Location != nil {
+		t = t.In(s.Location)
+	}
+	m := t.Hour()*60 + t.Minute()
+	offM, onM := off.Hour()*60+off.Minute(), on.Hour()*60+on.Minute()
+	if offM < onM {
+		return m >= offM && m < onM
+	}
+	return offM > onM && (m >= offM || m < onM)
+}
+
 // Policy is the single owner of panel power: it unifies manual on/off (persisted),
-// motion-wake and idle-blank, and is the only caller of the Controller. Hardware
+// motion-wake, idle-blank and the daily schedule, and is the only caller of the Controller. Hardware
 // state is read once at startup; after that, successful writes are authoritative.
 type Policy struct {
 	log        *slog.Logger
@@ -29,11 +65,15 @@ type Policy struct {
 	// sensors only change across a restart.
 	motionAvailable bool
 
-	mu         sync.Mutex
-	manualOff  bool      // user turned the screen off; suppresses motion auto-wake
-	idleBlank  bool      // auto-blanked after blankAfter of no motion
-	lastMotion time.Time // idle baseline
-	on         bool      // last power state we applied to the Controller
+	mu          sync.Mutex
+	schedule    Schedule
+	manualOff   bool      // user turned the screen off; suppresses motion auto-wake
+	idleBlank   bool      // auto-blanked after blankAfter of no motion
+	scheduleOff bool      // held off by the schedule window; only a touch or manual on lifts it
+	inSchedule  bool      // window state at the last check, to act on its edges only
+	lastMotion  time.Time // idle baseline
+	lastTouch   time.Time // re-blank baseline inside the window; presence "motion" must not hold it
+	on          bool      // last power state we applied to the Controller
 }
 
 // Bus is required (Run subscribes to it, and it carries published intent);
@@ -47,6 +87,7 @@ type PolicyConfig struct {
 	// MotionAvailable must be true for idle-blank to engage (a motion sensor is
 	// needed to wake the screen again).
 	MotionAvailable bool
+	Schedule        Schedule
 }
 
 func NewPolicy(cfg PolicyConfig) *Policy {
@@ -57,6 +98,7 @@ func NewPolicy(cfg PolicyConfig) *Policy {
 		store:           cfg.Store,
 		blankAfter:      cfg.BlankAfter,
 		motionAvailable: cfg.MotionAvailable,
+		schedule:        cfg.Schedule,
 	}
 }
 
@@ -64,6 +106,13 @@ func NewPolicy(cfg PolicyConfig) *Policy {
 func (p *Policy) SetBlankAfter(d time.Duration) {
 	p.mu.Lock()
 	p.blankAfter = d
+	p.mu.Unlock()
+}
+
+// SetSchedule replaces the daily off window. Takes effect on the next idle check.
+func (p *Policy) SetSchedule(s Schedule) {
+	p.mu.Lock()
+	p.schedule = s
 	p.mu.Unlock()
 }
 
@@ -81,6 +130,8 @@ func (p *Policy) Start(ctx context.Context) {
 		}
 	}
 	p.lastMotion = time.Now()
+	p.inSchedule = p.schedule.contains(p.lastMotion)
+	p.scheduleOff = p.inSchedule
 	sctx, cancel := context.WithTimeout(ctx, displayOpTimeout)
 	actual, err := p.display.State(sctx)
 	cancel()
@@ -146,16 +197,17 @@ func (p *Policy) Reconcile(ctx context.Context) {
 // is left unchanged.
 func (p *Policy) SetManual(ctx context.Context, on bool) error {
 	p.mu.Lock()
-	prevManual, prevIdle, prevMotion := p.manualOff, p.idleBlank, p.lastMotion
+	prevManual, prevIdle, prevSched, prevMotion, prevTouch := p.manualOff, p.idleBlank, p.scheduleOff, p.lastMotion, p.lastTouch
 	p.manualOff = !on
 	if on {
-		p.idleBlank = false
+		p.idleBlank, p.scheduleOff = false, false
 		p.lastMotion = time.Now()
+		p.lastTouch = p.lastMotion
 	}
 	// Detach from the caller's context: a manual power change shouldn't abort
 	// half-applied if an HTTP client disconnects. applyLocked still bounds it.
 	if err := p.applyLocked(context.WithoutCancel(ctx)); err != nil {
-		p.manualOff, p.idleBlank, p.lastMotion = prevManual, prevIdle, prevMotion
+		p.manualOff, p.idleBlank, p.scheduleOff, p.lastMotion, p.lastTouch = prevManual, prevIdle, prevSched, prevMotion, prevTouch
 		p.mu.Unlock()
 		return err
 	}
@@ -170,14 +222,15 @@ func (p *Policy) SetManual(ctx context.Context, on bool) error {
 	return nil
 }
 
-// Wake turns the panel on for a kiosk touch, overriding a manual off, and
-// restarts the idle countdown. On a lit panel it is only the timer reset.
+// Wake turns the panel on for a kiosk touch, overriding a manual off or the
+// schedule, and restarts the idle countdown. On a lit panel it is only the timer reset.
 func (p *Policy) Wake(ctx context.Context) error {
 	p.mu.Lock()
-	prevManual, prevIdle, prevMotion, prevOn := p.manualOff, p.idleBlank, p.lastMotion, p.on
-	p.manualOff, p.idleBlank, p.lastMotion = false, false, time.Now()
+	prevManual, prevIdle, prevSched, prevMotion, prevTouch, prevOn := p.manualOff, p.idleBlank, p.scheduleOff, p.lastMotion, p.lastTouch, p.on
+	p.manualOff, p.idleBlank, p.scheduleOff, p.lastMotion = false, false, false, time.Now()
+	p.lastTouch = p.lastMotion
 	if err := p.applyLocked(context.WithoutCancel(ctx)); err != nil {
-		p.manualOff, p.idleBlank, p.lastMotion = prevManual, prevIdle, prevMotion
+		p.manualOff, p.idleBlank, p.scheduleOff, p.lastMotion, p.lastTouch = prevManual, prevIdle, prevSched, prevMotion, prevTouch
 		p.mu.Unlock()
 		return err
 	}
@@ -226,6 +279,7 @@ func (p *Policy) Run(ctx context.Context) {
 				p.onMotion(ctx)
 			}
 		case <-idleTicker.C:
+			p.onSchedule(ctx)
 			p.onTick(ctx)
 		}
 	}
@@ -276,7 +330,55 @@ func (p *Policy) onTick(ctx context.Context) {
 	p.publish(on, auto)
 }
 
-func (p *Policy) desiredLocked() bool { return !p.manualOff && !p.idleBlank }
+// onSchedule switches the panel off when the window opens and on when it closes,
+// and re-blanks a panel a touch lit inside the window relockAfter after that touch.
+// Motion never lifts scheduleOff: passing by at night shouldn't light the frame.
+func (p *Policy) onSchedule(ctx context.Context) {
+	p.mu.Lock()
+	in := p.schedule.contains(time.Now())
+	prevSched, prevIdle, prevIn, prevMotion := p.scheduleOff, p.idleBlank, p.inSchedule, p.lastMotion
+	var reason string
+	switch {
+	case in && !p.inSchedule:
+		p.scheduleOff, reason = true, "display off (schedule)"
+	case !in && p.inSchedule:
+		// Restart the idle countdown so a motion-gated frame lights for the morning.
+		p.scheduleOff, p.idleBlank, p.lastMotion = false, false, time.Now()
+		reason = "display on (schedule)"
+	case in && !p.scheduleOff && time.Since(p.lastTouch) >= p.relockAfterLocked():
+		p.scheduleOff, reason = true, "display off (schedule, idle)"
+	}
+	p.inSchedule = in
+	if reason == "" {
+		p.mu.Unlock()
+		return
+	}
+	prevOn := p.on
+	if err := p.applyLocked(ctx); err != nil {
+		p.log.Warn("policy: failed to apply schedule", "err", err)
+		// Roll back fully, inSchedule included, so the next tick retries the edge.
+		p.scheduleOff, p.idleBlank, p.inSchedule, p.lastMotion = prevSched, prevIdle, prevIn, prevMotion
+		p.mu.Unlock()
+		return
+	}
+	if p.on == prevOn {
+		p.mu.Unlock()
+		return
+	}
+	p.log.Info("policy: " + reason)
+	on, auto := p.on, !p.manualOff
+	p.mu.Unlock()
+	p.publish(on, auto)
+}
+
+func (p *Policy) relockAfterLocked() time.Duration {
+	if p.blankAfter > 0 {
+		return p.blankAfter
+	}
+	return scheduleRelockDefault
+}
+
+func (p *Policy) desiredLocked() bool { return !p.manualOff && !p.idleBlank && !p.scheduleOff }
 
 // applyLocked drives the Controller to the desired state. Must hold p.mu, the
 // I/O runs under the lock (bounded by displayOpTimeout) on purpose: wlopm already

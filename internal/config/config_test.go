@@ -596,6 +596,10 @@ func TestValidateDisplay(t *testing.T) {
 		{"rotation 270 ok", config.DisplayConfig{Rotation: 270}, ""},
 		{"rotation invalid", config.DisplayConfig{Rotation: 45}, "rotation must be"},
 		{"rotation negative", config.DisplayConfig{Rotation: -90}, "rotation must be"},
+		{"screen schedule disabled ignores times", config.DisplayConfig{ScreenSchedule: config.ScreenScheduleConfig{OffAt: "late"}}, ""},
+		{"screen schedule ok", config.DisplayConfig{ScreenSchedule: config.ScreenScheduleConfig{Enabled: true, OffAt: "23:00", OnAt: "07:00"}}, ""},
+		{"screen schedule bad time", config.DisplayConfig{ScreenSchedule: config.ScreenScheduleConfig{Enabled: true, OffAt: "25:00", OnAt: "07:00"}}, "screen_schedule.off_at"},
+		{"screen schedule empty window", config.DisplayConfig{ScreenSchedule: config.ScreenScheduleConfig{Enabled: true, OffAt: "07:00", OnAt: "07:00"}}, "must differ"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

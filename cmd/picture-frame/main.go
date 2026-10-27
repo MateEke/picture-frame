@@ -116,6 +116,7 @@ func run() error {
 		Store:           intentStore,
 		BlankAfter:      cfg.Display.BlankAfter.Duration,
 		MotionAvailable: config.HasMotionSensor(cfg.Sensors), // idle-blank needs a sensor to wake it
+		Schedule:        screenSchedule(cfg.Display),
 	})
 	policy.Start(ctx)
 	go policy.Run(ctx)

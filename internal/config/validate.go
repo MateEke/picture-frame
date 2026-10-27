@@ -155,6 +155,9 @@ func (d DisplayConfig) validate() error {
 	if err := d.BrightnessSchedule.Validate(); err != nil {
 		return err
 	}
+	if err := d.ScreenSchedule.Validate(); err != nil {
+		return err
+	}
 	return nil
 }
 

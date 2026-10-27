@@ -505,6 +505,9 @@
             "format": "int64",
             "type": "integer"
           },
+          "screen_schedule": {
+            "$ref": "#/components/schemas/ScreenScheduleDTO"
+          },
           "timezone": {
             "description": "IANA timezone for the kiosk clock/date, e.g. Europe/Budapest; empty uses the browser timezone",
             "type": "string"
@@ -519,7 +522,8 @@
           "hide_clock_date",
           "timezone",
           "labels",
-          "brightness_schedule"
+          "brightness_schedule",
+          "screen_schedule"
         ],
         "type": "object"
       },
@@ -1109,6 +1113,28 @@
         "required": [
           "on",
           "auto"
+        ],
+        "type": "object"
+      },
+      "ScreenScheduleDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "off_at": {
+            "description": "Local HH:MM the screen turns off, e.g. \"23:00\"",
+            "type": "string"
+          },
+          "on_at": {
+            "description": "Local HH:MM the screen turns back on, e.g. \"07:00\"",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "off_at",
+          "on_at"
         ],
         "type": "object"
       },

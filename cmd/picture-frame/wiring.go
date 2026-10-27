@@ -269,6 +269,7 @@ func (l *liveConfigImpl) ApplyLive(cfg config.Config) {
 	l.slideshow.SetRandomize(cfg.Slideshow.Randomize)
 	l.slideshow.SetSplitConfig(cfg.Slideshow.SplitScreen, slideplan.Threshold{Factor: cfg.Slideshow.PairThreshold})
 	l.policy.SetBlankAfter(cfg.Display.BlankAfter.Duration)
+	l.policy.SetSchedule(screenSchedule(cfg.Display))
 	if l.rotator != nil {
 		if err := l.rotator.Set(context.Background(), cfg.Display.Rotation); err != nil {
 			l.log.Warn("rotation apply failed", "err", err)
@@ -284,6 +285,18 @@ func (l *liveConfigImpl) ApplyLive(cfg config.Config) {
 		l.brightness.SetConfig(cfg.Display)
 	}
 	l.applyLogLevel(cfg.LogLevel)
+}
+
+// screenSchedule maps the config window onto the display policy, in the kiosk
+// timezone when one is set (as the brightness schedule does), else local time.
+func screenSchedule(d config.DisplayConfig) displaypkg.Schedule {
+	s := displaypkg.Schedule{Enabled: d.ScreenSchedule.Enabled, Off: d.ScreenSchedule.OffAt, On: d.ScreenSchedule.OnAt}
+	if d.Timezone != "" {
+		if loc, err := time.LoadLocation(d.Timezone); err == nil {
+			s.Location = loc
+		}
+	}
+	return s
 }
 
 // applyLogLevel updates the running slog level. An empty value resets to info;
