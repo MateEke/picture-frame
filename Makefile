@@ -46,6 +46,17 @@ build-ui: embed-seed ## Build the SvelteKit frontend
 	go generate ./internal/httpapi
 	cd $(UI_DIR) && $(NPM_INSTALL) && PUBLIC_APP_VERSION="$(PUBLIC_APP_VERSION)" npm run build
 
+build-go-amd64: embed-seed ## Build the static Go backend for x86-64
+	@echo "==> Building Go backend for linux/amd64..."
+	@mkdir -p $(BUILD_DIR)
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(APP_NAME) $(CMD_DIR)
+	@# build-go-amd64 embeds web/build as-is; if it was baked with a different version the frame will
+	@# reload-loop / roll back updates. Warn loudly — use `make build` to rebuild both in step.
+	@baked=$$(sed -n 's/.*"version":"\([^"]*\)".*/\1/p' $(UI_DIR)/build/_app/version.json 2>/dev/null); \
+	if [ "$$baked" != "$(VERSION)" ]; then \
+		echo "WARNING: embedded frontend ($$baked) != backend ($(VERSION)) — run 'make build VERSION=$(VERSION)' to rebuild the UI, or the frame will reload-loop."; \
+	fi
+
 build-go: embed-seed ## Build the static Go backend for ARMv6
 	@echo "==> Building Go backend for linux/arm/v6..."
 	@mkdir -p $(BUILD_DIR)
