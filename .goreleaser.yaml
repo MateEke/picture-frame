@@ -18,8 +18,8 @@ before:
     - make sbom-go
 
 builds:
-  # 32-bit ARM: armv6 (Pi Zero W / Pi 1 floor) + armv7 (Zero 2W / 3 / 4 on 32-bit OS).
-  - id: arm
+  # 64-bit x86 only: PCs, Intel tablets (Surface 3), standard x86-64 Linux servers.
+  - id: amd64
     main: ./cmd/picture-frame
     binary: picture-frame
     env:
@@ -27,24 +27,7 @@ builds:
     flags:
       - -trimpath
     goos: [linux]
-    goarch: [arm]
-    goarm: ["6", "7"]
-    ldflags:
-      - -s -w
-      - -X github.com/MateEke/picture-frame/internal/version.Version={{ .Version }}
-      - -X github.com/MateEke/picture-frame/internal/version.UpdateRepo={{ .Env.GITHUB_REPOSITORY }}
-      - -X github.com/MateEke/picture-frame/internal/version.Platform={{ .Os }}_{{ .Arch }}v{{ .Arm }}
-  # 64-bit ARM: Zero 2W / 3 / 4 / Pi 5 on a 64-bit OS. Separate build so .Arm stays empty
-  # (a single arm+arm64 matrix would mislabel arm64 as "arm64v7").
-  - id: arm64
-    main: ./cmd/picture-frame
-    binary: picture-frame
-    env:
-      - CGO_ENABLED=0
-    flags:
-      - -trimpath
-    goos: [linux]
-    goarch: [arm64]
+    goarch: [amd64]
     ldflags:
       - -s -w
       - -X github.com/MateEke/picture-frame/internal/version.Version={{ .Version }}
@@ -53,8 +36,8 @@ builds:
 
 archives:
   - id: picture-frame
-    # picture-frame_<version>_linux_armv6.tar.gz | _armv7 | _arm64, parsed by install.sh/updater.
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}"
+    # picture-frame_<version>_linux_amd64.tar.gz, parsed by install.sh/updater.
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     formats: ["tar.gz"]
     # Self-contained, version-matched: binary + deploy tree + installer + notices.
     files:

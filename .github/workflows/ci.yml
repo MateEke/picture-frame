@@ -110,7 +110,7 @@ jobs:
       - name: Fail on drift
         run: git diff --exit-code
 
-  # Prove the ARMv6 cross-compile + UI embed compile and the goreleaser config is valid.
+  # Prove the x86-64 build + UI embed compile and the goreleaser config is valid.
   # The production UI build is exercised by every e2e leg (Playwright's webServer runs
   # `npm run build`), so only the embed dir is seeded here.
   build:
@@ -124,8 +124,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Cross-compile (ARMv6)
-        run: make build-go
+      - name: Build (amd64)
+        run: make build-go-amd64
 
       - name: Validate goreleaser config
         uses: goreleaser/goreleaser-action@v7

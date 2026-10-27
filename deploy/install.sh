@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fetch, verify, and provision the picture-frame on a Raspberry Pi. See --help.
+# Fetch, verify, and provision the picture-frame on x86-64 Linux. See --help.
 set -euo pipefail
 
 REPO="MateEke/picture-frame"
@@ -146,7 +146,7 @@ Usage:
 
 Flags:
   --version <tag>             Install a specific release (default: latest stable).
-  --arch <armv6|armv7|arm64>  Override CPU-arch autodetection.
+  --arch <amd64>              Override CPU-arch autodetection (amd64 only).
   --install-dir <path>        Install location (default: ~<user>/picture-frame).
   --user <name>               Service user (default: the invoking sudo user).
   --display-backend <name>    wlopm (default, recommended) or vcgencmd.
@@ -221,17 +221,9 @@ detect_arch() {
     if [ -n "$ARCH_OVERRIDE" ]; then ARCH="$ARCH_OVERRIDE"; return; fi
     local m; m="$(uname -m)"
     case "$m" in
-        aarch64) ARCH="arm64" ;;
-        armv7l)  ARCH="armv7" ;;
-        armv6l)  ARCH="armv6" ;;
+        x86_64)  ARCH="amd64" ;;
         *)
-            # --dry-run must run on a non-Pi dev box; assume a target rather than abort.
-            if [ "$DRY_RUN" -eq 1 ]; then
-                warn "non-Pi arch '$m'; dry-run assuming arm64 (use --arch to override)"
-                ARCH="arm64"
-            else
-                err "unsupported architecture '$m'; pass --arch armv6|armv7|arm64"
-            fi
+            err "unsupported architecture '$m'; only amd64 (x86-64) is supported"
             ;;
     esac
 }
@@ -457,6 +449,13 @@ detect_hdmi_connector() {
 }
 
 configure_display() {
+    # Firmware tweaks (only for legacy boot systems; x86-64 uses UEFI).
+    local boot_cfg
+    boot_cfg="$(find_boot_file config.txt)"
+    if [ -z "$boot_cfg" ]; then
+        log "no legacy boot config.txt found; skipping firmware overlays"
+        return
+    fi
     set_display_overlay
     if [ "$DISPLAY_BACKEND" = "wlopm" ]; then
         pin_hdmi_cmdline

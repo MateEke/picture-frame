@@ -21,11 +21,11 @@ UPDATE_REPO := $(shell git config --get remote.origin.url 2>/dev/null | sed -E '
 PUBLIC_APP_VERSION ?= $(VERSION)
 
 # Linker flags: strip debug symbols (-s -w) and inject version + platform + default update
-# source. build-go targets armv6 (Pi Zero W), so Platform is linux_armv6; goreleaser sets
+# source. build-go-amd64 targets x86-64, so Platform is linux_amd64; goreleaser sets
 # its own per-arch Platform. Without this the self-updater can't match its release asset.
 LDFLAGS := -s -w \
 	-X github.com/MateEke/picture-frame/internal/version.Version=$(VERSION) \
-	-X github.com/MateEke/picture-frame/internal/version.Platform=linux_armv6 \
+	-X github.com/MateEke/picture-frame/internal/version.Platform=linux_amd64 \
 	-X github.com/MateEke/picture-frame/internal/version.UpdateRepo=$(UPDATE_REPO)
 
 # The default target runs the full pipeline
@@ -33,7 +33,7 @@ all: clean lint test build
 
 # --- Build Targets ---
 
-build: build-ui build-go ## Build the complete production binary for the Pi Zero W
+build: build-ui build-go-amd64 ## Build the complete production binary for x86-64
 
 # //go:embed all:build needs web/build before ANY Go compile (vet, test, lint, gremlins,
 # build). On fresh checkouts seed a build-shaped skeleton — incl. a fake immutable asset

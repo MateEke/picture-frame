@@ -2,7 +2,7 @@
 
 # Picture Frame
 
-**A self-hosted digital picture frame for the Raspberry Pi.**
+**A self-hosted digital picture frame for x86-64 Linux (Surface 3, PCs, servers).**
 
 Your photos beside the time, the weather, and the real temperature in your rooms. Motion-aware,
 private, and plugged into Home Assistant.
@@ -24,13 +24,11 @@ private, and plugged into Home Assistant.
 ![The frame showing a photo with the time, date, and indoor and outdoor readings](docs/src/assets/screenshots/kiosk.png)
 
 It runs as a single static binary that serves both the on-screen kiosk display and a browser admin
-interface, so you set everything up without re-flashing. It is light enough for a Raspberry Pi Zero
-W driving an HD screen, and written in Go and Svelte.
+interface, so you set everything up without re-flashing. Written in Go and Svelte.
 
 ## Highlights
 
-- **Smooth crossfades:** fluid fade transitions between photos, even on hardware as modest as a
-  Raspberry Pi Zero W driving an HD display.
+- **Smooth crossfades:** fluid fade transitions between photos on x86-64 hardware.
 - **Motion-aware screen power:** the panel blanks when the room is empty and wakes on motion. A
   manual on/off override persists across restarts.
 - **Your photos, your way:** local uploads (cropped in the browser) or a synced
@@ -58,19 +56,19 @@ a guided tour of the admin interface, and every configuration option. For the en
 
 ## Install
 
-On a fresh Raspberry Pi OS Trixie Lite, reachable over SSH:
+On a fresh Debian 13 x86-64 system, reachable over SSH:
 
 ```sh
 curl -fsSL https://github.com/MateEke/picture-frame/releases/latest/download/install.sh | sudo bash
 ```
 
 See the [Install guide](https://pictureframe.ekemate.hu/getting-started/install/) for the
-requirements, options, and first setup.
+requirements, options, and first setup. For Surface 3 specifically, see the [Surface 3 guide](https://pictureframe.ekemate.hu/getting-started/surface-3/).
 
 ## Development
 
 ```sh
-make build   # builds the SvelteKit UI and the static ARM binary into dist/
+make build   # builds the SvelteKit UI and the static amd64 binary into dist/
 ```
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the development environment and the checks a change
