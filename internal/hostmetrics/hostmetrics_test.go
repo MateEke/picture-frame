@@ -242,4 +242,3 @@ func TestReadBatteryChargingMains(t *testing.T) {
 		t.Errorf("expected charging due to Mains online=1")
 	}
 }
-

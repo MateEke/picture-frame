@@ -44,7 +44,7 @@ func (WeatherPayload) busPayload() {}
 type ImagePayload struct {
 	Names []string `json:"names"`
 	Album string   `json:"album,omitempty"`
-	Year      int       `json:"year,omitempty"`
+	Year  int      `json:"year,omitempty"`
 	Next  []string `json:"next,omitempty"`
 }
 

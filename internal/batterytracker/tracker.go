@@ -15,9 +15,9 @@ import (
 
 const (
 	defaultSampleInterval = 30 * time.Second
-	maxHistoryDuration   = 7 * 24 * time.Hour
-	maxGapDuration       = 3 * time.Minute // Gaps longer than this (e.g. system sleep/suspension) are ignored in rate calculation
-	minObservedDuration  = 10 * time.Minute // Minimum discharging observation needed for reliable estimation
+	maxHistoryDuration    = 7 * 24 * time.Hour
+	maxGapDuration        = 3 * time.Minute  // Gaps longer than this (e.g. system sleep/suspension) are ignored in rate calculation
+	minObservedDuration   = 10 * time.Minute // Minimum discharging observation needed for reliable estimation
 )
 
 type Sample struct {
@@ -37,21 +37,21 @@ type ConditionStats struct {
 }
 
 type DaySummary struct {
-	Date                string  `json:"date"` // YYYY-MM-DD
-	ScreenOnDischargeHr float64 `json:"screen_on_discharge_hr"`
+	Date                 string  `json:"date"` // YYYY-MM-DD
+	ScreenOnDischargeHr  float64 `json:"screen_on_discharge_hr"`
 	ScreenOffDischargeHr float64 `json:"screen_off_discharge_hr"`
-	AvgRateOnPctHr      float64 `json:"avg_rate_on_pct_hr"`
-	AvgRateOffPctHr     float64 `json:"avg_rate_off_pct_hr"`
+	AvgRateOnPctHr       float64 `json:"avg_rate_on_pct_hr"`
+	AvgRateOffPctHr      float64 `json:"avg_rate_off_pct_hr"`
 }
 
 type StatsSummary struct {
-	CurrentPct     int            `json:"current_pct"`
-	Charging       bool           `json:"charging"`
-	ScreenOn       ConditionStats `json:"screen_on"`
-	ScreenOff      ConditionStats `json:"screen_off"`
-	Comparison     string         `json:"comparison"` // Summary text e.g. "Screen on consumes 1.8x more battery"
-	Daily          []DaySummary   `json:"daily"`
-	History        []Sample       `json:"history"`
+	CurrentPct int            `json:"current_pct"`
+	Charging   bool           `json:"charging"`
+	ScreenOn   ConditionStats `json:"screen_on"`
+	ScreenOff  ConditionStats `json:"screen_off"`
+	Comparison string         `json:"comparison"` // Summary text e.g. "Screen on consumes 1.8x more battery"
+	Daily      []DaySummary   `json:"daily"`
+	History    []Sample       `json:"history"`
 }
 
 type MetricsProvider interface {
@@ -220,13 +220,13 @@ func (t *Tracker) GetStats() StatsSummary {
 	daily := computeDailySummaries(samples)
 
 	return StatsSummary{
-		CurrentPct:     currentPct,
-		Charging:       charging,
-		ScreenOn:       screenOnStats,
-		ScreenOff:      screenOffStats,
-		Comparison:     comparison,
-		Daily:          daily,
-		History:        samples,
+		CurrentPct: currentPct,
+		Charging:   charging,
+		ScreenOn:   screenOnStats,
+		ScreenOff:  screenOffStats,
+		Comparison: comparison,
+		Daily:      daily,
+		History:    samples,
 	}
 }
 

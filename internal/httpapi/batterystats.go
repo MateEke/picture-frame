@@ -3,8 +3,8 @@ package httpapi
 import (
 	"context"
 
-	"github.com/danielgtaylor/huma/v2"
 	"github.com/MateEke/picture-frame/internal/batterytracker"
+	"github.com/danielgtaylor/huma/v2"
 )
 
 type BatteryStatsOutput struct {

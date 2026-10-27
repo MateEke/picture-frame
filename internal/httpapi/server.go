@@ -107,13 +107,13 @@ type Config struct {
 	SysfsBase string
 
 	// Config editing
-	Store         *config.Store     // persisted config state; nil in tests that don't exercise config
-	RunningConfig config.Config     // initial snapshot of what live subsystems reflect (== saved at startup)
-	LiveConfig    LiveConfig        // nil in dev/tests; applies Tier-1 changes in-process
-	Restart       func() error      // nil in dev/tests; triggers an in-place re-exec.
-	HostMetrics    HostMetricsReader // nil in tests; supplies Pi telemetry for the system card
-	Power          PowerController   // nil in tests; reboots or powers off the host
-	Brightness     BrightnessController // nil when host has no writable backlight
+	Store          *config.Store           // persisted config state; nil in tests that don't exercise config
+	RunningConfig  config.Config           // initial snapshot of what live subsystems reflect (== saved at startup)
+	LiveConfig     LiveConfig              // nil in dev/tests; applies Tier-1 changes in-process
+	Restart        func() error            // nil in dev/tests; triggers an in-place re-exec.
+	HostMetrics    HostMetricsReader       // nil in tests; supplies Pi telemetry for the system card
+	Power          PowerController         // nil in tests; reboots or powers off the host
+	Brightness     BrightnessController    // nil when host has no writable backlight
 	BatteryTracker *batterytracker.Tracker // nil in tests; provides battery life analysis stats
 }
 
@@ -138,29 +138,29 @@ type BrightnessController interface {
 }
 
 type server struct {
-	log           *slog.Logger
-	screen        ScreenController
-	rotator       RotationController
-	bus           *state.Bus
-	lib           *library.Library
-	slideshow     SlideshowController
-	imagesRoot    *os.Root
-	kioskBeater   KioskBeater
-	aspect        *library.AspectStore
-	order         *library.OrderStore
-	planner       SlidePlanner
-	backend       string
-	syncer        SyncerStatus
-	updater       UpdaterStatus
-	wifiMgr       WiFiManager
-	sysfsBase     string
-	weatherActive bool
+	log            *slog.Logger
+	screen         ScreenController
+	rotator        RotationController
+	bus            *state.Bus
+	lib            *library.Library
+	slideshow      SlideshowController
+	imagesRoot     *os.Root
+	kioskBeater    KioskBeater
+	aspect         *library.AspectStore
+	order          *library.OrderStore
+	planner        SlidePlanner
+	backend        string
+	syncer         SyncerStatus
+	updater        UpdaterStatus
+	wifiMgr        WiFiManager
+	sysfsBase      string
+	weatherActive  bool
 	hostMetrics    HostMetricsReader
 	power          PowerController
 	brightness     BrightnessController
 	batteryTracker *batterytracker.Tracker
 	auth           *auth.Authenticator
-	authMu        sync.Mutex // serializes bcrypt work; see checkPasswordGated
+	authMu         sync.Mutex // serializes bcrypt work; see checkPasswordGated
 
 	// cookie-less kiosk routes; see kioskExempt
 	kioskPaths    map[string]bool
@@ -185,32 +185,32 @@ func NewServer(cfg Config) http.Handler {
 		sysfsBase = "/sys/class"
 	}
 	s := &server{
-		log:           cfg.Log,
-		screen:        cfg.Screen,
-		rotator:       cfg.Rotator,
-		bus:           cfg.Bus,
-		lib:           cfg.Library,
-		slideshow:     cfg.Slideshow,
-		imagesRoot:    cfg.ImagesRoot,
-		kioskBeater:   cfg.KioskBeater,
-		aspect:        cfg.Aspect,
-		order:         cfg.Order,
-		planner:       cfg.Planner,
-		backend:       backend,
-		syncer:        cfg.Syncer,
-		updater:       cfg.Updater,
-		wifiMgr:       cfg.WiFi,
-		sysfsBase:     sysfsBase,
-		weatherActive: cfg.WeatherActive,
+		log:            cfg.Log,
+		screen:         cfg.Screen,
+		rotator:        cfg.Rotator,
+		bus:            cfg.Bus,
+		lib:            cfg.Library,
+		slideshow:      cfg.Slideshow,
+		imagesRoot:     cfg.ImagesRoot,
+		kioskBeater:    cfg.KioskBeater,
+		aspect:         cfg.Aspect,
+		order:          cfg.Order,
+		planner:        cfg.Planner,
+		backend:        backend,
+		syncer:         cfg.Syncer,
+		updater:        cfg.Updater,
+		wifiMgr:        cfg.WiFi,
+		sysfsBase:      sysfsBase,
+		weatherActive:  cfg.WeatherActive,
 		hostMetrics:    cfg.HostMetrics,
 		power:          cfg.Power,
 		brightness:     cfg.Brightness,
 		batteryTracker: cfg.BatteryTracker,
 		auth:           auth.New(),
-		store:         cfg.Store,
-		running:       cfg.RunningConfig,
-		liveConfig:    cfg.LiveConfig,
-		restart:       cfg.Restart,
+		store:          cfg.Store,
+		running:        cfg.RunningConfig,
+		liveConfig:     cfg.LiveConfig,
+		restart:        cfg.Restart,
 	}
 
 	r := chi.NewRouter()

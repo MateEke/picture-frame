@@ -22,15 +22,15 @@ var (
 
 // SystemInfoBody is a point-in-time snapshot for the dashboard system card.
 type SystemInfoBody struct {
-	Version      string   `json:"version" doc:"Build version"`
-	Platform     string   `json:"platform" doc:"Build target, e.g. linux_armv6"`
-	Uptime       string   `json:"uptime" doc:"Process uptime as a Go duration, e.g. 3h12m0s"`
-	Hostname     string   `json:"hostname" doc:"OS hostname"`
-	IP           string   `json:"ip" doc:"Primary non-loopback IPv4, empty if none"`
-	CPUTempC     *float64 `json:"cpuTempC,omitempty" doc:"CPU temperature in Celsius"`
-	MemUsedPct   *float64 `json:"memUsedPct,omitempty" doc:"Used memory percent"`
-	SystemUptime string   `json:"systemUptime,omitempty" doc:"System uptime since boot as a Go duration"`
-	Undervoltage *bool    `json:"undervoltage,omitempty" doc:"True if undervoltage detected"`
+	Version         string   `json:"version" doc:"Build version"`
+	Platform        string   `json:"platform" doc:"Build target, e.g. linux_armv6"`
+	Uptime          string   `json:"uptime" doc:"Process uptime as a Go duration, e.g. 3h12m0s"`
+	Hostname        string   `json:"hostname" doc:"OS hostname"`
+	IP              string   `json:"ip" doc:"Primary non-loopback IPv4, empty if none"`
+	CPUTempC        *float64 `json:"cpuTempC,omitempty" doc:"CPU temperature in Celsius"`
+	MemUsedPct      *float64 `json:"memUsedPct,omitempty" doc:"Used memory percent"`
+	SystemUptime    string   `json:"systemUptime,omitempty" doc:"System uptime since boot as a Go duration"`
+	Undervoltage    *bool    `json:"undervoltage,omitempty" doc:"True if undervoltage detected"`
 	CanReboot       bool     `json:"canReboot" doc:"Host reboot is permitted (polkit rule present)"`
 	CanPowerOff     bool     `json:"canPowerOff" doc:"Host power-off is permitted (polkit rule present)"`
 	BatteryPct      *int     `json:"batteryPct,omitempty" doc:"Battery percentage (0-100)"`

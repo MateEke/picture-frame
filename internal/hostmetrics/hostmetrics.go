@@ -249,4 +249,3 @@ func readBattery(basePath string) (int, bool, string, bool) {
 	}
 	return 0, false, "", false
 }
-

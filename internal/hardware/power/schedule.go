@@ -20,7 +20,7 @@ type Scheduler struct {
 	log           *slog.Logger
 	cfg           config.DisplayConfig
 	last          int
-	manualLevel   int  // -1 = no override
+	manualLevel   int // -1 = no override
 	manualEnabled bool
 }
 

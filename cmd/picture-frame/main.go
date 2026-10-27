@@ -18,6 +18,7 @@ import (
 
 	"github.com/coreos/go-systemd/v22/daemon"
 
+	"github.com/MateEke/picture-frame/internal/batterytracker"
 	"github.com/MateEke/picture-frame/internal/config"
 	displaypkg "github.com/MateEke/picture-frame/internal/display"
 	hardwarepower "github.com/MateEke/picture-frame/internal/hardware/power"
@@ -51,6 +52,7 @@ func run() error {
 	configPath := flag.String("config", "config.toml", "path to user config file")
 	overridesPath := flag.String("overrides", "runtime-overrides.toml", "path to runtime overrides file")
 	screenStatePath := flag.String("screen-state", "screen-state", "path to the persisted manual screen on/off state")
+	batteryHistoryPath := flag.String("battery-history", "battery-history.json", "path to the persistent battery sample history")
 	healthCheck := flag.Bool("health-check", false, "run a startup self-test and exit (the updater's pre-flight)")
 	hashPW := flag.Bool("hash-password", false, "read a password from stdin, print its bcrypt hash, and exit (used by install.sh)")
 	flag.Parse()
@@ -219,6 +221,11 @@ func run() error {
 	hostReader := newHostReader()
 	powerMgr := newPowerManager(ctx, log, production)
 
+	// Sample the host battery every 30s for the autonomy analysis (screen on vs off).
+	// Stored under WorkingDirectory (the install dir), which is writable per the unit.
+	batteryTracker := batterytracker.New(log, hostReader, screen, *batteryHistoryPath)
+	go batteryTracker.Run(ctx)
+
 	// MQTT must come before sources (which register subs) and before Connect.
 	mqttHub, pubDone := setupMQTT(ctx, log, cfg, bus, screen, hostReader, powerMgr)
 
@@ -277,30 +284,31 @@ func run() error {
 		Addr:              cfg.Addr,
 		ReadHeaderTimeout: 10 * time.Second,
 		Handler: httpapi.NewServer(httpapi.Config{
-			Log:           log,
-			Screen:        screen,
-			Rotator:       rotator,
-			Bus:           bus,
-			Library:       lib,
-			Slideshow:     slides,
-			ImagesRoot:    imagesRoot,
-			Aspect:        aspectStore,
-			Order:         orderStore,
-			Planner:       planner,
-			KioskBeater:   kioskWatch,
-			Backend:       libraryBackend(cfg),
-			Syncer:        startup.SyncerStatus(librarySyncer),
-			Updater:       updaterSvc,
-			WiFi:          wifiMgr,
-			Production:    production,
-			WeatherActive: weatherActive,
-			Store:         store,
-			RunningConfig: *cfg,
-			LiveConfig:    liveCfg,
-			Restart:       restartFn,
-			HostMetrics:   hostReader,
-			Power:         powerMgr,
-			Brightness:    brightness,
+			Log:            log,
+			Screen:         screen,
+			Rotator:        rotator,
+			Bus:            bus,
+			Library:        lib,
+			Slideshow:      slides,
+			ImagesRoot:     imagesRoot,
+			Aspect:         aspectStore,
+			Order:          orderStore,
+			Planner:        planner,
+			KioskBeater:    kioskWatch,
+			Backend:        libraryBackend(cfg),
+			Syncer:         startup.SyncerStatus(librarySyncer),
+			Updater:        updaterSvc,
+			WiFi:           wifiMgr,
+			Production:     production,
+			WeatherActive:  weatherActive,
+			Store:          store,
+			RunningConfig:  *cfg,
+			LiveConfig:     liveCfg,
+			Restart:        restartFn,
+			HostMetrics:    hostReader,
+			BatteryTracker: batteryTracker,
+			Power:          powerMgr,
+			Brightness:     brightness,
 		}),
 	}
 
