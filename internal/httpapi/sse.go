@@ -41,7 +41,6 @@ func (s *server) registerSSERoutes(api huma.API) {
 		"screen_aspect": state.ScreenAspectPayload{},
 		"kiosk":         state.KioskPayload{},
 		"touch":         state.TouchPayload{},
-		"battery":       state.BatteryPayload{},
 		"ready":         ReadyEvent{},
 		"ping":          PingEvent{},
 	}, func(ctx context.Context, _ *struct{}, send sse.Sender) {

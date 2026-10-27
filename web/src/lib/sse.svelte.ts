@@ -8,8 +8,7 @@ import type {
 	WeatherPayload,
 	ImagePayload,
 	ScreenPayload,
-	KioskPayload,
-	BatteryPayload
+	KioskPayload
 } from '$lib/api/types.gen';
 
 type SSEEvent = NonNullable<EventsResponse>[number];
@@ -38,7 +37,6 @@ export class SSESubscriber {
 	private _screen = $state<ScreenPayload | null>(null);
 	private _screenAspect = $state<number | null>(null);
 	private _kiosk = $state<KioskPayload | null>(null);
-	private _battery = $state<BatteryPayload | null>(null);
 
 	constructor() {
 		this.subscribe = createSubscriber(() => {
@@ -66,7 +64,6 @@ export class SSESubscriber {
 		this._screen = null;
 		this._screenAspect = null;
 		this._kiosk = null;
-		this._battery = null;
 
 		const controller = new AbortController();
 		this.controller = controller;
@@ -132,9 +129,6 @@ export class SSESubscriber {
 			case 'kiosk':
 				this._kiosk = event.data;
 				break;
-			case 'battery':
-				this._battery = event.data.present ? event.data : null;
-				break;
 			case 'ready':
 				this._ready = true;
 				break;
@@ -171,10 +165,6 @@ export class SSESubscriber {
 	get kiosk() {
 		this.subscribe();
 		return this._kiosk;
-	}
-	get battery() {
-		this.subscribe();
-		return this._battery;
 	}
 	get ready() {
 		this.subscribe();

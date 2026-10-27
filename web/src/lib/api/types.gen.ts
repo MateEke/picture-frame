@@ -38,32 +38,6 @@ export type AuthStatusResponse = {
     required: boolean;
 };
 
-export type BatteryPayload = {
-    charging: boolean;
-    percent: number;
-    present: boolean;
-    status: string;
-};
-
-export type BrightnessRequest = {
-    /**
-     * A URL to the JSON Schema for this object.
-     */
-    readonly $schema?: string;
-    /**
-     * Brightness 0-100, or -1 to clear override
-     */
-    level: number;
-};
-
-export type BrightnessScheduleDto = {
-    day_level: number;
-    day_start: string;
-    enabled: boolean;
-    night_level: number;
-    night_start: string;
-};
-
 export type CharacteristicDto = {
     decoder: string;
     kind: string;
@@ -155,7 +129,6 @@ export type DisplayDto = {
      * Idle duration before screen blanks, e.g. "20m"
      */
     blank_after: string;
-    brightness_schedule: BrightnessScheduleDto;
     /**
      * Hide the clock and date block on the kiosk overlay
      */
@@ -173,7 +146,6 @@ export type DisplayDto = {
      * Counter-clockwise screen rotation in degrees (wlopm only); applied live via wlr-randr
      */
     rotation: 0 | 90 | 180 | 270;
-    screen_schedule: ScreenScheduleDto;
     /**
      * IANA timezone for the kiosk clock/date, e.g. Europe/Budapest; empty uses the browser timezone
      */
@@ -224,15 +196,6 @@ export type ErrorModel = {
      * A URI reference to human-readable documentation for the error.
      */
     type?: string;
-};
-
-export type GetBrightnessResponse = {
-    /**
-     * A URL to the JSON Schema for this object.
-     */
-    readonly $schema?: string;
-    available: boolean;
-    level: number;
 };
 
 export type ImageItem = {
@@ -439,18 +402,6 @@ export type ScreenPayload = {
     on: boolean;
 };
 
-export type ScreenScheduleDto = {
-    enabled: boolean;
-    /**
-     * Local HH:MM the screen turns off, e.g. "23:00"
-     */
-    off_at: string;
-    /**
-     * Local HH:MM the screen turns back on, e.g. "07:00"
-     */
-    on_at: string;
-};
-
 export type ScreenStateResponse = {
     /**
      * A URL to the JSON Schema for this object.
@@ -569,18 +520,6 @@ export type SystemInfoBody = {
      * A URL to the JSON Schema for this object.
      */
     readonly $schema?: string;
-    /**
-     * Whether the battery is charging or connected to AC power
-     */
-    batteryCharging?: boolean;
-    /**
-     * Battery percentage (0-100)
-     */
-    batteryPct?: number;
-    /**
-     * Battery charge status (e.g. Charging, Discharging, Full)
-     */
-    batteryStatus?: string;
     /**
      * Host power-off is permitted (polkit rule present)
      */
@@ -785,13 +724,6 @@ export type AuthStatusResponseWritable = {
     required: boolean;
 };
 
-export type BrightnessRequestWritable = {
-    /**
-     * Brightness 0-100, or -1 to clear override
-     */
-    level: number;
-};
-
 export type ConfigDtoWritable = {
     /**
      * HCI device ID, e.g. hci0
@@ -867,11 +799,6 @@ export type ErrorModelWritable = {
      * A URI reference to human-readable documentation for the error.
      */
     type?: string;
-};
-
-export type GetBrightnessResponseWritable = {
-    available: boolean;
-    level: number;
 };
 
 export type ImageItemWritable = {
@@ -967,18 +894,6 @@ export type SystemDevicesBodyWritable = {
 };
 
 export type SystemInfoBodyWritable = {
-    /**
-     * Whether the battery is charging or connected to AC power
-     */
-    batteryCharging?: boolean;
-    /**
-     * Battery percentage (0-100)
-     */
-    batteryPct?: number;
-    /**
-     * Battery charge status (e.g. Charging, Discharging, Full)
-     */
-    batteryStatus?: string;
     /**
      * Host power-off is permitted (polkit rule present)
      */
@@ -1196,56 +1111,6 @@ export type AuthStatusResponses = {
 };
 
 export type AuthStatusResponse2 = AuthStatusResponses[keyof AuthStatusResponses];
-
-export type GetBrightnessData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/brightness';
-};
-
-export type GetBrightnessErrors = {
-    /**
-     * Error
-     */
-    default: ErrorModel;
-};
-
-export type GetBrightnessError = GetBrightnessErrors[keyof GetBrightnessErrors];
-
-export type GetBrightnessResponses = {
-    /**
-     * OK
-     */
-    200: GetBrightnessResponse;
-};
-
-export type GetBrightnessResponse2 = GetBrightnessResponses[keyof GetBrightnessResponses];
-
-export type SetBrightnessData = {
-    body: BrightnessRequestWritable;
-    path?: never;
-    query?: never;
-    url: '/api/brightness';
-};
-
-export type SetBrightnessErrors = {
-    /**
-     * Error
-     */
-    default: ErrorModel;
-};
-
-export type SetBrightnessError = SetBrightnessErrors[keyof SetBrightnessErrors];
-
-export type SetBrightnessResponses = {
-    /**
-     * No Content
-     */
-    204: void;
-};
-
-export type SetBrightnessResponse = SetBrightnessResponses[keyof SetBrightnessResponses];
 
 export type GetConfigData = {
     body?: never;
@@ -2021,20 +1886,6 @@ export type EventsResponses = {
      * Each oneOf object in the array represents one possible Server Sent Events (SSE) message, serialized as UTF-8 text according to the SSE specification.
      */
     200: Array<{
-        data: BatteryPayload;
-        /**
-         * The event name.
-         */
-        event: 'battery';
-        /**
-         * The event ID.
-         */
-        id?: number;
-        /**
-         * The retry time in milliseconds.
-         */
-        retry?: number;
-    } | {
         data: ImagePayload;
         /**
          * The event name.

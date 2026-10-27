@@ -17,7 +17,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/MateEke/picture-frame/internal/auth"
-	"github.com/MateEke/picture-frame/internal/batterytracker"
 	"github.com/MateEke/picture-frame/internal/config"
 	"github.com/MateEke/picture-frame/internal/hostmetrics"
 	"github.com/MateEke/picture-frame/internal/library"
@@ -111,10 +110,8 @@ type Config struct {
 	RunningConfig config.Config     // initial snapshot of what live subsystems reflect (== saved at startup)
 	LiveConfig    LiveConfig        // nil in dev/tests; applies Tier-1 changes in-process
 	Restart       func() error      // nil in dev/tests; triggers an in-place re-exec.
-	HostMetrics    HostMetricsReader // nil in tests; supplies Pi telemetry for the system card
-	Power          PowerController   // nil in tests; reboots or powers off the host
-	Brightness     BrightnessController // nil when host has no writable backlight
-	BatteryTracker *batterytracker.Tracker // nil in tests; provides battery life analysis stats
+	HostMetrics   HostMetricsReader // nil in tests; supplies Pi telemetry for the system card
+	Power         PowerController   // nil in tests; reboots or powers off the host
 }
 
 // HostMetricsReader supplies Pi telemetry for the dashboard system card.
@@ -128,13 +125,6 @@ type PowerController interface {
 	Reboot(ctx context.Context) error
 	PowerOff(ctx context.Context) error
 	Capabilities() power.Capabilities
-}
-
-// BrightnessController allows the admin UI to apply a manual brightness override.
-// SetOverride(-1) clears the override and lets the schedule take over again.
-// Nil when the host has no writable backlight device.
-type BrightnessController interface {
-	SetOverride(ctx context.Context, level int) error
 }
 
 type server struct {
@@ -155,11 +145,9 @@ type server struct {
 	wifiMgr       WiFiManager
 	sysfsBase     string
 	weatherActive bool
-	hostMetrics    HostMetricsReader
-	power          PowerController
-	brightness     BrightnessController
-	batteryTracker *batterytracker.Tracker
-	auth           *auth.Authenticator
+	hostMetrics   HostMetricsReader
+	power         PowerController
+	auth          *auth.Authenticator
 	authMu        sync.Mutex // serializes bcrypt work; see checkPasswordGated
 
 	// cookie-less kiosk routes; see kioskExempt
@@ -202,11 +190,9 @@ func NewServer(cfg Config) http.Handler {
 		wifiMgr:       cfg.WiFi,
 		sysfsBase:     sysfsBase,
 		weatherActive: cfg.WeatherActive,
-		hostMetrics:    cfg.HostMetrics,
-		power:          cfg.Power,
-		brightness:     cfg.Brightness,
-		batteryTracker: cfg.BatteryTracker,
-		auth:           auth.New(),
+		hostMetrics:   cfg.HostMetrics,
+		power:         cfg.Power,
+		auth:          auth.New(),
 		store:         cfg.Store,
 		running:       cfg.RunningConfig,
 		liveConfig:    cfg.LiveConfig,
@@ -248,7 +234,6 @@ func NewServer(cfg Config) http.Handler {
 
 func (s *server) registerRoutes(api huma.API) {
 	s.registerScreenRoutes(api)
-	s.registerBrightnessRoutes(api)
 	s.registerLibraryRoutes(api)
 	s.registerImmichAlbumsRoute(api)
 	s.registerImageRoutes(api)
@@ -261,7 +246,6 @@ func (s *server) registerRoutes(api huma.API) {
 	s.registerDeviceRoutes(api)
 	s.registerSystemInfoRoutes(api)
 	s.registerPowerRoutes(api)
-	s.registerBatteryStatsRoute(api)
 	s.registerUpdateRoutes(api)
 	s.registerAuthRoutes(api)
 }

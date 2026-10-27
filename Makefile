@@ -57,11 +57,6 @@ build-go: embed-seed ## Build the static Go backend for ARMv6
 		echo "WARNING: embedded frontend ($$baked) != backend ($(VERSION)) — run 'make build VERSION=$(VERSION)' to rebuild the UI, or the frame will reload-loop."; \
 	fi
 
-build-go-amd64: embed-seed ## Build the static Go backend for Linux x86-64
-	@echo "==> Building Go backend for linux/amd64..."
-	@mkdir -p $(BUILD_DIR)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w -X github.com/MateEke/picture-frame/internal/version.Version=$(VERSION) -X github.com/MateEke/picture-frame/internal/version.Platform=linux_amd64 -X github.com/MateEke/picture-frame/internal/version.UpdateRepo=$(UPDATE_REPO)" -o $(BUILD_DIR)/$(APP_NAME) $(CMD_DIR)
-
 # --- Release Targets ---
 
 # Regenerate the embedded internal/licenses/THIRD_PARTY_NOTICES.txt (Go deps via go-licenses,
@@ -75,17 +70,17 @@ notices: ## Regenerate the embedded THIRD_PARTY_NOTICES.txt (run after build-ui)
 # Linked-modules-only (not the go.sum graph); release artifact — CI scans Go source
 # via govulncheck instead, which adds reachability.
 sbom-go: ## Generate the backend CycloneDX SBOM (linked Go modules)
-	@mkdir -p drafts
-	go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output drafts/sbom.backend.cyclonedx.json -main cmd/picture-frame .
+	@mkdir -p tmp
+	go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output tmp/sbom.backend.cyclonedx.json -main cmd/picture-frame .
 
 # Full multi-arch release locally without publishing (catches flag drift vs build-go).
-# goreleaser v2 can't skip signing on snapshot, so we sign with a throwaway key in drafts/.
+# goreleaser v2 can't skip signing on snapshot, so we sign with a throwaway key in tmp/.
 # Needs goreleaser + minisign on PATH (go install ...); CI uses goreleaser-action + real key.
 release-snapshot: ## Build a local multi-arch snapshot (no publish; throwaway-signed)
 	@command -v minisign >/dev/null 2>&1 || { echo "minisign not found: go install aead.dev/minisign/cmd/minisign"; exit 1; }
-	@mkdir -p drafts
-	@test -f drafts/minisign-snapshot.key || minisign -G -W -p drafts/minisign-snapshot.pub -s drafts/minisign-snapshot.key
-	GITHUB_REPOSITORY=$(UPDATE_REPO) MINISIGN_KEY_FILE=drafts/minisign-snapshot.key goreleaser release --snapshot --clean
+	@mkdir -p tmp
+	@test -f tmp/minisign-snapshot.key || minisign -G -W -p tmp/minisign-snapshot.pub -s tmp/minisign-snapshot.key
+	GITHUB_REPOSITORY=$(UPDATE_REPO) MINISIGN_KEY_FILE=tmp/minisign-snapshot.key goreleaser release --snapshot --clean
 
 # --- Development Targets ---
 
@@ -185,8 +180,7 @@ clean: ## Remove build artifacts
 	@echo "==> Cleaning up..."
 	rm -rf $(BUILD_DIR)
 	rm -rf $(UI_DIR)/build
-	# drafts/ also holds working notes, so remove only the artifacts tooling writes there.
-	rm -f drafts/main drafts/build-errors.log drafts/sbom.backend.cyclonedx.json drafts/minisign-snapshot.key drafts/minisign-snapshot.pub
+	rm -rf tmp/
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'

@@ -323,7 +323,6 @@ func albumYear(bodies []timelineBucket, metas []timelineBucketMeta) int {
 // or absent optional arrays. Every asset carries the album name and the year of
 // the album's earliest photo so the kiosk can label a slide without a second lookup.
 func appendImageAssets(out []library.Asset, b timelineBucket, album string, year int) []library.Asset {
-	album = displayAlbumName(album)
 	for i, id := range b.ID {
 		if id == "" {
 			continue
@@ -338,26 +337,6 @@ func appendImageAssets(out []library.Asset, b timelineBucket, album string, year
 		out = append(out, library.Asset{ID: id, Version: thumbhashToken(th), Album: album, Year: year})
 	}
 	return out
-}
-
-// displayAlbumName keeps Immich's year-in-parentheses convention compact on
-// the frame. Other album names are preserved verbatim.
-func displayAlbumName(name string) string {
-	name = strings.TrimSpace(name)
-	if len(name) < 7 || !strings.HasSuffix(name, ")") {
-		return name
-	}
-
-	open := strings.LastIndex(name, " (")
-	if open < 1 || len(name)-open != 7 {
-		return name
-	}
-	year, err := strconv.Atoi(name[open+2 : len(name)-1])
-	if err != nil || year < 1000 || year > 9999 {
-		return name
-	}
-
-	return fmt.Sprintf("%s %02d'", strings.TrimSpace(name[:open]), year%100)
 }
 
 // Fetch returns the preview-sized thumbnail stream for assetID.

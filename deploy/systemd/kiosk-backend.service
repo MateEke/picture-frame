@@ -26,8 +26,6 @@ ReadWritePaths=@@INSTALL_DIR@@
 # Rotation intent file lives in labwc's runtime dir, read-only under strict
 # mode without this; "-" skips it on vcgencmd installs (no labwc).
 ReadWritePaths=-/run/picture-frame
-# Allow non-root service user to control sysfs display backlight (e.g. on Surface 3)
-ReadWritePaths=-/sys/class/backlight
 SupplementaryGroups=video bluetooth
 # ProtectSystem=strict makes the host /tmp read-only; give the backend its own
 # writable /tmp for upload multipart spills. Private tmpfs, wiped on restart.

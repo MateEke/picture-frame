@@ -474,34 +474,6 @@ func TestAPIClientYearComesFromPhotoDates(t *testing.T) {
 	}
 }
 
-func TestAPIClientFormatsYearInAlbumName(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/api/timeline/buckets":
-			writeJSON(w, `[{"timeBucket":"2024-01-01","count":1}]`)
-		case "/api/timeline/bucket":
-			writeJSON(w, `{"id":["`+assetA+`"],"isImage":[true],"thumbhash":["ha"]}`)
-		case "/api/albums/" + testAPIAlbum:
-			writeJSON(w, `{"id":"`+testAPIAlbum+`","albumName":"Messico (2024)"}`)
-		default:
-			http.NotFound(w, r)
-		}
-	}))
-	defer srv.Close()
-	c := newAPIClientFor(t, srv, testAPIAlbum)
-
-	got, err := c.List(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(got) != 1 {
-		t.Fatalf("got %d assets, want 1", len(got))
-	}
-	if got[0].Album != "Messico 24'" {
-		t.Errorf("album = %q, want %q", got[0].Album, "Messico 24'")
-	}
-}
-
 // Older servers omit the taken-date columns from bucket bodies; the year
 // then falls back to the oldest date-like bucket name.
 func TestAPIClientFallsBackToBucketNameForYear(t *testing.T) {
