@@ -1,6 +1,7 @@
 package batterytracker
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 
 const (
 	defaultSampleInterval = 30 * time.Second
+	compactInterval       = 24 * time.Hour
 	maxHistoryDuration    = 7 * 24 * time.Hour
 	maxGapDuration        = 3 * time.Minute  // Gaps longer than this (e.g. system sleep/suspension) are ignored in rate calculation
 	minObservedDuration   = 10 * time.Minute // Minimum discharging observation needed for reliable estimation
@@ -70,6 +72,8 @@ type Tracker struct {
 
 	mu      sync.RWMutex
 	samples []Sample
+
+	lastCompact time.Time // guarded by mu; bounds full-file rewrites to once a day
 }
 
 func New(log *slog.Logger, metrics MetricsProvider, display DisplayStateProvider, storePath string) *Tracker {
@@ -94,11 +98,7 @@ func (t *Tracker) load() {
 		}
 		return
 	}
-	var loaded []Sample
-	if err := json.Unmarshal(data, &loaded); err != nil {
-		t.log.Warn("batterytracker: failed to unmarshal store file", "err", err)
-		return
-	}
+	loaded := decodeSamples(t.log, data)
 	cutoff := time.Now().Add(-maxHistoryDuration)
 	filtered := make([]Sample, 0, len(loaded))
 	for _, s := range loaded {
@@ -107,33 +107,109 @@ func (t *Tracker) load() {
 		}
 	}
 	t.samples = filtered
+	// Rewrite at startup: drops expired samples and migrates a legacy JSON-array
+	// store to the append-only line format.
+	t.compact()
 }
 
-func (t *Tracker) save() {
+// decodeSamples reads the store in either the current append-only JSONL format
+// (one sample per line) or the original single JSON array. A truncated final
+// line (power loss mid-write) is ignored.
+func decodeSamples(log *slog.Logger, data []byte) []Sample {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil
+	}
+	if trimmed[0] == '[' {
+		var loaded []Sample
+		if err := json.Unmarshal(trimmed, &loaded); err != nil {
+			log.Warn("batterytracker: failed to unmarshal legacy store file", "err", err)
+			return nil
+		}
+		return loaded
+	}
+	lines := bytes.Split(trimmed, []byte("\n"))
+	loaded := make([]Sample, 0, len(lines))
+	for i, line := range lines {
+		line = bytes.TrimSpace(line)
+		if len(line) == 0 {
+			continue
+		}
+		var s Sample
+		if err := json.Unmarshal(line, &s); err != nil {
+			// Only the last line can be a torn write; earlier corruption is worth reporting.
+			if i < len(lines)-1 {
+				log.Warn("batterytracker: skipping corrupt store line", "line", i+1, "err", err)
+			}
+			continue
+		}
+		loaded = append(loaded, s)
+	}
+	return loaded
+}
+
+// appendSample adds one line; writes scale with the sample, not the history.
+func (t *Tracker) appendSample(s Sample) {
+	if t.storePath == "" {
+		return
+	}
+	data, err := json.Marshal(s)
+	if err != nil {
+		t.log.Warn("batterytracker: failed to marshal sample", "err", err)
+		return
+	}
+	dir := filepath.Dir(t.storePath)
+	if dir != "" && dir != "." {
+		_ = os.MkdirAll(dir, 0o755)
+	}
+	f, err := os.OpenFile(t.storePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.log.Warn("batterytracker: failed to open store file", "err", err)
+		return
+	}
+	_, err = f.Write(append(data, '\n'))
+	if closeErr := f.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		t.log.Warn("batterytracker: failed to append sample", "err", err)
+	}
+}
+
+// compact rewrites the store with the in-memory samples: prunes expired history
+// and bounds the file size. Runs at startup and daily.
+func (t *Tracker) compact() {
 	if t.storePath == "" {
 		return
 	}
 	t.mu.RLock()
-	samplesCopy := make([]Sample, len(t.samples))
-	copy(samplesCopy, t.samples)
-	t.mu.RUnlock()
-
-	data, err := json.Marshal(samplesCopy)
-	if err != nil {
-		t.log.Warn("batterytracker: failed to marshal samples", "err", err)
-		return
+	var buf bytes.Buffer
+	for _, s := range t.samples {
+		data, err := json.Marshal(s)
+		if err != nil {
+			continue
+		}
+		buf.Write(data)
+		buf.WriteByte('\n')
 	}
+	t.mu.RUnlock()
 
 	dir := filepath.Dir(t.storePath)
 	if dir != "" && dir != "." {
 		_ = os.MkdirAll(dir, 0o755)
 	}
 	tmp := t.storePath + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+	if err := os.WriteFile(tmp, buf.Bytes(), 0o644); err != nil {
 		t.log.Warn("batterytracker: failed to write tmp store file", "err", err)
 		return
 	}
-	_ = os.Rename(tmp, t.storePath)
+	if err := os.Rename(tmp, t.storePath); err != nil {
+		t.log.Warn("batterytracker: failed to replace store file", "err", err)
+		return
+	}
+	t.mu.Lock()
+	t.lastCompact = time.Now()
+	t.mu.Unlock()
 }
 
 func (t *Tracker) Sample(ctx context.Context) {
@@ -167,9 +243,13 @@ func (t *Tracker) Sample(ctx context.Context) {
 	}
 	t.samples = t.samples[:n]
 	t.samples = append(t.samples, sample)
+	needCompact := time.Since(t.lastCompact) >= compactInterval
 	t.mu.Unlock()
 
-	t.save()
+	t.appendSample(sample)
+	if needCompact {
+		t.compact()
+	}
 }
 
 func (t *Tracker) Run(ctx context.Context) {
