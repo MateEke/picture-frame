@@ -11,7 +11,6 @@ import (
 
 	"github.com/MateEke/picture-frame/internal/config"
 	displaypkg "github.com/MateEke/picture-frame/internal/display"
-	hardwarepower "github.com/MateEke/picture-frame/internal/hardware/power"
 	"github.com/MateEke/picture-frame/internal/httpapi"
 	"github.com/MateEke/picture-frame/internal/kioskwatch"
 	"github.com/MateEke/picture-frame/internal/library"
@@ -255,13 +254,12 @@ func mockUpdaterDelay() time.Duration {
 
 // liveConfigImpl calls Tier-1 setters on the running subsystems.
 type liveConfigImpl struct {
-	slideshow  *slideshow.Slideshow
-	policy     *displaypkg.Policy
-	rotator    displaypkg.Rotator       // nil on vcgencmd
-	weather    *weather.Poller          // may be nil if api_key not configured
-	brightness *hardwarepower.Scheduler // nil when the host has no writable panel backlight
-	logLevel   *slog.LevelVar
-	log        *slog.Logger
+	slideshow *slideshow.Slideshow
+	policy    *displaypkg.Policy
+	rotator   displaypkg.Rotator // nil on vcgencmd
+	weather   *weather.Poller    // may be nil if api_key not configured
+	logLevel  *slog.LevelVar
+	log       *slog.Logger
 }
 
 func (l *liveConfigImpl) ApplyLive(cfg config.Config) {
@@ -269,7 +267,6 @@ func (l *liveConfigImpl) ApplyLive(cfg config.Config) {
 	l.slideshow.SetRandomize(cfg.Slideshow.Randomize)
 	l.slideshow.SetSplitConfig(cfg.Slideshow.SplitScreen, slideplan.Threshold{Factor: cfg.Slideshow.PairThreshold})
 	l.policy.SetBlankAfter(cfg.Display.BlankAfter.Duration)
-	l.policy.SetSchedule(screenSchedule(cfg.Display))
 	if l.rotator != nil {
 		if err := l.rotator.Set(context.Background(), cfg.Display.Rotation); err != nil {
 			l.log.Warn("rotation apply failed", "err", err)
@@ -281,22 +278,7 @@ func (l *liveConfigImpl) ApplyLive(cfg config.Config) {
 	if l.weather != nil {
 		l.weather.SetIntervals(cfg.Weather.PollInterval.Duration, cfg.Weather.RetryInterval.Duration)
 	}
-	if l.brightness != nil {
-		l.brightness.SetConfig(cfg.Display)
-	}
 	l.applyLogLevel(cfg.LogLevel)
-}
-
-// screenSchedule maps the config window onto the display policy, in the kiosk
-// timezone when one is set (as the brightness schedule does), else local time.
-func screenSchedule(d config.DisplayConfig) displaypkg.Schedule {
-	s := displaypkg.Schedule{Enabled: d.ScreenSchedule.Enabled, Off: d.ScreenSchedule.OffAt, On: d.ScreenSchedule.OnAt}
-	if d.Timezone != "" {
-		if loc, err := time.LoadLocation(d.Timezone); err == nil {
-			s.Location = loc
-		}
-	}
-	return s
 }
 
 // applyLogLevel updates the running slog level. An empty value resets to info;

@@ -146,14 +146,14 @@ Usage:
 
 Flags:
   --version <tag>             Install a specific release (default: latest stable).
-  --arch <armv6|armv7|arm64|amd64> Override CPU-arch autodetection.
+  --arch <armv6|armv7|arm64>  Override CPU-arch autodetection.
   --install-dir <path>        Install location (default: ~<user>/picture-frame).
   --user <name>               Service user (default: the invoking sudo user).
   --display-backend <name>    wlopm (default, recommended) or vcgencmd.
                               vcgencmd is a legacy fallback: lighter on RAM/CPU
                               (no compositor) but showed instability in testing
                               that labwc/wlopm does not.
-  --display-output <name>     Override detected display connector (e.g. HDMI-A-1, eDP-1).
+  --display-output <name>     Override detected HDMI connector (e.g. HDMI-A-2).
   --ssid <name>               Enable the WiFi-recovery AP with this SSID.
   --ap-password <pw>          AP password (optional; open AP if omitted).
   --no-ap                     Do not configure the AP fallback.
@@ -224,14 +224,13 @@ detect_arch() {
         aarch64) ARCH="arm64" ;;
         armv7l)  ARCH="armv7" ;;
         armv6l)  ARCH="armv6" ;;
-        x86_64)  ARCH="amd64" ;;
         *)
             # --dry-run must run on a non-Pi dev box; assume a target rather than abort.
             if [ "$DRY_RUN" -eq 1 ]; then
-                warn "unrecognized arch '$m'; dry-run assuming amd64 (use --arch to override)"
-                ARCH="amd64"
+                warn "non-Pi arch '$m'; dry-run assuming arm64 (use --arch to override)"
+                ARCH="arm64"
             else
-                err "unsupported architecture '$m'; pass --arch armv6|armv7|arm64|amd64"
+                err "unsupported architecture '$m'; pass --arch armv6|armv7|arm64"
             fi
             ;;
     esac
@@ -446,8 +445,7 @@ detect_hdmi_connector() {
     if [ -n "$DISPLAY_OUTPUT" ]; then HDMI_CONN="$DISPLAY_OUTPUT"; return; fi
     HDMI_CONN=""
     local st
-    # Check internal laptop/tablet panels (eDP), HDMI, and DP connectors
-    for st in /sys/class/drm/card*-eDP-*/status /sys/class/drm/card*-HDMI-A-*/status /sys/class/drm/card*-DP-*/status; do
+    for st in /sys/class/drm/card*-HDMI-A-*/status; do
         [ -e "$st" ] || continue
         if [ "$(cat "$st")" = "connected" ]; then
             HDMI_CONN="$(basename "$(dirname "$st")")"
@@ -459,13 +457,6 @@ detect_hdmi_connector() {
 }
 
 configure_display() {
-    # Raspberry Pi firmware tweaks only apply to platforms with Pi boot firmware
-    local boot_cfg
-    boot_cfg="$(find_boot_file config.txt)"
-    if [ -z "$boot_cfg" ]; then
-        log "no Pi boot config.txt found (standard UEFI/x86 host); skipping firmware overlays"
-        return
-    fi
     set_display_overlay
     if [ "$DISPLAY_BACKEND" = "wlopm" ]; then
         pin_hdmi_cmdline

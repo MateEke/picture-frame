@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type ServerSentEventsResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { ApplyUpdateData, ApplyUpdateErrors, ApplyUpdateResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthSetPasswordData, AuthSetPasswordErrors, AuthSetPasswordResponses, AuthStatusData, AuthStatusErrors, AuthStatusResponses, CheckUpdateData, CheckUpdateErrors, CheckUpdateResponses, ConfigureApData, ConfigureApErrors, ConfigureApResponses, DeleteImageData, DeleteImageErrors, DeleteImageResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, GetBrightnessData, GetBrightnessErrors, GetBrightnessResponses, GetConfigData, GetConfigErrors, GetConfigMetaData, GetConfigMetaErrors, GetConfigMetaResponses, GetConfigResponses, GetLibraryData, GetLibraryErrors, GetLibraryResponses, GetLicensesData, GetLicensesErrors, GetLicensesResponses, GetScreenData, GetScreenErrors, GetScreenResponses, GetSystemDevicesData, GetSystemDevicesErrors, GetSystemDevicesResponses, GetSystemInfoData, GetSystemInfoErrors, GetSystemInfoResponses, GetUpdateData, GetUpdateErrors, GetUpdateResponses, GetWifiNetworksData, GetWifiNetworksErrors, GetWifiNetworksResponses, GetWifiStatusData, GetWifiStatusErrors, GetWifiStatusResponses, HealthzData, HealthzErrors, HealthzResponses, HeartbeatData, HeartbeatErrors, HeartbeatResponses, ListImagesData, ListImagesErrors, ListImagesResponses, ListImmichAlbumsData, ListImmichAlbumsErrors, ListImmichAlbumsResponses, PutConfigData, PutConfigErrors, PutConfigResponses, ScreenWakeData, ScreenWakeErrors, ScreenWakeResponses, ServeImageData, ServeImageErrors, ServeImageResponses, SetBrightnessData, SetBrightnessErrors, SetBrightnessResponses, SetImageOrderData, SetImageOrderErrors, SetImageOrderResponses, SetScreenData, SetScreenErrors, SetScreenResponses, SlideshowNextData, SlideshowNextErrors, SlideshowNextResponses, SlideshowPrevData, SlideshowPrevErrors, SlideshowPrevResponses, SyncLibraryData, SyncLibraryErrors, SyncLibraryResponses, SystemRebootData, SystemRebootErrors, SystemRebootResponses, SystemRestartData, SystemRestartErrors, SystemRestartResponses, SystemShutdownData, SystemShutdownErrors, SystemShutdownResponses, UploadImageData, UploadImageErrors, UploadImageResponses, WifiConnectData, WifiConnectErrors, WifiConnectResponses, WifiForgetData, WifiForgetErrors, WifiForgetResponses } from './types.gen';
+import type { ApplyUpdateData, ApplyUpdateErrors, ApplyUpdateResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthSetPasswordData, AuthSetPasswordErrors, AuthSetPasswordResponses, AuthStatusData, AuthStatusErrors, AuthStatusResponses, CheckUpdateData, CheckUpdateErrors, CheckUpdateResponses, ConfigureApData, ConfigureApErrors, ConfigureApResponses, DeleteImageData, DeleteImageErrors, DeleteImageResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, GetConfigData, GetConfigErrors, GetConfigMetaData, GetConfigMetaErrors, GetConfigMetaResponses, GetConfigResponses, GetLibraryData, GetLibraryErrors, GetLibraryResponses, GetLicensesData, GetLicensesErrors, GetLicensesResponses, GetScreenData, GetScreenErrors, GetScreenResponses, GetSystemDevicesData, GetSystemDevicesErrors, GetSystemDevicesResponses, GetSystemInfoData, GetSystemInfoErrors, GetSystemInfoResponses, GetUpdateData, GetUpdateErrors, GetUpdateResponses, GetWifiNetworksData, GetWifiNetworksErrors, GetWifiNetworksResponses, GetWifiStatusData, GetWifiStatusErrors, GetWifiStatusResponses, HealthzData, HealthzErrors, HealthzResponses, HeartbeatData, HeartbeatErrors, HeartbeatResponses, ListImagesData, ListImagesErrors, ListImagesResponses, ListImmichAlbumsData, ListImmichAlbumsErrors, ListImmichAlbumsResponses, PutConfigData, PutConfigErrors, PutConfigResponses, ScreenWakeData, ScreenWakeErrors, ScreenWakeResponses, ServeImageData, ServeImageErrors, ServeImageResponses, SetImageOrderData, SetImageOrderErrors, SetImageOrderResponses, SetScreenData, SetScreenErrors, SetScreenResponses, SlideshowNextData, SlideshowNextErrors, SlideshowNextResponses, SlideshowPrevData, SlideshowPrevErrors, SlideshowPrevResponses, SyncLibraryData, SyncLibraryErrors, SyncLibraryResponses, SystemRebootData, SystemRebootErrors, SystemRebootResponses, SystemRestartData, SystemRestartErrors, SystemRestartResponses, SystemShutdownData, SystemShutdownErrors, SystemShutdownResponses, UploadImageData, UploadImageErrors, UploadImageResponses, WifiConnectData, WifiConnectErrors, WifiConnectResponses, WifiForgetData, WifiForgetErrors, WifiForgetResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -51,23 +51,6 @@ export const apiAuthSetPassword = <ThrowOnError extends boolean = false>(options
  * Report whether auth is required and the caller is logged in
  */
 export const apiAuthStatus = <ThrowOnError extends boolean = false>(options?: Options<AuthStatusData, ThrowOnError>): RequestResult<AuthStatusResponses, AuthStatusErrors, ThrowOnError> => (options?.client ?? client).get<AuthStatusResponses, AuthStatusErrors, ThrowOnError>({ url: '/api/auth/status', ...options });
-
-/**
- * Get brightness availability
- */
-export const apiGetBrightness = <ThrowOnError extends boolean = false>(options?: Options<GetBrightnessData, ThrowOnError>): RequestResult<GetBrightnessResponses, GetBrightnessErrors, ThrowOnError> => (options?.client ?? client).get<GetBrightnessResponses, GetBrightnessErrors, ThrowOnError>({ url: '/api/brightness', ...options });
-
-/**
- * Set manual brightness override (0-100) or -1 to clear
- */
-export const apiSetBrightness = <ThrowOnError extends boolean = false>(options: Options<SetBrightnessData, ThrowOnError>): RequestResult<SetBrightnessResponses, SetBrightnessErrors, ThrowOnError> => (options.client ?? client).post<SetBrightnessResponses, SetBrightnessErrors, ThrowOnError>({
-    url: '/api/brightness',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
 
 /**
  * Get current configuration

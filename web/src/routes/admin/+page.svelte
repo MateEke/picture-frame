@@ -15,8 +15,7 @@
 		RotateCcwIcon,
 		RotateCwIcon,
 		PowerIcon,
-		InfoIcon,
-		SunIcon
+		InfoIcon
 	} from '@lucide/svelte';
 	import { resolve } from '$app/paths';
 	import { isSensorStale } from '$lib/helpers';
@@ -24,11 +23,9 @@
 	import { setScreen } from '$lib/screen';
 	import { networkTile } from '$lib/wifi';
 	import { getSSEContext } from '$lib/sse.svelte';
-	import { toaster } from '$lib/toaster';
 	import NowPlaying from './components/NowPlaying.svelte';
 	import StatTile from './components/StatTile.svelte';
 	import SensorReadings from './components/SensorReadings.svelte';
-	import BatteryAnalysis from './components/BatteryAnalysis.svelte';
 	import AboutModal from './components/AboutModal.svelte';
 	import UpdatePanel from './components/UpdatePanel.svelte';
 	import RestartConfirmDialog from './settings/components/RestartConfirmDialog.svelte';
@@ -52,18 +49,6 @@
 	let showRestartDialog = $state(false);
 	let showAbout = $state(false);
 	let powerAction: PowerAction | null = $state(null);
-	let batteryStats = $state<any>(null);
-
-	onMount(async () => {
-		try {
-			const res = await fetch('/api/system/battery-stats', { credentials: 'include' });
-			if (res.ok) {
-				batteryStats = await res.json();
-			}
-		} catch {
-			// Battery stats endpoint not available or error
-		}
-	});
 	// False unless the polkit rule permits the action, so a frame installed before
 	// the rule shipped shows nothing to press.
 	const canReboot = $derived(data.system?.canReboot ?? false);
@@ -124,57 +109,6 @@
 		return undervoltage ? 'Undervoltage' : 'OK';
 	}
 	const power = $derived(powerLabel(data.system?.undervoltage));
-
-	// ---- Brightness override ----
-	let brightnessAvailable = $state(false);
-	let brightnessLevel = $state(50); // slider value
-	let brightnessOverrideActive = $state(false);
-	let brightnessBusy = $state(false);
-
-	onMount(async () => {
-		try {
-			const res = await fetch('/api/brightness', { credentials: 'include' });
-			if (res.ok) {
-				const body = await res.json();
-				brightnessAvailable = body.available ?? false;
-			}
-		} catch {
-			// backlight not available
-		}
-	});
-
-	async function applyBrightness() {
-		brightnessOverrideActive = true;
-		brightnessBusy = true;
-		try {
-			const res = await fetch('/api/brightness', {
-				method: 'POST',
-				credentials: 'include',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ level: brightnessLevel })
-			});
-			if (!res.ok) {
-				toaster.error({ title: 'Brightness', description: 'Failed to set brightness' });
-			}
-		} finally {
-			brightnessBusy = false;
-		}
-	}
-
-	async function clearBrightnessOverride() {
-		brightnessOverrideActive = false;
-		brightnessBusy = true;
-		try {
-			await fetch('/api/brightness', {
-				method: 'POST',
-				credentials: 'include',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ level: -1 })
-			});
-		} finally {
-			brightnessBusy = false;
-		}
-	}
 </script>
 
 <div class="mx-auto max-w-3xl space-y-6">
@@ -277,52 +211,9 @@
 							<Switch.Label>{screenAuto ? 'Auto' : 'Off'}</Switch.Label>
 						</Switch>
 					</div>
-					<!-- Brightness slider — only when backlight device is present -->
-					{#if brightnessAvailable}
-						<div class="border-surface-200-800 mt-4 border-t pt-4">
-							<div class="mb-2 flex items-center justify-between gap-2">
-								<div class="flex items-center gap-2">
-									<SunIcon class="text-warning-500 size-4 shrink-0" />
-									<span class="text-sm font-medium">Brightness</span>
-									{#if brightnessOverrideActive}
-										<span class="badge preset-tonal-warning text-xs">Override active</span>
-									{/if}
-								</div>
-								<div class="flex items-center gap-2">
-									<span class="text-surface-500-400 w-8 text-right text-sm tabular-nums"
-										>{brightnessLevel}%</span
-									>
-									{#if brightnessOverrideActive}
-										<button
-											class="btn btn-sm preset-tonal-surface text-xs"
-											disabled={brightnessBusy}
-											onclick={clearBrightnessOverride}
-											data-testid="brightness-clear"
-											>Resume schedule</button
-										>
-									{/if}
-								</div>
-							</div>
-							<input
-								type="range"
-								min="0"
-								max="100"
-								step="1"
-								bind:value={brightnessLevel}
-								disabled={brightnessBusy}
-								onchange={applyBrightness}
-								class="w-full cursor-pointer accent-warning-500"
-								data-testid="brightness-slider"
-							/>
-						</div>
-					{/if}
 				{/if}
 			</div>
 		</div>
-	</div>
-
-	<div class="reveal space-y-3 delay-200">
-		<BatteryAnalysis stats={batteryStats} />
 	</div>
 
 	<div class="reveal space-y-3 delay-200">
