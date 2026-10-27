@@ -3,7 +3,6 @@ name: ci
 # Quality gates for PRs and pushes to main. Also reusable (workflow_call) so release.yml
 # re-runs the gates on the exact tagged commit before publishing.
 on:
-  pull_request:
   push:
     branches: [main]
   workflow_call:
