@@ -455,6 +455,42 @@ func TestSPACacheHeaders(t *testing.T) {
 	}
 }
 
+// iOS uses apple-touch-icon for the home-screen shortcut, so the icon must be
+// served for real (not the SPA fallback) and the manifest needs its proper
+// media type since Go's mime table has no .webmanifest entry.
+func TestPWAStaticAssets(t *testing.T) {
+	h := httpapi.NewServer(httpapi.Config{
+		Log:        testutil.NopLogger(),
+		Screen:     &mockScreen{},
+		Bus:        state.NewBus(),
+		Production: true,
+	})
+
+	cases := []struct {
+		path, wantType string
+	}{
+		{"/apple-touch-icon.png", "image/png"},
+		{"/icon-192.png", "image/png"},
+		{"/icon-512.png", "image/png"},
+		{"/manifest.webmanifest", "application/manifest+json"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tc.path, nil))
+			if rec.Code != http.StatusOK {
+				t.Fatalf("%s: got %d, want 200", tc.path, rec.Code)
+			}
+			if got := rec.Header().Get("Content-Type"); got != tc.wantType {
+				t.Errorf("%s: Content-Type %q, want %q", tc.path, got, tc.wantType)
+			}
+			if got := rec.Header().Get("Cache-Control"); got != "no-cache" {
+				t.Errorf("%s: Cache-Control %q, want no-cache", tc.path, got)
+			}
+		})
+	}
+}
+
 func TestScreenWakeEndpoint(t *testing.T) {
 	handler, screen := newTestServer(t)
 

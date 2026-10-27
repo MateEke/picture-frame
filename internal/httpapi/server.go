@@ -286,6 +286,11 @@ func newSPAHandler(log *slog.Logger) http.Handler {
 			fileServer.ServeHTTP(w, r2)
 			return
 		}
+		// Go's mime table has no entry for .webmanifest; without this the manifest
+		// is sniffed as text/plain and some browsers reject it.
+		if strings.HasSuffix(path, ".webmanifest") {
+			w.Header().Set("Content-Type", "application/manifest+json")
+		}
 		// embed.FS files have a zero modtime (no implicit validators), so set
 		// caching explicitly: content-hashed assets forever, the rest revalidates.
 		if strings.HasPrefix(path, "_app/immutable/") {
