@@ -12,9 +12,6 @@ type BatteryStatsOutput struct {
 }
 
 func (s *server) registerBatteryStatsRoute(api huma.API) {
-	if s.batteryTracker == nil {
-		return
-	}
 	huma.Register(api, huma.Operation{
 		OperationID: "get-battery-stats",
 		Method:      "GET",
@@ -22,7 +19,10 @@ func (s *server) registerBatteryStatsRoute(api huma.API) {
 		Summary:     "Get battery life analysis for screen on vs screen off",
 		Description: "Returns observed discharge rates, estimated autonomy, 7-day daily summaries, and sample history.",
 		Tags:        []string{"system"},
-	}, func(ctx context.Context, input *struct{}) (*BatteryStatsOutput, error) {
+	}, func(_ context.Context, _ *struct{}) (*BatteryStatsOutput, error) {
+		if s.batteryTracker == nil {
+			return nil, huma.Error503ServiceUnavailable("battery tracking unavailable on this host")
+		}
 		stats := s.batteryTracker.GetStats()
 		return &BatteryStatsOutput{Body: stats}, nil
 	})

@@ -125,9 +125,9 @@ type SlideshowDTO struct {
 type LibraryDTO struct {
 	Backend string           `json:"backend" enum:"fs,immich"`
 	Immich  ImmichLibraryDTO `json:"immich"`
-	// ApiKey carries the preferred [immich] api-key mode. Mutually exclusive
+	// APIKey carries the preferred [immich] api-key mode. Mutually exclusive
 	// with Immich's share_url; see config.Config.validateImmich.
-	ApiKey ImmichAPIKeyDTO `json:"immich_api_key"`
+	APIKey ImmichAPIKeyDTO `json:"immich_api_key"`
 }
 
 // ImmichAPIKeyDTO maps config.ImmichConfig with the API key as write-only.
@@ -245,7 +245,7 @@ func toDTO(cfg config.Config) ConfigDTO {
 				SharePasswordSet: cfg.Library.Immich.SharePassword != "",
 				SyncInterval:     durString(cfg.Library.Immich.SyncInterval.Duration),
 			},
-			ApiKey: ImmichAPIKeyDTO{
+			APIKey: ImmichAPIKeyDTO{
 				URL:          cfg.Immich.URL,
 				APIKeySet:    cfg.Immich.APIKey != "",
 				AlbumIDs:     cfg.Immich.AlbumIDs,
@@ -405,10 +405,10 @@ func applyLibraryDTO(dst *config.Config, dto LibraryDTO) error {
 	}
 	dst.Library.Immich.SyncInterval = shareInterval
 
-	dst.Immich.URL = dto.ApiKey.URL
-	dst.Immich.APIKey = applySecret(dst.Immich.APIKey, dto.ApiKey.APIKey, dto.ApiKey.APIKeySet)
-	dst.Immich.AlbumIDs = dto.ApiKey.AlbumIDs
-	apiInterval, err := parseDuration(dto.ApiKey.SyncInterval, "immich.sync_interval")
+	dst.Immich.URL = dto.APIKey.URL
+	dst.Immich.APIKey = applySecret(dst.Immich.APIKey, dto.APIKey.APIKey, dto.APIKey.APIKeySet)
+	dst.Immich.AlbumIDs = dto.APIKey.AlbumIDs
+	apiInterval, err := parseDuration(dto.APIKey.SyncInterval, "immich.sync_interval")
 	if err != nil {
 		return err
 	}

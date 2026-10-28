@@ -70,6 +70,15 @@ export type CharacteristicDto = {
     uuid: string;
 };
 
+export type ConditionStats = {
+    confidence: string;
+    discharge_rate_pct_hr: number;
+    estimated_full_hours: number;
+    estimated_rem_hours: number;
+    observed_duration_sec: number;
+    sufficient_data: boolean;
+};
+
 export type ConfigDto = {
     /**
      * A URL to the JSON Schema for this object.
@@ -147,6 +156,14 @@ export type Cookie = {
     Secure: boolean;
     Unparsed: Array<string> | null;
     Value: string;
+};
+
+export type DaySummary = {
+    avg_rate_off_pct_hr: number;
+    avg_rate_on_pct_hr: number;
+    date: string;
+    screen_off_discharge_hr: number;
+    screen_on_discharge_hr: number;
 };
 
 export type DisplayDto = {
@@ -430,6 +447,13 @@ export type ReadyEvent = {
     [key: string]: never;
 };
 
+export type Sample = {
+    charging: boolean;
+    pct: number;
+    screen_on: boolean;
+    timestamp: string;
+};
+
 export type ScreenAspectPayload = {
     aspect: number;
 };
@@ -543,6 +567,20 @@ export type SlideshowDto = {
      * Pair mismatched-orientation photos side-by-side
      */
     split_screen: boolean;
+};
+
+export type StatsSummary = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    charging: boolean;
+    comparison: string;
+    current_pct: number;
+    daily: Array<DaySummary> | null;
+    history: Array<Sample> | null;
+    screen_off: ConditionStats;
+    screen_on: ConditionStats;
 };
 
 export type SystemDevicesBody = {
@@ -949,6 +987,16 @@ export type SetScreenRequestWritable = {
      * Desired screen power state
      */
     state: 'on' | 'off';
+};
+
+export type StatsSummaryWritable = {
+    charging: boolean;
+    comparison: string;
+    current_pct: number;
+    daily: Array<DaySummary> | null;
+    history: Array<Sample> | null;
+    screen_off: ConditionStats;
+    screen_on: ConditionStats;
 };
 
 export type SystemDevicesBodyWritable = {
@@ -1654,6 +1702,31 @@ export type SlideshowPrevResponses = {
 };
 
 export type SlideshowPrevResponse = SlideshowPrevResponses[keyof SlideshowPrevResponses];
+
+export type GetBatteryStatsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/system/battery-stats';
+};
+
+export type GetBatteryStatsErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type GetBatteryStatsError = GetBatteryStatsErrors[keyof GetBatteryStatsErrors];
+
+export type GetBatteryStatsResponses = {
+    /**
+     * OK
+     */
+    200: StatsSummary;
+};
+
+export type GetBatteryStatsResponse = GetBatteryStatsResponses[keyof GetBatteryStatsResponses];
 
 export type GetSystemDevicesData = {
     body?: never;

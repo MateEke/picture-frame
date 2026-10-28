@@ -47,7 +47,7 @@ func main() {
 // run wires up every subsystem and blocks until shutdown or a restart request.
 // Returning an error (not os.Exit) lets deferred cleanup run and routes failures through main.
 //
-//nolint:funlen // composition root: a linear wiring sequence read top to bottom.
+//nolint:funlen,gocognit // composition root: a linear wiring sequence read top to bottom.
 func run() error {
 	configPath := flag.String("config", "config.toml", "path to user config file")
 	overridesPath := flag.String("overrides", "runtime-overrides.toml", "path to runtime overrides file")

@@ -258,9 +258,9 @@ describe('helpers', () => {
 			});
 
 			it('shows album with 2-digit year when known', () => {
-				expect(formatAlbumLabel('Egitto', 2025)).toBe('Egitto 25\'');
-				expect(formatAlbumLabel('Egitto', 2000)).toBe('Egitto 00\'');
-				expect(formatAlbumLabel('Egitto', 1999)).toBe('Egitto 99\'');
+				expect(formatAlbumLabel('Egitto', 2025)).toBe("Egitto 25'");
+				expect(formatAlbumLabel('Egitto', 2000)).toBe("Egitto 00'");
+				expect(formatAlbumLabel('Egitto', 1999)).toBe("Egitto 99'");
 			});
 
 			it('shows album without year when year is zero', () => {
@@ -268,8 +268,8 @@ describe('helpers', () => {
 			});
 
 			it('shows last two digits of year with apostrophe', () => {
-				expect(formatAlbumLabel('France', 2024)).toBe('France 24\'');
-				expect(formatAlbumLabel('France', 100)).toBe('France 00\'');
+				expect(formatAlbumLabel('France', 2024)).toBe("France 24'");
+				expect(formatAlbumLabel('France', 100)).toBe("France 00'");
 			});
 		});
 	});

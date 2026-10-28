@@ -111,7 +111,7 @@ func TestLoadMigratesLegacyArrayAndTornLine(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal legacy store: %v", err)
 	}
-	if err := os.WriteFile(storePath, raw, 0o644); err != nil {
+	if err := os.WriteFile(storePath, raw, 0o600); err != nil {
 		t.Fatalf("write legacy store: %v", err)
 	}
 
@@ -134,7 +134,8 @@ func TestLoadMigratesLegacyArrayAndTornLine(t *testing.T) {
 
 	// A torn last line (power loss mid-append) must not discard the good ones.
 	torn := string(migrated) + `{"timestamp":"2026-10-27T21:00:00Z","pct":4`
-	if err := os.WriteFile(storePath, []byte(torn), 0o644); err != nil {
+	//nolint:gosec // G703 false positive: storePath is derived from t.TempDir().
+	if err := os.WriteFile(storePath, []byte(torn), 0o600); err != nil {
 		t.Fatalf("write torn store: %v", err)
 	}
 	tr2 := batterytracker.New(testLogger(), mm, &mockDisplay{on: true}, storePath)

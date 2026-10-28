@@ -68,7 +68,7 @@ func getAlbums(t *testing.T, srv http.Handler) (int, []httpapi.ImmichAlbum, stri
 // config, a non-blank one overrides it (the unsaved-first-use path).
 func postAlbums(t *testing.T, srv http.Handler, url, key string) (int, []httpapi.ImmichAlbum, string) {
 	t.Helper()
-	body, err := json.Marshal(httpapi.ImmichAlbumsRequest{URL: url, APIKey: key})
+	body, err := json.Marshal(httpapi.ImmichAlbumsRequest{URL: url, APIKey: key}) //nolint:gosec // test fixture, not a real secret
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
@@ -176,7 +176,7 @@ func TestPutConfigPersistsImmichAlbumSelection(t *testing.T) {
 	srv.ServeHTTP(after, httptest.NewRequest(http.MethodGet, "/api/config", nil))
 	var got struct {
 		Library struct {
-			ApiKey struct {
+			APIKey struct {
 				APIKeySet bool     `json:"api_key_set"`
 				AlbumIDs  []string `json:"album_ids"`
 			} `json:"immich_api_key"`
@@ -185,11 +185,11 @@ func TestPutConfigPersistsImmichAlbumSelection(t *testing.T) {
 	if err := json.Unmarshal(after.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if !got.Library.ApiKey.APIKeySet {
+	if !got.Library.APIKey.APIKeySet {
 		t.Error("stored API key was cleared by a PUT that left the field blank")
 	}
-	if len(got.Library.ApiKey.AlbumIDs) != 2 || got.Library.ApiKey.AlbumIDs[0] != "a1" {
-		t.Errorf("album_ids: got %v, want [a1 a2]", got.Library.ApiKey.AlbumIDs)
+	if len(got.Library.APIKey.AlbumIDs) != 2 || got.Library.APIKey.AlbumIDs[0] != "a1" {
+		t.Errorf("album_ids: got %v, want [a1 a2]", got.Library.APIKey.AlbumIDs)
 	}
 }
 

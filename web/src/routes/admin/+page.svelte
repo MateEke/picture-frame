@@ -34,6 +34,7 @@
 	import RestartConfirmDialog from './settings/components/RestartConfirmDialog.svelte';
 	import PowerConfirmDialog from './components/PowerConfirmDialog.svelte';
 	import type { PowerAction } from '$lib/power';
+	import type { StatsSummary } from '$lib/api/types.gen';
 
 	let { data }: PageProps = $props();
 	const sse = getSSEContext();
@@ -52,7 +53,7 @@
 	let showRestartDialog = $state(false);
 	let showAbout = $state(false);
 	let powerAction: PowerAction | null = $state(null);
-	let batteryStats = $state<any>(null);
+	let batteryStats = $state<StatsSummary | null>(null);
 
 	onMount(async () => {
 		try {
@@ -297,8 +298,7 @@
 											class="btn btn-sm preset-tonal-surface text-xs"
 											disabled={brightnessBusy}
 											onclick={clearBrightnessOverride}
-											data-testid="brightness-clear"
-											>Resume schedule</button
+											data-testid="brightness-clear">Resume schedule</button
 										>
 									{/if}
 								</div>
@@ -311,7 +311,7 @@
 								bind:value={brightnessLevel}
 								disabled={brightnessBusy}
 								onchange={applyBrightness}
-								class="w-full cursor-pointer accent-warning-500"
+								class="accent-warning-500 w-full cursor-pointer"
 								data-testid="brightness-slider"
 							/>
 						</div>

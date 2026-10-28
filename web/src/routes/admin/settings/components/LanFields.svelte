@@ -33,7 +33,7 @@
 	help="Static IPs (DHCP reservations) of phones on your WiFi. Any reachable host keeps the screen on."
 >
 	<div class="space-y-2">
-		{#each (draft.hosts ?? []) as host, i (i)}
+		{#each draft.hosts ?? [] as host, i (i)}
 			<div class="flex items-center gap-2">
 				<input
 					class="input input-sm font-mono"

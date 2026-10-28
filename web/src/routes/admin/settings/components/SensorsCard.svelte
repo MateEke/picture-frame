@@ -49,7 +49,8 @@
 	let dialogSensor = $state<SensorDto | null | undefined>(undefined);
 
 	// Phone presence manages the LAN sensor(s) directly: toggle + hosts inline.
-	const lanOf = (list: SensorDto[] | null | undefined) => (list ?? []).filter((s) => s.type === 'lan');
+	const lanOf = (list: SensorDto[] | null | undefined) =>
+		(list ?? []).filter((s) => s.type === 'lan');
 	const lanIdx = $derived((sensors ?? []).findIndex((s) => s.type === 'lan'));
 	const presenceOn = $derived(lanIdx >= 0);
 	const presenceChanged = $derived(
@@ -112,8 +113,8 @@
 			testId="presence-toggle"
 		/>
 		<p class="text-surface-500-400 -mt-2 text-xs">
-			Ping your phones' static IPs; any phone home keeps the screen on. The idle-blank
-			timeout is the away grace.
+			Ping your phones' static IPs; any phone home keeps the screen on. The idle-blank timeout is
+			the away grace.
 		</p>
 		{#if sensors && lanIdx >= 0}
 			<LanFields bind:draft={sensors[lanIdx]} testIdPrefix="presence" />

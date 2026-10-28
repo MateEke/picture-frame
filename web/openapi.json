@@ -163,6 +163,42 @@
         ],
         "type": "object"
       },
+      "ConditionStats": {
+        "additionalProperties": false,
+        "properties": {
+          "confidence": {
+            "type": "string"
+          },
+          "discharge_rate_pct_hr": {
+            "format": "double",
+            "type": "number"
+          },
+          "estimated_full_hours": {
+            "format": "double",
+            "type": "number"
+          },
+          "estimated_rem_hours": {
+            "format": "double",
+            "type": "number"
+          },
+          "observed_duration_sec": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "sufficient_data": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "observed_duration_sec",
+          "discharge_rate_pct_hr",
+          "estimated_full_hours",
+          "estimated_rem_hours",
+          "confidence",
+          "sufficient_data"
+        ],
+        "type": "object"
+      },
       "ConfigDTO": {
         "additionalProperties": false,
         "properties": {
@@ -459,6 +495,38 @@
           "Partitioned",
           "Raw",
           "Unparsed"
+        ],
+        "type": "object"
+      },
+      "DaySummary": {
+        "additionalProperties": false,
+        "properties": {
+          "avg_rate_off_pct_hr": {
+            "format": "double",
+            "type": "number"
+          },
+          "avg_rate_on_pct_hr": {
+            "format": "double",
+            "type": "number"
+          },
+          "date": {
+            "type": "string"
+          },
+          "screen_off_discharge_hr": {
+            "format": "double",
+            "type": "number"
+          },
+          "screen_on_discharge_hr": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "screen_on_discharge_hr",
+          "screen_off_discharge_hr",
+          "avg_rate_on_pct_hr",
+          "avg_rate_off_pct_hr"
         ],
         "type": "object"
       },
@@ -1087,6 +1155,32 @@
         "additionalProperties": false,
         "type": "object"
       },
+      "Sample": {
+        "additionalProperties": false,
+        "properties": {
+          "charging": {
+            "type": "boolean"
+          },
+          "pct": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "screen_on": {
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "timestamp",
+          "pct",
+          "screen_on",
+          "charging"
+        ],
+        "type": "object"
+      },
       "ScreenAspectPayload": {
         "additionalProperties": false,
         "properties": {
@@ -1387,6 +1481,64 @@
           "randomize",
           "split_screen",
           "images_dir"
+        ],
+        "type": "object"
+      },
+      "StatsSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/StatsSummary.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "charging": {
+            "type": "boolean"
+          },
+          "comparison": {
+            "type": "string"
+          },
+          "current_pct": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/DaySummary"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/Sample"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "screen_off": {
+            "$ref": "#/components/schemas/ConditionStats"
+          },
+          "screen_on": {
+            "$ref": "#/components/schemas/ConditionStats"
+          }
+        },
+        "required": [
+          "current_pct",
+          "charging",
+          "screen_on",
+          "screen_off",
+          "comparison",
+          "daily",
+          "history"
         ],
         "type": "object"
       },
@@ -2518,6 +2670,38 @@
           }
         },
         "summary": "Return slideshow to the previous image"
+      }
+    },
+    "/api/system/battery-stats": {
+      "get": {
+        "description": "Returns observed discharge rates, estimated autonomy, 7-day daily summaries, and sample history.",
+        "operationId": "get-battery-stats",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Get battery life analysis for screen on vs screen off",
+        "tags": [
+          "system"
+        ]
       }
     },
     "/api/system/devices": {

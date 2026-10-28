@@ -50,6 +50,7 @@ func newFakeAPIImmich() *fakeAPIImmich {
 	}
 }
 
+//nolint:gocognit // fake Immich endpoint matrix; splitting would obscure the routing.
 func (f *fakeAPIImmich) handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		f.mu.Lock()

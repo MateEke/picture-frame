@@ -193,20 +193,7 @@ func buildSources(log *slog.Logger, cfg *config.Config, hub *mqtt.Hub) []sensors
 			sources = append(sources, src)
 			log.Info("mqtt-subscriber configured", "id", sensorCfg.ID, "topic", sensorCfg.Topic, "kind", sensorCfg.Kind)
 		case "mock":
-			interval := sensorCfg.PollInterval.Duration
-			if interval == 0 {
-				interval = 5 * time.Second
-			}
-			readings := make([]mocksensor.Reading, 0, len(sensorCfg.MockReadings))
-			for _, r := range sensorCfg.MockReadings {
-				readings = append(readings, mocksensor.Reading{
-					Kind:  sensors.Kind(r.Kind),
-					Value: r.Value,
-					Delta: r.Delta,
-				})
-			}
-			sources = append(sources, mocksensor.New(sensorCfg.ID, interval, readings...))
-			log.Info("mock sensor configured", "id", sensorCfg.ID, "readings", len(readings), "interval", interval)
+			sources = append(sources, buildMockSource(log, sensorCfg))
 		case "lan":
 			src, err := lan.New(log, sensorCfg)
 			if err != nil {
@@ -218,4 +205,22 @@ func buildSources(log *slog.Logger, cfg *config.Config, hub *mqtt.Hub) []sensors
 		}
 	}
 	return sources
+}
+
+// buildMockSource builds a mock sensor source, defaulting a zero poll interval to 5s.
+func buildMockSource(log *slog.Logger, sensorCfg config.SensorConfig) sensors.Source {
+	interval := sensorCfg.PollInterval.Duration
+	if interval == 0 {
+		interval = 5 * time.Second
+	}
+	readings := make([]mocksensor.Reading, 0, len(sensorCfg.MockReadings))
+	for _, r := range sensorCfg.MockReadings {
+		readings = append(readings, mocksensor.Reading{
+			Kind:  sensors.Kind(r.Kind),
+			Value: r.Value,
+			Delta: r.Delta,
+		})
+	}
+	log.Info("mock sensor configured", "id", sensorCfg.ID, "readings", len(readings), "interval", interval)
+	return mocksensor.New(sensorCfg.ID, interval, readings...)
 }

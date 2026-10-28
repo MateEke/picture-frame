@@ -17,12 +17,12 @@ func TestSysfsBacklight(t *testing.T) {
 	}
 
 	maxPath := filepath.Join(deviceDir, "max_brightness")
-	if err := os.WriteFile(maxPath, []byte("1000\n"), 0o644); err != nil {
+	if err := os.WriteFile(maxPath, []byte("1000\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
 	brightPath := filepath.Join(deviceDir, "brightness")
-	if err := os.WriteFile(brightPath, []byte("500\n"), 0o644); err != nil {
+	if err := os.WriteFile(brightPath, []byte("500\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 

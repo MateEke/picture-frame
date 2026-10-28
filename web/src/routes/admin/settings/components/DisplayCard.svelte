@@ -77,7 +77,8 @@
 		help="Use the Surface panel backlight: bright during the day, dim at night. Other displays safely ignore this setting."
 		class="md:col-span-2"
 		changed={display.brightness_schedule.enabled !== savedDisplay.brightness_schedule.enabled}
-		onrevert={() => (display.brightness_schedule.enabled = savedDisplay.brightness_schedule.enabled)}
+		onrevert={() =>
+			(display.brightness_schedule.enabled = savedDisplay.brightness_schedule.enabled)}
 	>
 		<label class="flex items-center gap-2 text-sm">
 			<input class="checkbox" type="checkbox" bind:checked={display.brightness_schedule.enabled} />
@@ -88,18 +89,50 @@
 		<Field
 			label="Bright period"
 			help="At this time the panel changes to the brighter level."
-			changed={display.brightness_schedule.day_start !== savedDisplay.brightness_schedule.day_start || display.brightness_schedule.day_level !== savedDisplay.brightness_schedule.day_level}
-			onrevert={() => { display.brightness_schedule.day_start = savedDisplay.brightness_schedule.day_start; display.brightness_schedule.day_level = savedDisplay.brightness_schedule.day_level; }}
+			changed={display.brightness_schedule.day_start !==
+				savedDisplay.brightness_schedule.day_start ||
+				display.brightness_schedule.day_level !== savedDisplay.brightness_schedule.day_level}
+			onrevert={() => {
+				display.brightness_schedule.day_start = savedDisplay.brightness_schedule.day_start;
+				display.brightness_schedule.day_level = savedDisplay.brightness_schedule.day_level;
+			}}
 		>
-			<div class="flex items-center gap-3"><input class="input" type="time" bind:value={display.brightness_schedule.day_start} /><input class="input w-20" type="number" min="0" max="100" bind:value={display.brightness_schedule.day_level} aria-label="Day brightness percentage" /><span class="text-surface-500-400 text-sm">%</span></div>
+			<div class="flex items-center gap-3">
+				<input class="input" type="time" bind:value={display.brightness_schedule.day_start} /><input
+					class="input w-20"
+					type="number"
+					min="0"
+					max="100"
+					bind:value={display.brightness_schedule.day_level}
+					aria-label="Day brightness percentage"
+				/><span class="text-surface-500-400 text-sm">%</span>
+			</div>
 		</Field>
 		<Field
 			label="Dim period"
 			help="At this time the panel changes to the dimmer level."
-			changed={display.brightness_schedule.night_start !== savedDisplay.brightness_schedule.night_start || display.brightness_schedule.night_level !== savedDisplay.brightness_schedule.night_level}
-			onrevert={() => { display.brightness_schedule.night_start = savedDisplay.brightness_schedule.night_start; display.brightness_schedule.night_level = savedDisplay.brightness_schedule.night_level; }}
+			changed={display.brightness_schedule.night_start !==
+				savedDisplay.brightness_schedule.night_start ||
+				display.brightness_schedule.night_level !== savedDisplay.brightness_schedule.night_level}
+			onrevert={() => {
+				display.brightness_schedule.night_start = savedDisplay.brightness_schedule.night_start;
+				display.brightness_schedule.night_level = savedDisplay.brightness_schedule.night_level;
+			}}
 		>
-			<div class="flex items-center gap-3"><input class="input" type="time" bind:value={display.brightness_schedule.night_start} /><input class="input w-20" type="number" min="0" max="100" bind:value={display.brightness_schedule.night_level} aria-label="Night brightness percentage" /><span class="text-surface-500-400 text-sm">%</span></div>
+			<div class="flex items-center gap-3">
+				<input
+					class="input"
+					type="time"
+					bind:value={display.brightness_schedule.night_start}
+				/><input
+					class="input w-20"
+					type="number"
+					min="0"
+					max="100"
+					bind:value={display.brightness_schedule.night_level}
+					aria-label="Night brightness percentage"
+				/><span class="text-surface-500-400 text-sm">%</span>
+			</div>
 		</Field>
 	{/if}
 	<Field
@@ -120,14 +153,24 @@
 			changed={display.screen_schedule.off_at !== savedDisplay.screen_schedule.off_at}
 			onrevert={() => (display.screen_schedule.off_at = savedDisplay.screen_schedule.off_at)}
 		>
-			<input class="input" type="time" bind:value={display.screen_schedule.off_at} aria-label="Screen off time" />
+			<input
+				class="input"
+				type="time"
+				bind:value={display.screen_schedule.off_at}
+				aria-label="Screen off time"
+			/>
 		</Field>
 		<Field
 			label="Screen on at"
 			changed={display.screen_schedule.on_at !== savedDisplay.screen_schedule.on_at}
 			onrevert={() => (display.screen_schedule.on_at = savedDisplay.screen_schedule.on_at)}
 		>
-			<input class="input" type="time" bind:value={display.screen_schedule.on_at} aria-label="Screen on time" />
+			<input
+				class="input"
+				type="time"
+				bind:value={display.screen_schedule.on_at}
+				aria-label="Screen on time"
+			/>
 		</Field>
 	{/if}
 </div>

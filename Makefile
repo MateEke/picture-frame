@@ -37,9 +37,14 @@ build: build-ui build-go-amd64 ## Build the complete production binary for x86-6
 
 # //go:embed all:build needs web/build before ANY Go compile (vet, test, lint, gremlins,
 # build). On fresh checkouts seed a build-shaped skeleton — incl. a fake immutable asset
-# so httpapi's cache-header test has a target. A real build (has _app/) is left untouched.
+# so httpapi's cache-header test has a target and SvelteKit's copy of the static files
+# (PWA icons, manifest) so their content-type tests can resolve. A real build (has _app/)
+# is left untouched.
 embed-seed:
-	@test -d $(UI_DIR)/build/_app || { mkdir -p $(UI_DIR)/build/_app/immutable && touch $(UI_DIR)/build/index.html $(UI_DIR)/build/_app/immutable/placeholder.js; }
+	@test -d $(UI_DIR)/build/_app || { \
+		mkdir -p $(UI_DIR)/build/_app/immutable && \
+		touch $(UI_DIR)/build/index.html $(UI_DIR)/build/_app/immutable/placeholder.js && \
+		cp -R $(UI_DIR)/static/. $(UI_DIR)/build/; }
 
 build-ui: embed-seed ## Build the SvelteKit frontend
 	@echo "==> Building frontend (SvelteKit)..."
@@ -161,7 +166,7 @@ vuln: embed-seed ## Scan dependencies for known vulnerabilities (reachable Go + 
 	@echo "==> Building UI for the bundle-truth SBOM..."
 	cd $(UI_DIR) && $(NPM_INSTALL) && npm run build
 	@echo "==> Scanning bundled npm packages (osv-scanner)..."
-	$(OSV_SCANNER) scan source -L $(UI_DIR)/.svelte-kit/output/client/cyclonedx/bom.json
+	$(OSV_SCANNER) scan source --config osv-scanner.toml -L $(UI_DIR)/.svelte-kit/output/client/cyclonedx/bom.json
 
 lint: embed-seed ## Run linters (Go, shell, workflows, and Frontend)
 	@echo "==> Linting Go code..."

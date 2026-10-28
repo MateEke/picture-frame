@@ -139,7 +139,10 @@
 						</Field>
 					</div>
 
-					<Field label="Type" help="Bluetooth (BLE), an MQTT topic, a built-in mock source, or WiFi phone presence.">
+					<Field
+						label="Type"
+						help="Bluetooth (BLE), an MQTT topic, a built-in mock source, or WiFi phone presence."
+					>
 						<select
 							class="select"
 							value={draft.type}
@@ -158,7 +161,7 @@
 					{:else if draft.type === 'mock'}
 						<MockFields bind:draft {meta} />
 					{:else if draft.type === 'lan'}
-						<LanFields bind:draft={draft} />
+						<LanFields bind:draft />
 					{/if}
 
 					{#if typeError}

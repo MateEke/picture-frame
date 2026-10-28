@@ -133,26 +133,27 @@ const defaultRetryBase = 30 * time.Second
 
 // backoffDelay waits base after the first failure, doubling per consecutive
 // failure, jittered into [d/2, d] so concurrent frames don't retry in
-// lockstep, and capped at max (the normal sync interval).
-func backoffDelay(failures int, base, max time.Duration) time.Duration {
+// lockstep, and capped at maxDelay (the normal sync interval).
+func backoffDelay(failures int, base, maxDelay time.Duration) time.Duration {
 	if base <= 0 {
 		base = defaultRetryBase
 	}
-	if max <= 0 {
-		max = base
+	if maxDelay <= 0 {
+		maxDelay = base
 	}
 	d := base
-	for i := 1; i < failures && d < max; i++ {
+	for i := 1; i < failures && d < maxDelay; i++ {
 		d *= 2
-		if d <= 0 || d > max {
-			d = max
+		if d <= 0 || d > maxDelay {
+			d = maxDelay
 			break
 		}
 	}
-	if d > max {
-		d = max
+	if d > maxDelay {
+		d = maxDelay
 	}
 	half := int64(d) / 2
+	//nolint:gosec // retry jitter only; unpredictability is not a security requirement.
 	return time.Duration(half + rand.N(half+1))
 }
 
@@ -280,14 +281,6 @@ type localFile struct {
 
 type localSet []localFile
 
-func (ls localSet) byID() map[string]localFile {
-	index := make(map[string]localFile, len(ls))
-	for _, f := range ls {
-		index[f.id] = f
-	}
-	return index
-}
-
 // staleAgainst returns local files whose ID is gone from remote or whose
 // version differs from the remote one.
 func (ls localSet) staleAgainst(remote []Asset) []localFile {
@@ -299,19 +292,6 @@ func (ls localSet) staleAgainst(remote []Asset) []localFile {
 	for _, f := range ls {
 		if v, ok := want[f.id]; !ok || v != f.version {
 			out = append(out, f)
-		}
-	}
-	return out
-}
-
-// missingFrom returns remote assets that are absent locally (or stale, since
-// the stale version is also deleted in the same cycle).
-func (ls localSet) missingFrom(remote []Asset) []Asset {
-	have := ls.byID()
-	var out []Asset
-	for _, a := range remote {
-		if f, ok := have[a.ID]; !ok || f.version != a.Version {
-			out = append(out, a)
 		}
 	}
 	return out
@@ -411,7 +391,7 @@ func (s *Syncer) download(ctx context.Context, a Asset) (int64, error) {
 		_ = s.root.Remove(tmp)
 		return 0, err
 	}
-	s.lib.Add(name, string(a.Album), a.Year)
+	s.lib.Add(name, a.Album, a.Year)
 	s.manifest.Set(name, ManifestEntry{ID: a.ID, Version: a.Version, Bytes: n})
 	if s.aspect != nil {
 		// Decode the preview, not remote EXIF: the preview has orientation baked in,
@@ -471,7 +451,7 @@ func detailsOf(remote []Asset) map[string]Details {
 		if a.Album == "" || a.Version == "" {
 			continue
 		}
-		out[SyncedFilename(a)] = Details{Album: string(a.Album), Year: a.Year}
+		out[SyncedFilename(a)] = Details{Album: a.Album, Year: a.Year}
 	}
 	return out
 }

@@ -177,7 +177,7 @@ func (f *fakeImmich) serveBucket(w http.ResponseWriter) {
 
 func writeJSON(w http.ResponseWriter, body string) {
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = io.WriteString(w, body)
+	_, _ = io.WriteString(w, body) //nolint:gosec // canned test JSON, not user input
 }
 
 func newClient(t *testing.T, srv *httptest.Server, password string) *immich.Client {

@@ -23,9 +23,15 @@ export function renderConfig(opts: ConfigOptions): string {
 	const displayExtra =
 		(opts.hideClockDate ? 'hide_clock_date = true\n' : '') +
 		(opts.timezone ? `timezone = "${opts.timezone}"\n` : '');
+	// Sentinel labels the settings spec asserts on. They are still a configurable
+	// feature even though the kiosk overlay no longer shows weather readings.
 	const display = `[display]
 blank_after = "20m"
-${displayExtra}`;
+${displayExtra}
+[display.labels]
+outside  = "E2E Outside"
+inside   = "E2E Inside"
+humidity = "E2E Humidity"`;
 	const slideshow = `[slideshow]
 interval   = "${opts.slideshowInterval ?? '2s'}"
 images_dir = "${opts.imagesDir}"`;

@@ -72,7 +72,8 @@
 	/>
 	{#if !motion}
 		<p class="text-surface-500-400 -mt-3 text-xs">
-			Add a motion or presence sensor to enable idle blanking. Without one, the screen couldn't wake again.
+			Add a motion or presence sensor to enable idle blanking. Without one, the screen couldn't wake
+			again.
 		</p>
 	{/if}
 

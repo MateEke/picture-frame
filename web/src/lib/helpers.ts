@@ -1,4 +1,4 @@
-import type { SensorPayload, WeatherPayload } from '$lib/api/types.gen';
+import type { SensorPayload } from '$lib/api/types.gen';
 
 /** SSE sensors-map key for a reading: role (or device_id) + kind, e.g. "inside:temperature". */
 export function sensorKey(p: SensorPayload): string {

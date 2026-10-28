@@ -26,24 +26,9 @@ func NewSysfsBacklight(basePath, deviceName string) (*SysfsBacklight, error) {
 	if basePath == "" {
 		basePath = "/sys/class/backlight"
 	}
-	var dir string
-	if deviceName != "" {
-		dir = filepath.Join(basePath, deviceName)
-	} else {
-		// Prefer intel_backlight if present
-		candidate := filepath.Join(basePath, "intel_backlight")
-		if _, err := os.Stat(candidate); err == nil {
-			dir = candidate
-		} else {
-			matches, err := filepath.Glob(filepath.Join(basePath, "*"))
-			if err != nil {
-				return nil, fmt.Errorf("sysfs backlight glob: %w", err)
-			}
-			if len(matches) == 0 {
-				return nil, fmt.Errorf("no backlight devices found in %s", basePath)
-			}
-			dir = matches[0]
-		}
+	dir, err := findBacklightDir(basePath, deviceName)
+	if err != nil {
+		return nil, err
 	}
 
 	maxRaw, err := os.ReadFile(filepath.Join(dir, "max_brightness"))
@@ -61,6 +46,26 @@ func NewSysfsBacklight(basePath, deviceName string) (*SysfsBacklight, error) {
 	}, nil
 }
 
+// findBacklightDir resolves the device directory: an explicit name wins, otherwise
+// intel_backlight is preferred, then the first device sysfs lists.
+func findBacklightDir(basePath, deviceName string) (string, error) {
+	if deviceName != "" {
+		return filepath.Join(basePath, deviceName), nil
+	}
+	candidate := filepath.Join(basePath, "intel_backlight")
+	if _, err := os.Stat(candidate); err == nil {
+		return candidate, nil
+	}
+	matches, err := filepath.Glob(filepath.Join(basePath, "*"))
+	if err != nil {
+		return "", fmt.Errorf("sysfs backlight glob: %w", err)
+	}
+	if len(matches) == 0 {
+		return "", fmt.Errorf("no backlight devices found in %s", basePath)
+	}
+	return matches[0], nil
+}
+
 // SetBrightness maps 0-100% to 0-max_brightness and writes it to sysfs.
 func (s *SysfsBacklight) SetBrightness(_ context.Context, level int) error {
 	if level < 0 || level > 100 {
@@ -72,7 +77,7 @@ func (s *SysfsBacklight) SetBrightness(_ context.Context, level int) error {
 	rawVal := (level * s.maxBrightness) / 100
 	path := filepath.Join(s.backlightDir, "brightness")
 	data := []byte(strconv.Itoa(rawVal) + "\n")
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("write brightness to %s: %w", path, err)
 	}
 	return nil

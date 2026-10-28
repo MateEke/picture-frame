@@ -175,8 +175,8 @@ func syncOpts(log *slog.Logger, cfg *config.Config, root *os.Root, aspect *libra
 		library.WithManifest(library.LoadManifest(log, root)),
 		library.WithAspectStore(aspect),
 	}
-	if max := cfg.Cache.MaxSize.Bytes; max > 0 {
-		opts = append(opts, library.WithMaxBytes(max))
+	if maxBytes := cfg.Cache.MaxSize.Bytes; maxBytes > 0 {
+		opts = append(opts, library.WithMaxBytes(maxBytes))
 	}
 	return opts
 }
