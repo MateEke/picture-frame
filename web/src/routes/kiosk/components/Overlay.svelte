@@ -51,7 +51,7 @@
 			<div data-testid="kiosk-clock-block" style="transform: {shift.lead}">
 				<div
 					data-testid="kiosk-clock"
-					class="flex items-baseline text-[7rem] leading-none font-medium tabular-nums"
+					class="flex items-baseline text-[10rem] leading-none font-medium tabular-nums"
 				>
 					<span>{clock.hours}</span>
 					<span class="-mx-1 normal-nums">{clock.separator}</span>
@@ -59,7 +59,7 @@
 					{#if clock.period}
 						<span
 							class={[
-								'text-5xl font-semibold tracking-widest',
+								'text-7xl font-semibold tracking-widest',
 								clock.periodFirst ? 'order-first mr-2' : 'ml-2'
 							]}>{clock.period}</span
 						>
