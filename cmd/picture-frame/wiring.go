@@ -143,7 +143,7 @@ func startLibrarySyncer(ctx context.Context, log *slog.Logger, cfg *config.Confi
 		if err != nil {
 			return nil, err
 		}
-		syncer := library.NewSyncer(log, client, lib, root, interval, slides, syncOpts(log, cfg, root, aspect)...)
+		syncer := library.NewSyncer(log, client, lib, root, interval, slides, syncOpts(log, cfg, root, aspect, slides)...)
 		go syncer.Run(ctx)
 		// The API key is never logged.
 		log.Info("library: immich syncer started (api-key mode)", "url", im.URL, "albums", im.AlbumIDs, "interval", interval)
@@ -161,7 +161,7 @@ func startLibrarySyncer(ctx context.Context, log *slog.Logger, cfg *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	syncer := library.NewSyncer(log, client, lib, root, interval, slides, syncOpts(log, cfg, root, aspect)...)
+	syncer := library.NewSyncer(log, client, lib, root, interval, slides, syncOpts(log, cfg, root, aspect, slides)...)
 	go syncer.Run(ctx)
 	log.Info("library: immich syncer started", "share_url", cfg.Library.Immich.ShareURL, "interval", interval)
 	return syncer, nil
@@ -170,10 +170,11 @@ func startLibrarySyncer(ctx context.Context, log *slog.Logger, cfg *config.Confi
 // syncOpts wires the persistent cache manifest (one per images root) and the
 // storage budget into the syncer. The manifest self-heals from disk, so a
 // missing or corrupt index only costs re-adoption, never a sync failure.
-func syncOpts(log *slog.Logger, cfg *config.Config, root *os.Root, aspect *library.AspectStore) []library.SyncerOption {
+func syncOpts(log *slog.Logger, cfg *config.Config, root *os.Root, aspect *library.AspectStore, slides *slideshow.Slideshow) []library.SyncerOption {
 	opts := []library.SyncerOption{
 		library.WithManifest(library.LoadManifest(log, root)),
 		library.WithAspectStore(aspect),
+		library.WithDetailsChanged(slides.Replan),
 	}
 	if maxBytes := cfg.Cache.MaxSize.Bytes; maxBytes > 0 {
 		opts = append(opts, library.WithMaxBytes(maxBytes))

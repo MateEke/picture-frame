@@ -28,10 +28,13 @@ type Syncer struct {
 	root     *os.Root
 	interval time.Duration
 	advance  Advancer
-	trigger  chan struct{}
-	aspect   *AspectStore // optional: caches per-image dimensions
-	manifest *Manifest
-	maxBytes int64
+	// onDetails runs when a sync changes known album/year details, so the
+	// slide plan (which pairs per album) can be rebuilt.
+	onDetails func()
+	trigger   chan struct{}
+	aspect    *AspectStore // optional: caches per-image dimensions
+	manifest  *Manifest
+	maxBytes  int64
 	// retryBase is the first retry delay after a failed cycle; it doubles per
 	// consecutive failure. Non-positive selects the default.
 	retryBase time.Duration
@@ -46,6 +49,12 @@ type SyncerOption func(*Syncer)
 // WithAspectStore records downloaded dimensions and clears them on removal.
 func WithAspectStore(a *AspectStore) SyncerOption {
 	return func(s *Syncer) { s.aspect = a }
+}
+
+// WithDetailsChanged registers fn to run after a sync changes any image's
+// album or year.
+func WithDetailsChanged(fn func()) SyncerOption {
+	return func(s *Syncer) { s.onDetails = fn }
 }
 
 // WithManifest tracks cached files and their sizes across restarts. Without
@@ -214,7 +223,9 @@ func (s *Syncer) syncOnce(ctx context.Context) bool {
 		return false
 	}
 	s.cleanTmp()
-	s.lib.SetDetails(detailsOf(remote))
+	if s.lib.SetDetails(detailsOf(remote)) && s.onDetails != nil {
+		s.onDetails()
+	}
 
 	// Drop manifest entries whose file vanished (manual deletes, crashed
 	// removals) so they re-download instead of looking cached.

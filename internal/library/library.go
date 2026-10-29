@@ -113,21 +113,24 @@ type Details struct {
 // cached files start with zero details; the syncer re-applies them on every
 // successful list, which is what makes the kiosk label warm caches correctly.
 // Names absent from the mapping (local uploads) keep their zero details.
-func (l *Library) SetDetails(details map[string]Details) {
+// It reports whether any image's details changed, so callers can re-plan.
+func (l *Library) SetDetails(details map[string]Details) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	for i := range l.images {
-		if d, ok := details[l.images[i].Name]; ok {
-			l.images[i].Album = d.Album
-			l.images[i].Year = d.Year
+	changed := false
+	apply := func(imgs []Image) {
+		for i := range imgs {
+			d, ok := details[imgs[i].Name]
+			if ok && (imgs[i].Album != d.Album || imgs[i].Year != d.Year) {
+				imgs[i].Album = d.Album
+				imgs[i].Year = d.Year
+				changed = true
+			}
 		}
 	}
-	for i := range l.cycle {
-		if d, ok := details[l.cycle[i].Name]; ok {
-			l.cycle[i].Album = d.Album
-			l.cycle[i].Year = d.Year
-		}
-	}
+	apply(l.images)
+	apply(l.cycle)
+	return changed
 }
 
 // Remove deletes the first image with name from both slices; false if absent

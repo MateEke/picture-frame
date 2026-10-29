@@ -79,6 +79,12 @@ func (s *Slideshow) SetSplitConfig(enabled bool, thr slideplan.Threshold) {
 	}
 }
 
+// Replan marks the slide plan stale so the next slide is grouped from the
+// library's current order and album details; the cursor is kept.
+func (s *Slideshow) Replan() {
+	s.planner.Invalidate()
+}
+
 // Next advances immediately and resets the timer. Safe from any goroutine.
 func (s *Slideshow) Next() {
 	select {

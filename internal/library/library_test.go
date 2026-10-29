@@ -411,3 +411,14 @@ func TestValidImageName(t *testing.T) {
 		})
 	}
 }
+
+func TestSetDetailsReportsChange(t *testing.T) {
+	l := library.New(imgs("a.jpg"), false)
+	d := map[string]library.Details{"a.jpg": {Album: "Cina", Year: 2023}}
+	if !l.SetDetails(d) {
+		t.Error("first SetDetails should report a change")
+	}
+	if l.SetDetails(d) {
+		t.Error("identical SetDetails should report no change")
+	}
+}
