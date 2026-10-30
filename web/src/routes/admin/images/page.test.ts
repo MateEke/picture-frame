@@ -34,6 +34,7 @@ describe('images page load', () => {
 			library: { backend: 'fs' },
 			libraryError: undefined,
 			shareUrl: null,
+			apiUrl: null,
 			shuffleOn: false
 		});
 	});

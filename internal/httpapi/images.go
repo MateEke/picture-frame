@@ -34,7 +34,8 @@ const (
 )
 
 type ImageItem struct {
-	Name string `json:"name" doc:"Image filename"`
+	Name    string `json:"name" doc:"Image filename"`
+	AlbumID string `json:"album_id,omitempty" doc:"Source Immich album ID; empty for uploads and share links"`
 }
 
 type ListImagesOutput struct {
@@ -78,7 +79,7 @@ func (s *server) registerImageRoutes(api huma.API) {
 		imgs := s.lib.List()
 		out := make([]ImageItem, len(imgs))
 		for i, img := range imgs {
-			out[i] = ImageItem{Name: img.Name}
+			out[i] = ImageItem{Name: img.Name, AlbumID: img.AlbumID}
 		}
 		return &ListImagesOutput{Body: out}, nil
 	})

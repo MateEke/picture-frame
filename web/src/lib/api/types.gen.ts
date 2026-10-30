@@ -258,6 +258,10 @@ export type ImageItem = {
      */
     readonly $schema?: string;
     /**
+     * Source Immich album ID; empty for uploads and share links
+     */
+    album_id?: string;
+    /**
      * Image filename
      */
     name: string;
@@ -913,6 +917,10 @@ export type GetBrightnessResponseWritable = {
 };
 
 export type ImageItemWritable = {
+    /**
+     * Source Immich album ID; empty for uploads and share links
+     */
+    album_id?: string;
     /**
      * Image filename
      */

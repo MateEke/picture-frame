@@ -25,7 +25,8 @@ export const load: PageLoad = async ({ fetch }) => {
 		imagesError: errorMessage(imagesResult),
 		library,
 		libraryError: errorMessage(libraryResult),
-		shareUrl: config?.library.immich.share_url ?? null,
+		shareUrl: config?.library.immich.share_url || null,
+		apiUrl: config?.library.immich_api_key?.url || null,
 		shuffleOn: config?.slideshow.randomize ?? false
 	};
 };

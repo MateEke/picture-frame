@@ -714,6 +714,10 @@
             "readOnly": true,
             "type": "string"
           },
+          "album_id": {
+            "description": "Source Immich album ID; empty for uploads and share links",
+            "type": "string"
+          },
           "name": {
             "description": "Image filename",
             "type": "string"

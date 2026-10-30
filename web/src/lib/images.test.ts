@@ -1,7 +1,14 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { invalidate } from '$app/navigation';
 import { toaster } from './toaster';
-import { loadImages, deleteImage, deleteImages, uploadImage, uploadImages } from './images';
+import {
+	loadImages,
+	deleteImage,
+	deleteImages,
+	uploadImage,
+	uploadImages,
+	immichPhotoUrl
+} from './images';
 
 vi.mock('$app/navigation', () => ({
 	invalidate: vi.fn().mockResolvedValue(undefined)
@@ -398,5 +405,34 @@ describe('images', () => {
 				description: 'Server returned an error'
 			});
 		});
+	});
+});
+
+describe('immichPhotoUrl', () => {
+	const id = '0a1b2c3d-0000-4000-8000-123456789abc';
+	it('builds a deep link for key and slug shares', () => {
+		expect(immichPhotoUrl({ shareUrl: 'https://im.example.com/share/KEY' }, `${id}-ab12.jpg`)).toBe(
+			`https://im.example.com/share/KEY/photos/${id}`
+		);
+		expect(immichPhotoUrl({ shareUrl: 'https://im.example.com/s/my-slug' }, `${id}-ab12.jpg`)).toBe(
+			`https://im.example.com/s/my-slug/photos/${id}`
+		);
+	});
+	it('links to the library view in api-key mode', () => {
+		expect(immichPhotoUrl({ apiUrl: 'http://10.0.0.1:2283/' }, `${id}-ab12.jpg`)).toBe(
+			`http://10.0.0.1:2283/photos/${id}`
+		);
+	});
+	it('opens the photo inside its album when the album id is known', () => {
+		expect(immichPhotoUrl({ apiUrl: 'http://10.0.0.1:2283/' }, `${id}-ab12.jpg`, 'alb-1')).toBe(
+			`http://10.0.0.1:2283/albums/alb-1/photos/${id}`
+		);
+	});
+	it('returns null for uploads, missing or bad share urls', () => {
+		expect(
+			immichPhotoUrl({ shareUrl: 'https://im.example.com/share/KEY' }, '1-abc.jpg')
+		).toBeNull();
+		expect(immichPhotoUrl({}, `${id}-ab12.jpg`)).toBeNull();
+		expect(immichPhotoUrl({ shareUrl: 'nonsense' }, `${id}-ab12.jpg`)).toBeNull();
 	});
 });

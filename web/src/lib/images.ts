@@ -164,3 +164,31 @@ export async function setImageOrder(names: string[], commit = false): Promise<bo
 	});
 	return false;
 }
+
+const syncedNameRe = /^([0-9a-f-]{36})-[0-9a-f]+\.jpg$/i;
+
+// Deep link to a synced photo in Immich, or null when the name is not a synced
+// file or no usable URL is configured. API-key mode links to the photo inside
+// its album (<base>/albums/<albumId>/photos/<id>), or the library view without one; share mode links inside the shared link.
+export function immichPhotoUrl(
+	links: { apiUrl?: string | null; shareUrl?: string | null },
+	name: string,
+	albumId?: string | null
+): string | null {
+	const id = syncedNameRe.exec(name)?.[1];
+	if (!id) return null;
+	try {
+		if (links.apiUrl) {
+			const album = albumId ? `/albums/${encodeURIComponent(albumId)}` : '';
+			return `${new URL(links.apiUrl).origin}${album}/photos/${id}`;
+		}
+		if (links.shareUrl) {
+			const u = new URL(links.shareUrl);
+			const m = /^\/(share|s)\/[^/]+/.exec(u.pathname);
+			if (m) return `${u.origin}${m[0]}/photos/${id}${u.search}`;
+		}
+	} catch {
+		// malformed URL: no link
+	}
+	return null;
+}

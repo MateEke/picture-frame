@@ -123,6 +123,7 @@ func mergeAssets(albums []albumState) []library.Asset {
 				continue
 			}
 			seen[asset.ID] = true
+			asset.AlbumID = a.id
 			out = append(out, asset)
 		}
 	}

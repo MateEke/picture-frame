@@ -16,6 +16,7 @@ type Asset struct {
 	Version string // opaque change token; a new value means re-download
 	Album   string // source album's display name; empty when the provider has none
 	Year    int    // year of the album's earliest photo; zero when unknown
+	AlbumID string // source album's provider ID; empty when the provider has none
 }
 
 // Provider is a read-only view of a photo collection in a remote service.

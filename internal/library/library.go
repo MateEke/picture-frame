@@ -21,9 +21,10 @@ func ValidImageName(name string) bool {
 
 // Image represents a stored image file.
 type Image struct {
-	Name  string // filename only, e.g. "1716038400000.jpg"
-	Album string // source album; zero for local uploads
-	Year  int    // year of the album's earliest photo; zero when unknown
+	Name    string // filename only, e.g. "1716038400000.jpg"
+	Album   string // source album; zero for local uploads
+	Year    int    // year of the album's earliest photo; zero when unknown
+	AlbumID string // source album's provider ID; empty for uploads and share links
 }
 
 // Library maintains the canonical image order (admin source of truth) plus the
@@ -104,8 +105,9 @@ func (l *Library) Add(name, album string, year int) {
 // Details carries the remote-known display metadata for one synced file:
 // the source album and the year of the album's earliest photo.
 type Details struct {
-	Album string
-	Year  int
+	Album   string
+	Year    int
+	AlbumID string
 }
 
 // SetDetails refreshes the album and year of already-loaded images from a
@@ -121,9 +123,10 @@ func (l *Library) SetDetails(details map[string]Details) bool {
 	apply := func(imgs []Image) {
 		for i := range imgs {
 			d, ok := details[imgs[i].Name]
-			if ok && (imgs[i].Album != d.Album || imgs[i].Year != d.Year) {
+			if ok && (imgs[i].Album != d.Album || imgs[i].Year != d.Year || imgs[i].AlbumID != d.AlbumID) {
 				imgs[i].Album = d.Album
 				imgs[i].Year = d.Year
+				imgs[i].AlbumID = d.AlbumID
 				changed = true
 			}
 		}

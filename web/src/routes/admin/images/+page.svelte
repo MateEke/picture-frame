@@ -455,6 +455,8 @@
 
 <Lightbox
 	name={lightboxName}
+	albumId={images.find((i) => i.name === lightboxName)?.album_id}
+	immichLinks={{ apiUrl: data.apiUrl, shareUrl: data.shareUrl }}
 	canDelete={isFs}
 	onClose={() => (lightboxName = null)}
 	onDelete={requestDelete}

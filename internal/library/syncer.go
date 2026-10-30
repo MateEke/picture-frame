@@ -403,6 +403,7 @@ func (s *Syncer) download(ctx context.Context, a Asset) (int64, error) {
 		return 0, err
 	}
 	s.lib.Add(name, a.Album, a.Year)
+	s.lib.SetDetails(map[string]Details{name: {Album: a.Album, Year: a.Year, AlbumID: a.AlbumID}})
 	s.manifest.Set(name, ManifestEntry{ID: a.ID, Version: a.Version, Bytes: n})
 	if s.aspect != nil {
 		// Decode the preview, not remote EXIF: the preview has orientation baked in,
@@ -462,7 +463,7 @@ func detailsOf(remote []Asset) map[string]Details {
 		if a.Album == "" || a.Version == "" {
 			continue
 		}
-		out[SyncedFilename(a)] = Details{Album: a.Album, Year: a.Year}
+		out[SyncedFilename(a)] = Details{Album: a.Album, Year: a.Year, AlbumID: a.AlbumID}
 	}
 	return out
 }
