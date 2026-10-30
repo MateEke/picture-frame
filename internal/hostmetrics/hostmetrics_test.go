@@ -242,3 +242,27 @@ func TestReadBatteryChargingMains(t *testing.T) {
 		t.Errorf("expected charging due to Mains online=1")
 	}
 }
+
+func TestReadScansThermalZonesSkippingInvalid(t *testing.T) {
+	dir := t.TempDir()
+	for name, temp := range map[string]string{"thermal_zone0": "-273150\n", "thermal_zone1": "20000\n", "thermal_zone2": "38000\n", "thermal_zone3": "36000\n"} {
+		zone := filepath.Join(dir, name)
+		if err := os.MkdirAll(zone, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(zone, "temp"), []byte(temp), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m := New(Config{ThermalDir: dir}).Read(context.Background())
+	if !m.HasCPUTemp || m.CPUTempC != 38 {
+		t.Errorf("cpu temp: got %v (has=%v), want 38", m.CPUTempC, m.HasCPUTemp)
+	}
+}
+
+func TestReadRejectsSensorAbsentTemp(t *testing.T) {
+	cfg := writeTree(t, "-273150\n", sampleMeminfo, "btime 100\n", nil)
+	if m := New(cfg).Read(context.Background()); m.HasCPUTemp {
+		t.Errorf("-273150 should be treated as absent, got %v", m.CPUTempC)
+	}
+}

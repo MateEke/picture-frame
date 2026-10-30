@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -45,7 +46,8 @@ type ThrottleReader interface {
 
 // Config overrides the source paths (for tests) and supplies the throttle reader.
 type Config struct {
-	ThermalPath     string // default /sys/class/thermal/thermal_zone0/temp
+	ThermalPath     string // single temp file; when empty, ThermalDir is scanned
+	ThermalDir      string // default /sys/class/thermal
 	MeminfoPath     string // default /proc/meminfo
 	StatPath        string // default /proc/stat
 	ModelPath       string // default /proc/device-tree/model
@@ -64,7 +66,7 @@ func New(cfg Config) *Reader {
 		}
 		return v
 	}
-	cfg.ThermalPath = def(cfg.ThermalPath, "/sys/class/thermal/thermal_zone0/temp")
+	cfg.ThermalDir = def(cfg.ThermalDir, "/sys/class/thermal")
 	cfg.MeminfoPath = def(cfg.MeminfoPath, "/proc/meminfo")
 	cfg.StatPath = def(cfg.StatPath, "/proc/stat")
 	cfg.ModelPath = def(cfg.ModelPath, "/proc/device-tree/model")
@@ -76,7 +78,7 @@ func New(cfg Config) *Reader {
 
 func (r *Reader) Read(ctx context.Context) Metrics {
 	var m Metrics
-	if c, ok := readCPUTemp(r.cfg.ThermalPath); ok {
+	if c, ok := r.cpuTemp(); ok {
 		m.CPUTempC, m.HasCPUTemp = c, true
 	}
 	if p, ok := readMemUsedPct(r.cfg.MeminfoPath); ok {
@@ -117,6 +119,26 @@ func (r *Reader) ReadInfo() HostInfo {
 	return info
 }
 
+// cpuTemp reads ThermalPath when set, otherwise the hottest valid thermal zone
+// under ThermalDir. Zone 0 is not always a CPU sensor (on a Surface 3 it is an
+// unpopulated STR0 reporting -273150), so no single zone can be assumed.
+func (r *Reader) cpuTemp() (float64, bool) {
+	if r.cfg.ThermalPath != "" {
+		return readCPUTemp(r.cfg.ThermalPath)
+	}
+	paths, _ := filepath.Glob(filepath.Join(r.cfg.ThermalDir, "thermal_zone*", "temp"))
+	var best float64
+	found := false
+	for _, p := range paths {
+		if c, ok := readCPUTemp(p); ok && (!found || c > best) {
+			best, found = c, true
+		}
+	}
+	return best, found
+}
+
+// readCPUTemp parses a millidegree sysfs file; implausible values (sensor
+// absent reports -273150) are rejected.
 func readCPUTemp(path string) (float64, bool) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -126,7 +148,11 @@ func readCPUTemp(path string) (float64, bool) {
 	if err != nil {
 		return 0, false
 	}
-	return float64(milli) / 1000, true
+	c := float64(milli) / 1000
+	if c <= -50 || c > 150 {
+		return 0, false
+	}
+	return c, true
 }
 
 func readMemUsedPct(path string) (float64, bool) {
