@@ -92,6 +92,8 @@ export function formatMonthDay(date: Date, locale: string, timeZone?: string): s
  */
 export function formatAlbumLabel(album: string, year: number): string {
 	if (!album) return '';
+	album = album.replaceAll('_Frame', '').trim();
+	if (!album) return '';
 	// Immich names like "Egitto (2025)" already arrive compacted to "Egitto 25'".
 	if (year > 0 && !/ \d{2}'$/.test(album)) {
 		return `${album} ${String(year % 100).padStart(2, '0')}'`;

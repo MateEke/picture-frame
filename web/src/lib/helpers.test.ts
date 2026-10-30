@@ -271,6 +271,16 @@ describe('helpers', () => {
 				expect(formatAlbumLabel('France', 2024)).toBe("France 24'");
 				expect(formatAlbumLabel('France', 100)).toBe("France 00'");
 			});
+
+			it('removes _Frame from album name', () => {
+				expect(formatAlbumLabel('Vacation_Frame', 2025)).toBe("Vacation 25'");
+				expect(formatAlbumLabel('Vacation_Frame', 0)).toBe('Vacation');
+				expect(formatAlbumLabel('_Frame_Trip', 2023)).toBe("_Trip 23'");
+				expect(formatAlbumLabel('Frame_Trip_Frame', 0)).toBe('Frame_Trip');
+				expect(formatAlbumLabel('Family_Frame Trip', 0)).toBe('Family Trip');
+				expect(formatAlbumLabel('_Frame', 2025)).toBe('');
+				expect(formatAlbumLabel('_Frame', 0)).toBe('');
+			});
 		});
 	});
 });
