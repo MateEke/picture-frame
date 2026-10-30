@@ -2,9 +2,11 @@ package adapter
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -53,5 +55,20 @@ func TestStateOutputNotFound(t *testing.T) {
 	_, err := w.State(context.Background())
 	if err == nil {
 		t.Fatal("expected error for missing output")
+	}
+}
+
+// wlopm exits 0 for an unknown output and reports the problem only on stderr.
+func TestSetReportsErrorTextDespiteZeroExit(t *testing.T) {
+	dir := t.TempDir()
+	script := "#!/bin/sh\necho \"ERROR: Output '$2' does not exist.\" >&2\n"
+	if err := os.WriteFile(filepath.Join(dir, "wlopm"), []byte(script), 0o700); err != nil { //nolint:gosec
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	w := NewWlopm("eDP-1", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	err := w.Off(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "does not exist") {
+		t.Fatalf("Off: got %v, want unknown-output error", err)
 	}
 }

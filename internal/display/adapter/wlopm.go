@@ -75,8 +75,8 @@ func (w *Wlopm) drmDPMSPath() (string, error) {
 	return matches[0], nil
 }
 
-// set toggles the panel; wlopm exits non-zero on failure, so the exit code is
-// authoritative (no read-back needed).
+// set toggles the panel. wlopm exits 0 for an unknown output and only reports
+// "ERROR: ..." on stderr, so that text counts as failure along with a non-zero exit.
 func (w *Wlopm) set(ctx context.Context, flag string) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -86,6 +86,10 @@ func (w *Wlopm) set(ctx context.Context, flag string) error {
 	if err != nil {
 		w.log.Debug("wlopm: set failed", "flag", flag, "err", err, "raw", string(out))
 		return fmt.Errorf("wlopm %s %s: %w (output: %s)", flag, w.output, err, out)
+	}
+	if strings.Contains(string(out), "ERROR") {
+		w.log.Debug("wlopm: set rejected", "flag", flag, "raw", string(out))
+		return fmt.Errorf("wlopm %s %s: %s", flag, w.output, strings.TrimSpace(string(out)))
 	}
 	w.log.Debug("wlopm: set succeeded", "flag", flag, "output", w.output)
 	return nil
