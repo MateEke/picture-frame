@@ -74,7 +74,7 @@ type DisplayDTO struct {
 	Timezone           string                `json:"timezone" doc:"IANA timezone for the kiosk clock/date, e.g. Europe/Budapest; empty uses the browser timezone"`
 	Labels             KioskLabelsDTO        `json:"labels"`
 	BrightnessSchedule BrightnessScheduleDTO `json:"brightness_schedule"`
-	ScreenSchedule     ScreenScheduleDTO     `json:"screen_schedule"`
+	ScreenRules        []ScreenRuleDTO       `json:"screen_rules" nullable:"false" doc:"Rules that switch the screen on or off at a time of day; the screen follows the latest rule that has fired"`
 }
 
 type BrightnessScheduleDTO struct {
@@ -85,11 +85,11 @@ type BrightnessScheduleDTO struct {
 	NightStart string `json:"night_start"`
 }
 
-// ScreenScheduleDTO maps config.ScreenScheduleConfig.
-type ScreenScheduleDTO struct {
-	Enabled bool   `json:"enabled"`
-	OffAt   string `json:"off_at" doc:"Local HH:MM the screen turns off, e.g. \"23:00\""`
-	OnAt    string `json:"on_at" doc:"Local HH:MM the screen turns back on, e.g. \"07:00\""`
+// ScreenRuleDTO maps config.ScreenRuleConfig.
+type ScreenRuleDTO struct {
+	Time   string `json:"time" doc:"Local HH:MM the rule fires, e.g. \"23:00\""`
+	Action string `json:"action" enum:"on,off" doc:"Turn the screen on or off"`
+	Days   string `json:"days" enum:"daily,weekdays,weekend" doc:"Days the rule applies to"`
 }
 
 // KioskLabelsDTO maps config.KioskLabelsConfig.
@@ -230,7 +230,7 @@ func toDTO(cfg config.Config) ConfigDTO {
 			Timezone:           cfg.Display.Timezone,
 			Labels:             labelsToDTO(cfg.Display.Labels),
 			BrightnessSchedule: BrightnessScheduleDTO{Enabled: cfg.Display.BrightnessSchedule.Enabled, DayLevel: cfg.Display.BrightnessSchedule.DayLevel, NightLevel: cfg.Display.BrightnessSchedule.NightLevel, DayStart: cfg.Display.BrightnessSchedule.DayStart, NightStart: cfg.Display.BrightnessSchedule.NightStart},
-			ScreenSchedule:     ScreenScheduleDTO{Enabled: cfg.Display.ScreenSchedule.Enabled, OffAt: cfg.Display.ScreenSchedule.OffAt, OnAt: cfg.Display.ScreenSchedule.OnAt},
+			ScreenRules:        screenRulesToDTO(cfg.Display.ScreenRules),
 		},
 		Slideshow: SlideshowDTO{
 			Interval:    durString(cfg.Slideshow.Interval.Duration),
@@ -369,7 +369,7 @@ func applyDisplayDTO(dst *config.DisplayConfig, dto DisplayDTO) error {
 	dst.Timezone = dto.Timezone
 	dst.Labels = labelsFromDTO(dto.Labels)
 	dst.BrightnessSchedule = config.BrightnessScheduleConfig{Enabled: dto.BrightnessSchedule.Enabled, DayLevel: dto.BrightnessSchedule.DayLevel, NightLevel: dto.BrightnessSchedule.NightLevel, DayStart: dto.BrightnessSchedule.DayStart, NightStart: dto.BrightnessSchedule.NightStart}
-	dst.ScreenSchedule = config.ScreenScheduleConfig{Enabled: dto.ScreenSchedule.Enabled, OffAt: dto.ScreenSchedule.OffAt, OnAt: dto.ScreenSchedule.OnAt}
+	dst.ScreenRules = screenRulesFromDTO(dto.ScreenRules)
 	return nil
 }
 
@@ -566,4 +566,23 @@ func durString(d time.Duration) string {
 		return ""
 	}
 	return d.String()
+}
+
+func screenRulesToDTO(rules []config.ScreenRuleConfig) []ScreenRuleDTO {
+	out := make([]ScreenRuleDTO, len(rules))
+	for i, r := range rules {
+		out[i] = ScreenRuleDTO{Time: r.Time, Action: r.Action, Days: r.Days}
+	}
+	return out
+}
+
+func screenRulesFromDTO(rules []ScreenRuleDTO) []config.ScreenRuleConfig {
+	if len(rules) == 0 {
+		return nil
+	}
+	out := make([]config.ScreenRuleConfig, len(rules))
+	for i, r := range rules {
+		out[i] = config.ScreenRuleConfig{Time: r.Time, Action: r.Action, Days: r.Days}
+	}
+	return out
 }

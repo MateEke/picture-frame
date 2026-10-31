@@ -46,14 +46,26 @@ blank_after = "20m"
 # day_start = "07:00"
 # night_start = "22:00"
 #
-# Daily screen-off window (local time, may cross midnight). The OS keeps
-# running, so Wi-Fi/SSH stay up and the frame needs no wake-up hardware. A
-# touch lights the screen for blank_after (5 min if blank_after is 0); motion
-# does not. Uses display.timezone when set.
-# [display.screen_schedule]
-# enabled = true
-# off_at = "23:00"
-# on_at = "07:00"
+# Screen rules: switch the screen on or off at a time of day. The screen
+# follows the most recent rule that has fired, so an "off" and an "on" rule make
+# an overnight window. days is "daily", "weekdays" (Mon-Fri) or "weekend"
+# (Sat-Sun). The OS keeps running, so Wi-Fi/SSH stay up and the frame needs no
+# wake-up hardware. A touch lights the screen for blank_after (5 min if
+# blank_after is 0); motion does not. Uses display.timezone when set.
+# [[display.screen_rules]]
+# time = "23:00"
+# action = "off"
+# days = "daily"
+#
+# [[display.screen_rules]]
+# time = "07:00"
+# action = "on"
+# days = "weekdays"
+#
+# [[display.screen_rules]]
+# time = "09:00"
+# action = "on"
+# days = "weekend"
 
 # Slideshow
 

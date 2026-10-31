@@ -596,10 +596,10 @@ func TestValidateDisplay(t *testing.T) {
 		{"rotation 270 ok", config.DisplayConfig{Rotation: 270}, ""},
 		{"rotation invalid", config.DisplayConfig{Rotation: 45}, "rotation must be"},
 		{"rotation negative", config.DisplayConfig{Rotation: -90}, "rotation must be"},
-		{"screen schedule disabled ignores times", config.DisplayConfig{ScreenSchedule: config.ScreenScheduleConfig{OffAt: "late"}}, ""},
-		{"screen schedule ok", config.DisplayConfig{ScreenSchedule: config.ScreenScheduleConfig{Enabled: true, OffAt: "23:00", OnAt: "07:00"}}, ""},
-		{"screen schedule bad time", config.DisplayConfig{ScreenSchedule: config.ScreenScheduleConfig{Enabled: true, OffAt: "25:00", OnAt: "07:00"}}, "screen_schedule.off_at"},
-		{"screen schedule empty window", config.DisplayConfig{ScreenSchedule: config.ScreenScheduleConfig{Enabled: true, OffAt: "07:00", OnAt: "07:00"}}, "must differ"},
+		{"screen rules ok", config.DisplayConfig{ScreenRules: []config.ScreenRuleConfig{{Time: "23:00", Action: "off", Days: "weekdays"}, {Time: "07:00", Action: "on", Days: "daily"}}}, ""},
+		{"screen rule bad time", config.DisplayConfig{ScreenRules: []config.ScreenRuleConfig{{Time: "25:00", Action: "off", Days: "daily"}}}, "screen_rules[0]: time"},
+		{"screen rule bad action", config.DisplayConfig{ScreenRules: []config.ScreenRuleConfig{{Time: "23:00", Action: "dim", Days: "daily"}}}, "action"},
+		{"screen rule bad days", config.DisplayConfig{ScreenRules: []config.ScreenRuleConfig{{Time: "23:00", Action: "off", Days: "monday"}}}, "days"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -71,6 +71,7 @@ func cloneConfig(c Config) Config {
 			out.Sensors[i].Hosts = append([]string(nil), s.Hosts...)
 		}
 	}
+	out.Display.ScreenRules = append([]ScreenRuleConfig(nil), c.Display.ScreenRules...)
 	if c.Immich.AlbumIDs != nil {
 		out.Immich.AlbumIDs = append([]string(nil), c.Immich.AlbumIDs...)
 	}

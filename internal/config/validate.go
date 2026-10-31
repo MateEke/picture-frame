@@ -155,8 +155,10 @@ func (d DisplayConfig) validate() error {
 	if err := d.BrightnessSchedule.Validate(); err != nil {
 		return err
 	}
-	if err := d.ScreenSchedule.Validate(); err != nil {
-		return err
+	for i, r := range d.ScreenRules {
+		if err := r.Validate(); err != nil {
+			return fmt.Errorf("screen_rules[%d]: %w", i, err)
+		}
 	}
 	return nil
 }

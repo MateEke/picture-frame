@@ -128,6 +128,7 @@ func TestCloneConfigCoversEveryReferenceField(t *testing.T) {
 		"SensorConfig.MockReadings":    true,
 		"SensorConfig.Hosts":           true,
 		"ImmichConfig.AlbumIDs":        true,
+		"DisplayConfig.ScreenRules":    true,
 	}
 
 	configPkg := reflect.TypeFor[config.Config]().PkgPath()

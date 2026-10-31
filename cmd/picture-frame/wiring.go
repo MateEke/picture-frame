@@ -288,10 +288,13 @@ func (l *liveConfigImpl) ApplyLive(cfg config.Config) {
 	l.applyLogLevel(cfg.LogLevel)
 }
 
-// screenSchedule maps the config window onto the display policy, in the kiosk
+// screenSchedule maps the config rules onto the display policy, in the kiosk
 // timezone when one is set (as the brightness schedule does), else local time.
 func screenSchedule(d config.DisplayConfig) displaypkg.Schedule {
-	s := displaypkg.Schedule{Enabled: d.ScreenSchedule.Enabled, Off: d.ScreenSchedule.OffAt, On: d.ScreenSchedule.OnAt}
+	s := displaypkg.Schedule{Rules: make([]displaypkg.Rule, len(d.ScreenRules))}
+	for i, r := range d.ScreenRules {
+		s.Rules[i] = displaypkg.Rule{Time: r.Time, On: r.Action == config.ScreenActionOn, Days: r.Days}
+	}
 	if d.Timezone != "" {
 		if loc, err := time.LoadLocation(d.Timezone); err == nil {
 			s.Location = loc

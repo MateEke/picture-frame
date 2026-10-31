@@ -16,10 +16,18 @@ import (
 // written against midnight UTC.
 
 // shortWindow opens one minute into the bubble and closes two minutes later.
-var shortWindow = display.Schedule{Enabled: true, Off: "00:01", On: "00:03", Location: time.UTC}
+var shortWindow = window("00:01", "00:03")
 
 // nightWindow crosses midnight and contains the bubble's start time.
-var nightWindow = display.Schedule{Enabled: true, Off: "23:00", On: "07:00", Location: time.UTC}
+var nightWindow = window("23:00", "07:00")
+
+// window builds a daily off/on pair of rules in UTC.
+func window(off, on string) display.Schedule {
+	return display.Schedule{Location: time.UTC, Rules: []display.Rule{
+		{Time: off, On: false, Days: "daily"},
+		{Time: on, On: true, Days: "daily"},
+	}}
+}
 
 func newScheduledPolicy(ctrl display.Controller, bus *state.Bus, blankAfter time.Duration, s display.Schedule) *display.Policy {
 	p := display.NewPolicy(display.PolicyConfig{
@@ -243,20 +251,32 @@ func TestScheduleApplyFailureRetries(t *testing.T) {
 }
 
 func TestScheduleWindowBoundaries(t *testing.T) {
+	rome := mustLoad(t, "Europe/Rome")
 	cases := []struct {
 		name string
 		s    display.Schedule
-		want bool // panel off at the bubble's 00:00 UTC start
+		want bool // panel off at the bubble's 00:00 UTC start (a Saturday)
 	}{
-		{"disabled", display.Schedule{Off: "23:00", On: "07:00", Location: time.UTC}, false},
+		{"no rules", display.Schedule{Location: time.UTC}, false},
 		{"crosses midnight", nightWindow, true},
-		{"same day, outside", display.Schedule{Enabled: true, Off: "09:00", On: "17:00", Location: time.UTC}, false},
-		{"opens at now", display.Schedule{Enabled: true, Off: "00:00", On: "06:00", Location: time.UTC}, true},
-		{"closes at now", display.Schedule{Enabled: true, Off: "22:00", On: "00:00", Location: time.UTC}, false},
-		{"empty window", display.Schedule{Enabled: true, Off: "07:00", On: "07:00", Location: time.UTC}, false},
-		{"unparseable", display.Schedule{Enabled: true, Off: "late", On: "07:00", Location: time.UTC}, false},
+		{"same day, outside", window("09:00", "17:00"), false},
+		{"opens at now", window("00:00", "06:00"), true},
+		{"closes at now", window("22:00", "00:00"), false},
+		{"same minute, off wins", window("00:00", "00:00"), true},
+		{"unparseable", display.Schedule{Location: time.UTC, Rules: []display.Rule{{Time: "late", Days: "daily"}}}, false},
+		{"unknown days", display.Schedule{Location: time.UTC, Rules: []display.Rule{{Time: "00:00", Days: "never"}}}, false},
 		// 00:00 UTC is 01:00 in Rome (CET): inside 00:30-02:00 there, outside in UTC.
-		{"location applied", display.Schedule{Enabled: true, Off: "00:30", On: "02:00", Location: mustLoad(t, "Europe/Rome")}, true},
+		{"location applied", display.Schedule{Location: rome, Rules: []display.Rule{
+			{Time: "00:30", On: false, Days: "daily"}, {Time: "02:00", On: true, Days: "daily"}}}, true},
+		// Saturday 00:00: the weekdays-only off rule last fired Friday and nothing turned it on again.
+		{"weekday off still held on weekend", display.Schedule{Location: time.UTC, Rules: []display.Rule{
+			{Time: "23:00", On: false, Days: "weekdays"}}}, true},
+		{"weekend on lifts weekday off", display.Schedule{Location: time.UTC, Rules: []display.Rule{
+			{Time: "23:00", On: false, Days: "weekdays"}, {Time: "00:00", On: true, Days: "weekend"}}}, false},
+		{"weekend-only off not yet fired", display.Schedule{Location: time.UTC, Rules: []display.Rule{
+			{Time: "08:00", On: false, Days: "weekend"}}}, true}, // fired last Sunday, still held
+		{"weekday-only on does not fire on Saturday", display.Schedule{Location: time.UTC, Rules: []display.Rule{
+			{Time: "23:00", On: false, Days: "daily"}, {Time: "07:00", On: true, Days: "weekdays"}}}, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

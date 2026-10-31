@@ -573,8 +573,12 @@
             "format": "int64",
             "type": "integer"
           },
-          "screen_schedule": {
-            "$ref": "#/components/schemas/ScreenScheduleDTO"
+          "screen_rules": {
+            "description": "Rules that switch the screen on or off at a time of day; the screen follows the latest rule that has fired",
+            "items": {
+              "$ref": "#/components/schemas/ScreenRuleDTO"
+            },
+            "type": "array"
           },
           "timezone": {
             "description": "IANA timezone for the kiosk clock/date, e.g. Europe/Budapest; empty uses the browser timezone",
@@ -591,7 +595,7 @@
           "timezone",
           "labels",
           "brightness_schedule",
-          "screen_schedule"
+          "screen_rules"
         ],
         "type": "object"
       },
@@ -1214,25 +1218,35 @@
         ],
         "type": "object"
       },
-      "ScreenScheduleDTO": {
+      "ScreenRuleDTO": {
         "additionalProperties": false,
         "properties": {
-          "enabled": {
-            "type": "boolean"
-          },
-          "off_at": {
-            "description": "Local HH:MM the screen turns off, e.g. \"23:00\"",
+          "action": {
+            "description": "Turn the screen on or off",
+            "enum": [
+              "on",
+              "off"
+            ],
             "type": "string"
           },
-          "on_at": {
-            "description": "Local HH:MM the screen turns back on, e.g. \"07:00\"",
+          "days": {
+            "description": "Days the rule applies to",
+            "enum": [
+              "daily",
+              "weekdays",
+              "weekend"
+            ],
+            "type": "string"
+          },
+          "time": {
+            "description": "Local HH:MM the rule fires, e.g. \"23:00\"",
             "type": "string"
           }
         },
         "required": [
-          "enabled",
-          "off_at",
-          "on_at"
+          "time",
+          "action",
+          "days"
         ],
         "type": "object"
       },

@@ -19,38 +19,6 @@ const displayOpTimeout = 5 * time.Second
 // schedule window when blank_after is 0; otherwise blank_after is used.
 const scheduleRelockDefault = 5 * time.Minute
 
-// Schedule is a daily window during which the panel is held off, e.g. overnight.
-// Off and On are "HH:MM" in Location (nil = time.Local); the window may cross
-// midnight. Validated by config; an unparseable or empty window never matches.
-type Schedule struct {
-	Enabled  bool
-	Off, On  string
-	Location *time.Location
-}
-
-func (s Schedule) contains(t time.Time) bool {
-	if !s.Enabled {
-		return false
-	}
-	off, err := time.Parse("15:04", s.Off)
-	if err != nil {
-		return false
-	}
-	on, err := time.Parse("15:04", s.On)
-	if err != nil {
-		return false
-	}
-	if s.Location != nil {
-		t = t.In(s.Location)
-	}
-	m := t.Hour()*60 + t.Minute()
-	offM, onM := off.Hour()*60+off.Minute(), on.Hour()*60+on.Minute()
-	if offM < onM {
-		return m >= offM && m < onM
-	}
-	return offM > onM && (m >= offM || m < onM)
-}
-
 // Policy is the single owner of panel power: it unifies manual on/off (persisted),
 // motion-wake, idle-blank and the daily schedule, and is the only caller of the Controller. Hardware
 // state is read once at startup; after that, successful writes are authoritative.
@@ -130,7 +98,7 @@ func (p *Policy) Start(ctx context.Context) {
 		}
 	}
 	p.lastMotion = time.Now()
-	p.inSchedule = p.schedule.contains(p.lastMotion)
+	p.inSchedule = p.schedule.Off(p.lastMotion)
 	p.scheduleOff = p.inSchedule
 	sctx, cancel := context.WithTimeout(ctx, displayOpTimeout)
 	actual, err := p.display.State(sctx)
@@ -335,7 +303,7 @@ func (p *Policy) onTick(ctx context.Context) {
 // Motion never lifts scheduleOff: passing by at night shouldn't light the frame.
 func (p *Policy) onSchedule(ctx context.Context) {
 	p.mu.Lock()
-	in := p.schedule.contains(time.Now())
+	in := p.schedule.Off(time.Now())
 	prevSched, prevIdle, prevIn, prevMotion := p.scheduleOff, p.idleBlank, p.inSchedule, p.lastMotion
 	var reason string
 	switch {

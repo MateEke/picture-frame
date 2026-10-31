@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { DisplayDto } from '$lib/api/types.gen';
+	import { PlusIcon, Trash2Icon } from '@lucide/svelte';
+	import { eq } from '../utils';
 	import Field from './Field.svelte';
 	import DeviceCombobox from './DeviceCombobox.svelte';
 
@@ -23,6 +25,16 @@
 		{ value: 180, label: 'Upside down (180°)' },
 		{ value: 270, label: 'Portrait, rotated right (270°)' }
 	];
+
+	const SCREEN_ACTIONS = [
+		{ value: 'off', label: 'Turn off' },
+		{ value: 'on', label: 'Turn on' }
+	] as const;
+	const SCREEN_DAYS = [
+		{ value: 'daily', label: 'Every day' },
+		{ value: 'weekdays', label: 'Weekdays' },
+		{ value: 'weekend', label: 'Weekend' }
+	] as const;
 </script>
 
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -136,41 +148,54 @@
 		</Field>
 	{/if}
 	<Field
-		label="Scheduled screen off"
-		help="Turn the screen off every night and back on in the morning. The frame keeps running, so it stays reachable. A touch lights it for the idle-blank time."
+		label="Screen schedule"
+		help="Turn the screen on or off at set times. The screen follows the latest rule that has fired, so an off rule and an on rule make an overnight window. The frame keeps running, so it stays reachable. A touch lights it for the idle-blank time."
 		class="md:col-span-2"
-		changed={display.screen_schedule.enabled !== savedDisplay.screen_schedule.enabled}
-		onrevert={() => (display.screen_schedule.enabled = savedDisplay.screen_schedule.enabled)}
+		changed={!eq(display.screen_rules, savedDisplay.screen_rules)}
+		onrevert={() => (display.screen_rules = $state.snapshot(savedDisplay.screen_rules))}
 	>
-		<label class="flex items-center gap-2 text-sm">
-			<input class="checkbox" type="checkbox" bind:checked={display.screen_schedule.enabled} />
-			Enable daily screen-off schedule
-		</label>
+		<div class="space-y-2" data-testid="screen-rules">
+			{#each display.screen_rules as rule, i (i)}
+				<div class="flex flex-wrap items-center gap-2">
+					<select class="select w-auto" bind:value={rule.action} aria-label="Rule {i + 1} action">
+						{#each SCREEN_ACTIONS as a (a.value)}
+							<option value={a.value}>{a.label}</option>
+						{/each}
+					</select>
+					<input
+						class="input w-auto"
+						type="time"
+						bind:value={rule.time}
+						aria-label="Rule {i + 1} time"
+					/>
+					<select class="select w-auto" bind:value={rule.days} aria-label="Rule {i + 1} days">
+						{#each SCREEN_DAYS as d (d.value)}
+							<option value={d.value}>{d.label}</option>
+						{/each}
+					</select>
+					<button
+						type="button"
+						class="btn-icon"
+						aria-label="Remove rule {i + 1}"
+						onclick={() => display.screen_rules.splice(i, 1)}
+					>
+						<Trash2Icon class="size-4" />
+					</button>
+				</div>
+			{/each}
+			<button
+				type="button"
+				class="btn preset-tonal-surface btn-sm"
+				data-testid="add-screen-rule"
+				onclick={() =>
+					display.screen_rules.push({
+						time: display.screen_rules.length ? '07:00' : '23:00',
+						action: display.screen_rules.length ? 'on' : 'off',
+						days: 'daily'
+					})}
+			>
+				<PlusIcon class="size-4" /> Add rule
+			</button>
+		</div>
 	</Field>
-	{#if display.screen_schedule.enabled}
-		<Field
-			label="Screen off at"
-			changed={display.screen_schedule.off_at !== savedDisplay.screen_schedule.off_at}
-			onrevert={() => (display.screen_schedule.off_at = savedDisplay.screen_schedule.off_at)}
-		>
-			<input
-				class="input"
-				type="time"
-				bind:value={display.screen_schedule.off_at}
-				aria-label="Screen off time"
-			/>
-		</Field>
-		<Field
-			label="Screen on at"
-			changed={display.screen_schedule.on_at !== savedDisplay.screen_schedule.on_at}
-			onrevert={() => (display.screen_schedule.on_at = savedDisplay.screen_schedule.on_at)}
-		>
-			<input
-				class="input"
-				type="time"
-				bind:value={display.screen_schedule.on_at}
-				aria-label="Screen on time"
-			/>
-		</Field>
-	{/if}
 </div>

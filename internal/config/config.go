@@ -163,7 +163,7 @@ type DisplayConfig struct {
 	// an empty string hides that caption.
 	Labels             KioskLabelsConfig        `toml:"labels"`
 	BrightnessSchedule BrightnessScheduleConfig `toml:"brightness_schedule"`
-	ScreenSchedule     ScreenScheduleConfig     `toml:"screen_schedule"`
+	ScreenRules        []ScreenRuleConfig       `toml:"screen_rules"`
 }
 
 // BrightnessScheduleConfig selects dim and bright panel levels at local 24-hour times.
@@ -190,26 +190,40 @@ func (b BrightnessScheduleConfig) Validate() error {
 	return nil
 }
 
-// ScreenScheduleConfig holds the panel off between local 24-hour times OffAt
-// and OnAt; the window may cross midnight. A kiosk touch inside the window
-// lights the panel for blank_after (5 minutes when blank_after is 0).
-type ScreenScheduleConfig struct {
-	Enabled bool   `toml:"enabled"`
-	OffAt   string `toml:"off_at"`
-	OnAt    string `toml:"on_at"`
+// Screen rule actions and day selectors.
+const (
+	ScreenActionOn  = "on"
+	ScreenActionOff = "off"
+
+	ScreenDaysDaily    = "daily"
+	ScreenDaysWeekdays = "weekdays" // Monday to Friday
+	ScreenDaysWeekend  = "weekend"  // Saturday and Sunday
+)
+
+// ScreenRuleConfig switches the panel On or Off at a local 24-hour Time on the
+// selected Days. The panel follows the most recent rule that has fired, so an
+// "off" rule at 23:00 and an "on" rule at 07:00 give an overnight window. A kiosk
+// touch while a rule holds the panel off lights it for blank_after (5 minutes
+// when blank_after is 0).
+type ScreenRuleConfig struct {
+	Time   string `toml:"time"`
+	Action string `toml:"action"`
+	Days   string `toml:"days"`
 }
 
-func (s ScreenScheduleConfig) Validate() error {
-	if !s.Enabled {
-		return nil
+func (r ScreenRuleConfig) Validate() error {
+	if _, err := time.Parse("15:04", r.Time); err != nil {
+		return fmt.Errorf("time must be HH:MM")
 	}
-	for name, value := range map[string]string{"off_at": s.OffAt, "on_at": s.OnAt} {
-		if _, err := time.Parse("15:04", value); err != nil {
-			return fmt.Errorf("screen_schedule.%s must be HH:MM", name)
-		}
+	switch r.Action {
+	case ScreenActionOn, ScreenActionOff:
+	default:
+		return fmt.Errorf("action must be %q or %q", ScreenActionOn, ScreenActionOff)
 	}
-	if s.OffAt == s.OnAt {
-		return fmt.Errorf("screen_schedule.off_at and on_at must differ")
+	switch r.Days {
+	case ScreenDaysDaily, ScreenDaysWeekdays, ScreenDaysWeekend:
+	default:
+		return fmt.Errorf("days must be %q, %q or %q", ScreenDaysDaily, ScreenDaysWeekdays, ScreenDaysWeekend)
 	}
 	return nil
 }
@@ -344,7 +358,6 @@ func defaults() Config {
 			BrightnessSchedule: BrightnessScheduleConfig{
 				DayLevel: 85, NightLevel: 20, DayStart: "07:00", NightStart: "22:00",
 			},
-			ScreenSchedule: ScreenScheduleConfig{OffAt: "23:00", OnAt: "07:00"},
 		},
 		Slideshow: SlideshowConfig{
 			Interval:      Duration{120 * time.Second},
