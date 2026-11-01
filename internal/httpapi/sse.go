@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -91,7 +92,7 @@ func (s *server) streamEvents(ctx context.Context, send sse.Sender) {
 			if _, isImage := event.Payload.(state.ImagePayload); isImage && !s.screen.State() {
 				continue
 			}
-			if err := send(sse.Message{ID: int(event.ID), Data: s.ssePayload(event.Payload)}); err != nil { //nolint:gosec // ID won't overflow int on 64-bit
+			if err := send(sse.Message{IDString: strconv.FormatUint(event.ID, 10), Data: s.ssePayload(event.Payload)}); err != nil {
 				s.log.Warn("sse: write failed", "err", err)
 				return
 			}
@@ -110,7 +111,7 @@ func (s *server) sendSnapshot(send sse.Sender) uint64 {
 		if e.ID > maxID {
 			maxID = e.ID
 		}
-		if err := send(sse.Message{ID: int(e.ID), Data: s.ssePayload(e.Payload)}); err != nil { //nolint:gosec // ID won't overflow int on 64-bit
+		if err := send(sse.Message{IDString: strconv.FormatUint(e.ID, 10), Data: s.ssePayload(e.Payload)}); err != nil {
 			s.log.Warn("sse: snapshot write failed", "err", err)
 			return 0
 		}

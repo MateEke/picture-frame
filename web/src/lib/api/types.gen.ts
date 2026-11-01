@@ -1848,7 +1848,7 @@ export type EventsResponses = {
         /**
          * The event ID.
          */
-        id?: number;
+        id?: number | string;
         /**
          * The retry time in milliseconds.
          */
@@ -1862,7 +1862,7 @@ export type EventsResponses = {
         /**
          * The event ID.
          */
-        id?: number;
+        id?: number | string;
         /**
          * The retry time in milliseconds.
          */
@@ -1876,7 +1876,7 @@ export type EventsResponses = {
         /**
          * The event ID.
          */
-        id?: number;
+        id?: number | string;
         /**
          * The retry time in milliseconds.
          */
@@ -1890,7 +1890,7 @@ export type EventsResponses = {
         /**
          * The event ID.
          */
-        id?: number;
+        id?: number | string;
         /**
          * The retry time in milliseconds.
          */
@@ -1904,7 +1904,7 @@ export type EventsResponses = {
         /**
          * The event ID.
          */
-        id?: number;
+        id?: number | string;
         /**
          * The retry time in milliseconds.
          */
@@ -1918,7 +1918,7 @@ export type EventsResponses = {
         /**
          * The event ID.
          */
-        id?: number;
+        id?: number | string;
         /**
          * The retry time in milliseconds.
          */
@@ -1932,7 +1932,7 @@ export type EventsResponses = {
         /**
          * The event ID.
          */
-        id?: number;
+        id?: number | string;
         /**
          * The retry time in milliseconds.
          */
@@ -1946,7 +1946,7 @@ export type EventsResponses = {
         /**
          * The event ID.
          */
-        id?: number;
+        id?: number | string;
         /**
          * The retry time in milliseconds.
          */
@@ -1960,7 +1960,7 @@ export type EventsResponses = {
         /**
          * The event ID.
          */
-        id?: number;
+        id?: number | string;
         /**
          * The retry time in milliseconds.
          */
