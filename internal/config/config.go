@@ -285,9 +285,18 @@ func Load(userPath, overridesPath string) (*Config, error) {
 	return &cfg, nil
 }
 
-// Normalize trims stray whitespace from pasted addresses and identifiers.
-// Secrets are left verbatim since whitespace may be part of them.
+// Normalize trims pasted whitespace (secrets excepted) and resets unusable intervals.
 func (c *Config) Normalize() {
+	def := defaults()
+	for _, d := range []struct{ dst, def *Duration }{
+		{&c.Slideshow.Interval, &def.Slideshow.Interval},
+		{&c.Weather.PollInterval, &def.Weather.PollInterval},
+		{&c.Library.Immich.SyncInterval, &def.Library.Immich.SyncInterval},
+	} {
+		if d.dst.Duration <= 0 {
+			*d.dst = *d.def
+		}
+	}
 	for _, s := range []*string{
 		&c.Library.Immich.ShareURL,
 		&c.Mqtt.Broker,

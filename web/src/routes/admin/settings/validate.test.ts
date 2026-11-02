@@ -202,15 +202,24 @@ describe('settings validate', () => {
 			});
 		});
 
-		it.each([' ssl://broker:8883 ', 'broker:1883', 'MQTTS://broker:8883', 'wss://broker/mqtt'])(
-			'accepts the broker %j',
-			(broker) => {
-				const cfg = createEmptyConfig();
-				cfg.mqtt.bridge.enabled = true;
-				cfg.mqtt.broker = broker;
-				expect(validate(cfg).mqtt.broker).toBeUndefined();
-			}
-		);
+		it.each([
+			' ssl://broker:8883 ',
+			'broker:1883',
+			'MQTTS://broker:8883',
+			'tcp://broker:1883',
+			'mqtt://broker:1883',
+			'tcps://broker:8883',
+			'tls://broker:8883',
+			'mqtt+ssl://broker:8883',
+			'ws://broker/mqtt',
+			'wss://broker/mqtt',
+			'unix:///run/mosquitto.sock'
+		])('accepts the broker %j', (broker) => {
+			const cfg = createEmptyConfig();
+			cfg.mqtt.bridge.enabled = true;
+			cfg.mqtt.broker = broker;
+			expect(validate(cfg).mqtt.broker).toBeUndefined();
+		});
 
 		it('does not require bridge identifiers when the bridge is disabled', () => {
 			const cfg = createEmptyConfig();

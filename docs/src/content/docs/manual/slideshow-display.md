@@ -14,7 +14,9 @@ for how saving and restarts work.
 ## The photo rotation
 
 **Advance photo every** sets how long each photo stays on screen before the next one. The
-default is two minutes (`slideshow.interval`).
+default is two minutes (`slideshow.interval`). The slider runs from 30 seconds to an hour.
+For anything in between or beyond, click the value and enter your own. The shortest is
+5 seconds.
 
 **Shuffle photos** controls the order. With it off, photos cycle in the order you set on the
 [Photos page](/manual/photos/#arranging-the-order). With it on, the order is reshuffled each full

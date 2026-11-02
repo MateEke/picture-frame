@@ -125,6 +125,135 @@ test.describe('settings', () => {
 		await expect(settings.docs).toHaveAttribute('href', /pictureframe\.ekemate\.hu\/manual/);
 	});
 
+	test('sets a custom slide interval and keeps it on the slider', async ({ page, settings }) => {
+		await settings.enterInterval('15', 'sec');
+		await expect(settings.intervalValue).toHaveText('15 sec');
+		await settings.intervalAmount.press('Enter');
+		await expect(settings.intervalAmount).toBeHidden();
+		await expect(settings.intervalValue).toBeFocused();
+
+		await settings.save.click();
+		await expect(settings.saveBar).toBeHidden();
+		await page.reload();
+		await expect(settings.intervalValue).toHaveText('15 sec');
+
+		await settings.intervalThumb.press('ArrowRight');
+		await expect(settings.intervalValue).toHaveText('30 sec');
+		await settings.intervalThumb.press('ArrowLeft');
+		await expect(settings.intervalValue).toHaveText('15 sec');
+	});
+
+	test('the interval editor opens in the largest whole unit and shows the range', async ({
+		settings
+	}) => {
+		await settings.enterInterval('90', 'min');
+		await settings.intervalAmount.press('Enter');
+		await expect(settings.intervalValue).toHaveText('1 hr 30 min');
+
+		await settings.intervalValue.click();
+		await expect(settings.intervalAmount).toHaveValue('90');
+		await expect(settings.intervalUnit).toHaveValue('min');
+		await expect(settings.intervalHint).toHaveText('5 sec to 1 day');
+		await expect(settings.intervalAmount).toHaveAccessibleDescription('5 sec to 1 day');
+	});
+
+	test('the interval readout is named, tappable and its editor fits a narrow screen', async ({
+		page,
+		settings
+	}) => {
+		await expect(settings.intervalValue).toHaveAccessibleName(/^Advance photo every: .+, edit$/);
+		const box = await settings.intervalValue.boundingBox();
+		expect(box?.height ?? 0).toBeGreaterThanOrEqual(24);
+
+		await settings.intervalValue.click();
+		await expect(settings.intervalUnit).toBeInViewport();
+		const overflow = await page.evaluate(
+			() => document.documentElement.scrollWidth - document.documentElement.clientWidth
+		);
+		expect(overflow).toBeLessThanOrEqual(0);
+	});
+
+	test('Esc restores the interval from before editing', async ({ settings }) => {
+		await settings.enterInterval('65', 'min');
+		await expect(settings.intervalValue).toHaveText('1 hr 5 min');
+		await settings.intervalAmount.press('Escape');
+		await expect(settings.intervalAmount).toBeHidden();
+		await expect(settings.intervalValue).toHaveText('2 sec');
+		await expect(settings.saveBar).toBeHidden();
+	});
+
+	test('finishing on the original interval keeps it, even below the minimum', async ({
+		settings
+	}) => {
+		await settings.intervalValue.click();
+		await settings.intervalAmount.press('Enter');
+		await expect(settings.intervalAmount).toBeHidden();
+
+		await settings.enterInterval('20', 'sec');
+		await settings.intervalAmount.fill('2');
+		await settings.intervalAmount.press('Enter');
+		await expect(settings.intervalValue).toHaveText('2 sec');
+		await expect(settings.saveBar).toBeHidden();
+	});
+
+	test('discarding while the interval editor is open closes it', async ({ settings }) => {
+		await settings.enterInterval('5', 'min');
+		await expect(settings.intervalValue).toHaveText('5 min');
+		await settings.discard.click();
+		await expect(settings.intervalAmount).toBeHidden();
+		await expect(settings.intervalValue).toHaveText('2 sec');
+		await expect(settings.saveBar).toBeHidden();
+	});
+
+	test('tapping elsewhere closes the interval editor and keeps the value', async ({ settings }) => {
+		await settings.enterInterval('15', 'sec');
+		await settings.labelOutside.click();
+		await expect(settings.intervalAmount).toBeHidden();
+		await expect(settings.intervalValue).toHaveText('15 sec');
+	});
+
+	test('an invalid interval keeps the editor open and drops the half-typed value', async ({
+		settings
+	}) => {
+		await settings.enterInterval('2', 'hr');
+		await expect(settings.intervalValue).toHaveText('2 hr');
+		await settings.intervalAmount.fill('25');
+		await settings.intervalAmount.press('Enter');
+		await expect(settings.intervalError).toHaveText('Maximum is 1 day.');
+		await expect(settings.intervalHint).toBeHidden();
+		await expect(settings.intervalAmount).toHaveAttribute('aria-invalid', 'true');
+		await expect(settings.intervalValue).toHaveText('2 sec');
+		await expect(settings.saveBar).toBeHidden();
+
+		await settings.labelOutside.click();
+		await expect(settings.intervalAmount).toBeVisible();
+
+		await settings.intervalAmount.fill('20');
+		await expect(settings.intervalError).toBeHidden();
+		await expect(settings.intervalValue).toHaveText('20 hr');
+	});
+
+	test('choosing a preset keeps the saved custom interval on the slider', async ({ settings }) => {
+		await expect(settings.intervalValue).toHaveText('2 sec');
+		await settings.enterInterval('1', 'min');
+		await settings.intervalAmount.press('Enter');
+		await expect(settings.intervalValue).toHaveText('1 min');
+
+		await settings.intervalThumb.press('Home');
+		await expect(settings.intervalValue).toHaveText('2 sec');
+	});
+
+	test('discarding drops a typed custom interval from the slider', async ({ settings }) => {
+		await settings.enterInterval('15', 'sec');
+		await settings.intervalAmount.press('Enter');
+		await expect(settings.intervalValue).toHaveText('15 sec');
+
+		await settings.discard.click();
+		await expect(settings.intervalValue).toHaveText('2 sec');
+		await settings.intervalThumb.press('ArrowRight');
+		await expect(settings.intervalValue).toHaveText('30 sec');
+	});
+
 	test('blocks save on invalid input', async ({ settings }) => {
 		await settings.openSection('weather');
 		await settings.weatherLat.fill('999');
@@ -192,6 +321,16 @@ test.describe('settings', () => {
 			await expect(settings.saveBar).toBeVisible();
 		});
 
+		test('Esc in a duration editor keeps the sensor dialog open', async ({ settings }) => {
+			await settings.sensorAdd.click();
+			await settings.dialogId.fill('e2e_esc');
+			await settings.mockPollValue.click();
+			await settings.mockPollAmount.fill('45');
+			await settings.mockPollAmount.press('Escape');
+			await expect(settings.mockPollAmount).toBeHidden();
+			await expect(settings.dialogId).toHaveValue('e2e_esc');
+		});
+
 		test('blocks add on a duplicate id', async ({ settings }) => {
 			await settings.sensorAdd.click();
 			await settings.dialogId.fill('mock_inside');
@@ -245,6 +384,21 @@ test.describe('settings', () => {
 		await expect(settings.save).toBeDisabled();
 		await settings.mqttNodeId.fill('frame');
 		await expect(settings.save).toBeEnabled();
+	});
+
+	test('mqtt stale after can be set to Never', async ({ settings }) => {
+		await settings.openSection('mqtt');
+		await settings.mqttBroker.fill('tcp://localhost:1883');
+		await settings.mqttBridgeSwitch.click();
+
+		await settings.mqttStaleThumb.press('Home');
+		await expect(settings.mqttStaleValue).toHaveText('Never');
+
+		await settings.mqttStaleThumb.press('End');
+		await settings.mqttStaleValue.click();
+		await settings.mqttStaleAmount.fill('0');
+		await settings.mqttStaleAmount.press('Enter');
+		await expect(settings.mqttStaleValue).toHaveText('Never');
 	});
 
 	test('a restart-required change surfaces the restart prompt', async ({ settings }) => {

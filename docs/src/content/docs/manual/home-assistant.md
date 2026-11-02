@@ -75,7 +75,7 @@ or sunrise, leave it empty and drive the **Screen** switch from a Home Assistant
 - **Stale after** marks a sensor unavailable in Home Assistant when no reading arrives within
   the window. An entity shows as available only while both the frame and that sensor are online,
   so a dead frame and a silent sensor both surface honestly instead of leaving a stale value
-  looking live.
+  looking live. Set it to **Never** to keep a sensor available once it has reported.
 
 :::note[Restart required]
 The broker connection and the bridge settings take effect after the frame restarts.

@@ -1,14 +1,16 @@
 <script lang="ts">
 	import type { SensorDto, MockReadingDto, ConfigMetaBody } from '#lib/api/types.gen.js';
 	import { PlusIcon, XIcon } from '@lucide/svelte';
-	import { DURATION_STOPS } from '#lib/duration.js';
+	import { DURATIONS } from '#lib/duration.js';
 	import DurationSlider from './DurationSlider.svelte';
 
 	let {
 		draft = $bindable(),
+		saved,
 		meta
 	}: {
 		draft: SensorDto;
+		saved: SensorDto | null;
 		meta: ConfigMetaBody;
 	} = $props();
 
@@ -84,6 +86,8 @@
 </div>
 <DurationSlider
 	label="Poll interval"
-	stops={DURATION_STOPS.sensorPoll}
+	scale={DURATIONS.sensorPoll}
+	testid="mock-poll"
 	bind:value={draft.poll_interval}
+	saved={saved?.poll_interval}
 />

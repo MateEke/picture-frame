@@ -1,14 +1,16 @@
 <script lang="ts">
 	import type { SensorDto, CharacteristicDto, ConfigMetaBody } from '#lib/api/types.gen.js';
 	import { PlusIcon, XIcon } from '@lucide/svelte';
-	import { DURATION_STOPS } from '#lib/duration.js';
+	import { DURATIONS } from '#lib/duration.js';
 	import DurationSlider from './DurationSlider.svelte';
 
 	let {
 		draft = $bindable(),
+		saved,
 		meta
 	}: {
 		draft: SensorDto;
+		saved: SensorDto | null;
 		meta: ConfigMetaBody;
 	} = $props();
 
@@ -48,15 +50,19 @@
 	</label>
 	<DurationSlider
 		label="Poll interval"
-		stops={DURATION_STOPS.sensorPoll}
+		scale={DURATIONS.sensorPoll}
+		testid="sensor-poll"
 		bind:value={draft.poll_interval}
+		saved={saved?.poll_interval}
 	/>
 	<DurationSlider
 		label="Reset after"
 		help="Power-cycle the adapter after this long without a reading (Off disables it)."
-		stops={DURATION_STOPS.sensorReset}
+		scale={DURATIONS.sensorReset}
+		testid="sensor-reset"
 		zeroLabel="Off"
 		bind:value={draft.reset_after}
+		saved={saved?.reset_after}
 	/>
 </div>
 

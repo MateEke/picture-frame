@@ -43,6 +43,17 @@ export class SettingsPage {
 	readonly updateHour: Locator;
 	readonly githubRepo: Locator;
 	readonly docs: Locator;
+	readonly intervalValue: Locator;
+	readonly intervalAmount: Locator;
+	readonly intervalUnit: Locator;
+	readonly intervalHint: Locator;
+	readonly intervalError: Locator;
+	readonly intervalThumb: Locator;
+	readonly mockPollValue: Locator;
+	readonly mqttStaleValue: Locator;
+	readonly mqttStaleAmount: Locator;
+	readonly mqttStaleThumb: Locator;
+	readonly mockPollAmount: Locator;
 
 	constructor(private readonly page: Page) {
 		this.saveBar = page.getByTestId('settings-save-bar');
@@ -87,6 +98,17 @@ export class SettingsPage {
 		this.updateHour = page.getByTestId('update-hour');
 		this.githubRepo = page.getByTestId('github-repo');
 		this.docs = page.getByTestId('settings-docs');
+		this.intervalValue = page.getByTestId('slideshow-interval-value');
+		this.intervalAmount = page.getByTestId('slideshow-interval-amount');
+		this.intervalUnit = page.getByTestId('slideshow-interval-unit');
+		this.intervalHint = page.getByTestId('slideshow-interval-hint');
+		this.intervalError = page.getByTestId('slideshow-interval-error');
+		this.intervalThumb = page.getByTestId('slideshow-interval-thumb');
+		this.mockPollValue = page.getByTestId('mock-poll-value');
+		this.mqttStaleValue = page.getByTestId('mqtt-stale-value');
+		this.mqttStaleAmount = page.getByTestId('mqtt-stale-amount');
+		this.mqttStaleThumb = page.getByTestId('mqtt-stale-thumb');
+		this.mockPollAmount = page.getByTestId('mock-poll-amount');
 	}
 
 	sensorRow(id: string): Locator {
@@ -99,6 +121,12 @@ export class SettingsPage {
 
 	sensorDelete(id: string): Locator {
 		return this.page.getByTestId(`sensor-delete-${id}`);
+	}
+
+	async enterInterval(amount: string, unit: 'sec' | 'min' | 'hr'): Promise<void> {
+		if (!(await this.intervalAmount.isVisible())) await this.intervalValue.click();
+		await this.intervalAmount.fill(amount);
+		await this.intervalUnit.selectOption(unit);
 	}
 
 	async goto(): Promise<void> {

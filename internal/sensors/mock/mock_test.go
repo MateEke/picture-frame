@@ -3,6 +3,7 @@ package mock_test
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/MateEke/picture-frame/internal/sensors"
@@ -110,5 +111,31 @@ func TestMockEmptyReadingsWaitsForCancel(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("Start did not return")
+	}
+}
+
+// A non-positive interval makes time.After fire at once and spin the loop.
+func TestMockNonPositiveIntervalUsesDefault(t *testing.T) {
+	for _, interval := range []time.Duration{0, -time.Second} {
+		t.Run(interval.String(), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				src := mock.New("dev", interval, mock.Reading{Kind: sensors.KindTemperature, Value: 20})
+				out := make(chan sensors.Reading, 10)
+				go func() { _ = src.Start(t.Context(), out) }()
+
+				synctest.Wait()
+				<-out // the first reading is immediate
+				time.Sleep(mock.DefaultInterval - time.Nanosecond)
+				synctest.Wait()
+				if len(out) != 0 {
+					t.Fatalf("emitted %d readings before the default interval", len(out))
+				}
+				time.Sleep(time.Nanosecond)
+				synctest.Wait()
+				if len(out) != 1 {
+					t.Fatalf("expected one reading at the default interval, got %d", len(out))
+				}
+			})
+		})
 	}
 }

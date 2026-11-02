@@ -12,6 +12,7 @@ package httpapi
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/MateEke/picture-frame/internal/config"
@@ -515,10 +516,17 @@ func logLevelOrDefault(level string) string {
 	return level
 }
 
-// durString converts a time.Duration to its string form; returns "" for zero.
+// durString renders d compactly ("2m", not "2m0s") to match the UI's stops.
 func durString(d time.Duration) string {
 	if d == 0 {
 		return ""
 	}
-	return d.String()
+	s := d.String()
+	if trimmed, ok := strings.CutSuffix(s, "m0s"); ok {
+		s = trimmed + "m"
+	}
+	if trimmed, ok := strings.CutSuffix(s, "h0m"); ok {
+		s = trimmed + "h"
+	}
+	return s
 }

@@ -23,7 +23,13 @@ type Source struct {
 	readings []Reading
 }
 
+// DefaultInterval is used when no positive interval is configured.
+const DefaultInterval = 5 * time.Second
+
 func New(id string, interval time.Duration, readings ...Reading) *Source {
+	if interval <= 0 {
+		interval = DefaultInterval
+	}
 	return &Source{id: id, interval: interval, readings: readings}
 }
 

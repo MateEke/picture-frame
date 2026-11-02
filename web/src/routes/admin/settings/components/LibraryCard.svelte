@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { LibraryDto } from '#lib/api/types.gen.js';
-	import { DURATION_STOPS } from '#lib/duration.js';
+	import { DURATIONS } from '#lib/duration.js';
 	import SecretField from '#lib/SecretField.svelte';
 	import DurationSlider from './DurationSlider.svelte';
 	import Field from './Field.svelte';
@@ -72,8 +72,10 @@
 			/>
 			<DurationSlider
 				label="Sync interval"
-				stops={DURATION_STOPS.immichSync}
+				scale={DURATIONS.immichSync}
+				testid="immich-sync"
 				bind:value={library.immich.sync_interval}
+				saved={savedLibrary.immich.sync_interval}
 				changed={library.immich.sync_interval !== savedLibrary.immich.sync_interval}
 				onrevert={() => (library.immich.sync_interval = savedLibrary.immich.sync_interval)}
 			/>

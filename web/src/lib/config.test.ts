@@ -26,7 +26,7 @@ const sampleConfig = {
 	log_level: 'info' as const,
 	bluetooth_adapter: 'hci0',
 	display: {
-		blank_after: '20m0s',
+		blank_after: '20m',
 		backend: 'wlopm' as const,
 		output: 'HDMI-A-1',
 		rotation: 0 as const,
@@ -36,7 +36,7 @@ const sampleConfig = {
 		labels: { outside: '', inside: '', humidity: '' },
 		schedule: { off_at: '', on_at: '' }
 	},
-	slideshow: { interval: '2m0s', randomize: false, split_screen: true, images_dir: 'images' },
+	slideshow: { interval: '2m', randomize: false, split_screen: true, images_dir: 'images' },
 	library: {
 		backend: 'fs' as const,
 		immich: {
@@ -50,7 +50,7 @@ const sampleConfig = {
 		api_key_set: false,
 		lat: 0,
 		lon: 0,
-		poll_interval: '10m0s',
+		poll_interval: '10m',
 		retry_interval: '30s',
 		units: 'metric' as const
 	},
@@ -64,7 +64,7 @@ const sampleConfig = {
 			node_id: 'pf',
 			base_topic: 'picture-frame',
 			discovery_prefix: 'homeassistant',
-			stale_after: '10m0s'
+			stale_after: '10m'
 		}
 	},
 	updater: { auto_update: false, update_hour: 2, github_repo: '', github_token_set: false },

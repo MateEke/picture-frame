@@ -128,6 +128,27 @@ password = " secret "
 	}
 }
 
+// A zero interval would panic the slideshow ticker or hot-loop the weather poll.
+func TestNormalizeFillsNonPositiveIntervals(t *testing.T) {
+	cfg := config.Config{}
+	cfg.Slideshow.Interval.Duration = -time.Second
+	cfg.Normalize()
+
+	def, err := config.Load("", "")
+	if err != nil {
+		t.Fatalf("load defaults: %v", err)
+	}
+	if cfg.Slideshow.Interval != def.Slideshow.Interval {
+		t.Errorf("slideshow.interval: got %v, want %v", cfg.Slideshow.Interval, def.Slideshow.Interval)
+	}
+	if cfg.Weather.PollInterval != def.Weather.PollInterval {
+		t.Errorf("weather.poll_interval: got %v, want %v", cfg.Weather.PollInterval, def.Weather.PollInterval)
+	}
+	if cfg.Library.Immich.SyncInterval != def.Library.Immich.SyncInterval {
+		t.Errorf("immich.sync_interval: got %v, want %v", cfg.Library.Immich.SyncInterval, def.Library.Immich.SyncInterval)
+	}
+}
+
 func TestLoadAuthPasswordHash(t *testing.T) {
 	dir := t.TempDir()
 	userPath := write(t, dir, "config.toml", `
