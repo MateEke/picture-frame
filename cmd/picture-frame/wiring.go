@@ -131,9 +131,6 @@ func startLibrarySyncer(ctx context.Context, log *slog.Logger, cfg *config.Confi
 		return nil, err
 	}
 	interval := cfg.Library.Immich.SyncInterval.Duration
-	if interval <= 0 {
-		interval = 15 * time.Minute
-	}
 	syncer := library.NewSyncer(log, client, lib, root, interval, slides, library.WithAspectStore(aspect))
 	go syncer.Run(ctx)
 	log.Info("library: immich syncer started", "share_url", cfg.Library.Immich.ShareURL, "interval", interval)

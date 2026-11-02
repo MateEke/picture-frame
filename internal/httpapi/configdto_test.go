@@ -169,10 +169,10 @@ func TestToDTODurationStrings(t *testing.T) {
 	cfg := fullTestConfig()
 	dto := toDTO(cfg)
 
-	if dto.Display.BlankAfter != "20m0s" {
+	if dto.Display.BlankAfter != "20m" {
 		t.Errorf("blank_after: got %q", dto.Display.BlankAfter)
 	}
-	if dto.Slideshow.Interval != "2m0s" {
+	if dto.Slideshow.Interval != "2m" {
 		t.Errorf("interval: got %q", dto.Slideshow.Interval)
 	}
 }
@@ -678,5 +678,26 @@ func TestApplyDTOKeepsPasswordWhitespace(t *testing.T) {
 	}
 	if out.Mqtt.Password != " pass " {
 		t.Errorf("password must be stored verbatim, got %q", out.Mqtt.Password)
+	}
+}
+
+func TestDurString(t *testing.T) {
+	cases := []struct {
+		in   time.Duration
+		want string
+	}{
+		{0, ""},
+		{30 * time.Second, "30s"},
+		{2 * time.Minute, "2m"},
+		{time.Hour, "1h"},
+		{90 * time.Minute, "1h30m"},
+		{90 * time.Second, "1m30s"},
+		{time.Hour + 30*time.Second, "1h0m30s"},
+		{1500 * time.Millisecond, "1.5s"},
+	}
+	for _, tc := range cases {
+		if got := durString(tc.in); got != tc.want {
+			t.Errorf("durString(%v) = %q, want %q", tc.in, got, tc.want)
+		}
 	}
 }

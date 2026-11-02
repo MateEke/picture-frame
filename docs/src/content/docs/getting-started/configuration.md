@@ -18,6 +18,12 @@ few need a quick restart of the frame itself (the program, not the whole Pi), wh
 below. The [User Manual](/manual/dashboard/) covers each section in turn, and the
 [configuration reference](/reference/configuration/) documents every setting in detail.
 
+Sliders that set a length of time stop at common values. To use another, click the value
+shown beside the label, enter a number, and pick seconds, minutes or hours. The range each
+slider accepts is shown beside the number.
+
+![A slider's value being edited: 90 minutes entered, shown as 1 hr 30 min, with the allowed range of 5 sec to 1 day](../../../assets/screenshots/duration-editor.png)
+
 ## The configuration files
 
 Behind the interface, configuration lives in two [TOML](https://toml.io) files in the install

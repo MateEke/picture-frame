@@ -50,8 +50,9 @@ func makeConfigServer(t *testing.T, saved config.Config) (http.Handler, *fakeLiv
 	return srv, lc, restartCalls
 }
 
+// defaultSaved mirrors a loaded config, which Load always normalizes.
 func defaultSaved() config.Config {
-	return config.Config{
+	cfg := config.Config{
 		Addr:             ":8080",
 		BluetoothAdapter: "hci0",
 		Display: config.DisplayConfig{
@@ -80,6 +81,8 @@ func defaultSaved() config.Config {
 			},
 		},
 	}
+	cfg.Normalize()
+	return cfg
 }
 
 func TestGetConfigReturnsDTO(t *testing.T) {

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { WeatherDto } from '#lib/api/types.gen.js';
-	import { DURATION_STOPS } from '#lib/duration.js';
+	import { DURATIONS } from '#lib/duration.js';
 	import SecretField from '#lib/SecretField.svelte';
 	import DurationSlider from './DurationSlider.svelte';
 	import Field from './Field.svelte';
@@ -52,16 +52,20 @@
 		</Field>
 		<DurationSlider
 			label="Poll interval"
-			stops={DURATION_STOPS.weatherPoll}
+			scale={DURATIONS.weatherPoll}
+			testid="weather-poll"
 			bind:value={weather.poll_interval}
+			saved={savedWeather.poll_interval}
 			changed={weather.poll_interval !== savedWeather.poll_interval}
 			onrevert={() => (weather.poll_interval = savedWeather.poll_interval)}
 		/>
 		<DurationSlider
 			label="Retry interval"
 			help="First delay after a failed poll. Backs off up to the poll interval."
-			stops={DURATION_STOPS.weatherRetry}
+			scale={DURATIONS.weatherRetry}
+			testid="weather-retry"
 			bind:value={weather.retry_interval}
+			saved={savedWeather.retry_interval}
 			changed={weather.retry_interval !== savedWeather.retry_interval}
 			onrevert={() => (weather.retry_interval = savedWeather.retry_interval)}
 		/>

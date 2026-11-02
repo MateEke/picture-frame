@@ -148,11 +148,11 @@
 					</Field>
 
 					{#if draft.type === 'ble'}
-						<BleFields bind:draft {meta} />
+						<BleFields bind:draft saved={sensor} {meta} />
 					{:else if draft.type === 'mqtt-subscriber'}
 						<MqttSubscriberFields bind:draft {meta} />
 					{:else if draft.type === 'mock'}
-						<MockFields bind:draft {meta} />
+						<MockFields bind:draft saved={sensor} {meta} />
 					{/if}
 
 					{#if typeError}

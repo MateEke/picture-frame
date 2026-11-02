@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { SlideshowDto, DisplayDto, SensorDto } from '#lib/api/types.gen.js';
 	import { SlidersHorizontalIcon } from '@lucide/svelte';
-	import { DURATION_STOPS } from '#lib/duration.js';
+	import { DURATIONS } from '#lib/duration.js';
 	import { eq, hasMotionSensor } from '../utils';
 	import DurationSlider from './DurationSlider.svelte';
 	import LocaleCombobox from './LocaleCombobox.svelte';
@@ -40,8 +40,10 @@
 
 	<DurationSlider
 		label="Advance photo every"
-		stops={DURATION_STOPS.slideshowInterval}
+		scale={DURATIONS.slideshowInterval}
+		testid="slideshow-interval"
 		bind:value={slideshow.interval}
+		saved={savedSlideshow.interval}
 		changed={slideshow.interval !== savedSlideshow.interval}
 		onrevert={() => (slideshow.interval = savedSlideshow.interval)}
 	/>
@@ -66,10 +68,12 @@
 	<DurationSlider
 		label="Turn screen off when idle"
 		help="A motion sensor wakes the screen after it blanks."
-		stops={DURATION_STOPS.blankAfter}
+		scale={DURATIONS.blankAfter}
+		testid="blank-after"
 		zeroLabel="Never"
 		disabled={!motion}
 		bind:value={display.blank_after}
+		saved={savedDisplay.blank_after}
 		changed={display.blank_after !== savedDisplay.blank_after}
 		onrevert={() => (display.blank_after = savedDisplay.blank_after)}
 	/>

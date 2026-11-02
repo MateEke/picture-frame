@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { MqttDto } from '#lib/api/types.gen.js';
 	import { Switch } from '@skeletonlabs/skeleton-svelte';
-	import { DURATION_STOPS } from '#lib/duration.js';
+	import { DURATIONS } from '#lib/duration.js';
 	import SecretField from '#lib/SecretField.svelte';
 	import DurationSlider from './DurationSlider.svelte';
 	import Field from './Field.svelte';
@@ -125,9 +125,12 @@
 				</Field>
 				<DurationSlider
 					label="Stale after"
-					help="Report a sensor offline in HA if no reading arrives within this."
-					stops={DURATION_STOPS.mqttStale}
+					help="Report a sensor offline in HA if no reading arrives within this. Never keeps it online."
+					scale={DURATIONS.mqttStale}
+					testid="mqtt-stale"
+					zeroLabel="Never"
 					bind:value={mqtt.bridge.stale_after}
+					saved={savedMqtt.bridge.stale_after}
 					changed={mqtt.bridge.stale_after !== savedMqtt.bridge.stale_after}
 					onrevert={() => (mqtt.bridge.stale_after = savedMqtt.bridge.stale_after)}
 				/>
