@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
@@ -280,7 +281,24 @@ func Load(userPath, overridesPath string) (*Config, error) {
 	if err := loadFile(overridesPath, &cfg); err != nil {
 		return nil, fmt.Errorf("overrides %s: %w", overridesPath, err)
 	}
+	cfg.Normalize()
 	return &cfg, nil
+}
+
+// Normalize trims stray whitespace from pasted addresses and identifiers.
+// Secrets are left verbatim since whitespace may be part of them.
+func (c *Config) Normalize() {
+	for _, s := range []*string{
+		&c.Library.Immich.ShareURL,
+		&c.Mqtt.Broker,
+		&c.Mqtt.Username,
+		&c.Mqtt.ClientID,
+		&c.Mqtt.Bridge.NodeID,
+		&c.Mqtt.Bridge.BaseTopic,
+		&c.Mqtt.Bridge.DiscoveryPrefix,
+	} {
+		*s = strings.TrimSpace(*s)
+	}
 }
 
 func loadFile(path string, dst *Config) error {

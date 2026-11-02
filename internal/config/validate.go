@@ -2,6 +2,9 @@ package config
 
 import (
 	"fmt"
+	"net/url"
+	"slices"
+	"strings"
 	"time"
 )
 
@@ -183,6 +186,9 @@ func (m MqttConfig) validate(hasSubscriber bool) error {
 	if m.Broker == "" {
 		return fmt.Errorf("broker required (bridge enabled or mqtt-subscriber sensors present)")
 	}
+	if err := validateBrokerURL(m.Broker); err != nil {
+		return err
+	}
 	if !m.Bridge.Enabled {
 		return nil
 	}
@@ -196,6 +202,26 @@ func (m MqttConfig) validate(hasSubscriber bool) error {
 	default:
 		return nil
 	}
+}
+
+// brokerSchemes are the transports paho can dial.
+var brokerSchemes = []string{"tcp", "mqtt", "tcps", "ssl", "tls", "mqtts", "mqtt+ssl", "ws", "wss", "unix"}
+
+// validateBrokerURL rejects what paho's AddBroker would silently drop, which
+// leaves the client retrying with no servers. Mirrors AddBroker's defaulting.
+func validateBrokerURL(broker string) error {
+	normalized := broker
+	if !strings.Contains(normalized, "://") {
+		normalized = "tcp://" + normalized
+	}
+	u, err := url.Parse(normalized)
+	if err != nil {
+		return fmt.Errorf("invalid broker %q: %w", broker, err)
+	}
+	if !slices.Contains(brokerSchemes, u.Scheme) {
+		return fmt.Errorf("invalid broker %q: unsupported scheme %q, e.g. tcp://broker:1883", broker, u.Scheme)
+	}
+	return nil
 }
 
 func (w WeatherConfig) validate() error {

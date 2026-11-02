@@ -109,6 +109,25 @@ timezone = "Europe/Budapest"
 	}
 }
 
+func TestLoadTrimsWhitespace(t *testing.T) {
+	dir := t.TempDir()
+	userPath := write(t, dir, "config.toml", `
+[mqtt]
+broker = " ssl://broker:8883"
+password = " secret "
+`)
+	cfg, err := config.Load(userPath, filepath.Join(dir, "overrides.toml"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Mqtt.Broker != "ssl://broker:8883" {
+		t.Errorf("broker: got %q, want trimmed", cfg.Mqtt.Broker)
+	}
+	if cfg.Mqtt.Password != " secret " {
+		t.Errorf("password must be kept verbatim, got %q", cfg.Mqtt.Password)
+	}
+}
+
 func TestLoadAuthPasswordHash(t *testing.T) {
 	dir := t.TempDir()
 	userPath := write(t, dir, "config.toml", `
@@ -394,6 +413,12 @@ func TestValidateMqtt(t *testing.T) {
 		{"bridge disabled and no subscribers skips checks", config.MqttConfig{}, nil, ""},
 		{"valid bridge", full, nil, ""},
 		{"bridge missing broker", without(func(m *config.MqttConfig) { m.Broker = "" }), nil, "broker required"},
+		{"broker with leading space", without(func(m *config.MqttConfig) { m.Broker = " ssl://broker:8883" }), nil, "invalid broker"},
+		{"broker without scheme defaults to tcp", without(func(m *config.MqttConfig) { m.Broker = "broker:1883" }), nil, ""},
+		{"port-only broker defaults to localhost", without(func(m *config.MqttConfig) { m.Broker = ":1883" }), nil, ""},
+		{"unix socket broker", without(func(m *config.MqttConfig) { m.Broker = "unix:///run/mosquitto.sock" }), nil, ""},
+		{"broker with unsupported scheme", without(func(m *config.MqttConfig) { m.Broker = "http://broker:1883" }), nil, "invalid broker"},
+		{"websocket broker", without(func(m *config.MqttConfig) { m.Broker = "wss://broker/mqtt" }), nil, ""},
 		{"bridge missing node_id", without(func(m *config.MqttConfig) { m.Bridge.NodeID = "" }), nil, "node_id required"},
 		{"bridge missing base_topic", without(func(m *config.MqttConfig) { m.Bridge.BaseTopic = "" }), nil, "base_topic required"},
 		{"bridge missing discovery_prefix", without(func(m *config.MqttConfig) { m.Bridge.DiscoveryPrefix = "" }), nil, "discovery_prefix required"},
