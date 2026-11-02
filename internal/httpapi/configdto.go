@@ -308,6 +308,7 @@ func applyDTO(dto ConfigDTO, current config.Config) (config.Config, error) {
 	if err := applyUpdaterDTO(&out.Updater, dto.Updater); err != nil {
 		return config.Config{}, err
 	}
+	out.Normalize()
 	return out, nil
 }
 

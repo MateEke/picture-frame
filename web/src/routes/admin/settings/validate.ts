@@ -151,6 +151,9 @@ function validateMqtt(cfg: ConfigResponseBody, result: ValidationResult) {
 			? 'Broker is required when the bridge is enabled.'
 			: 'Broker is required while an MQTT sensor exists.';
 		result.issues.push({ section: 'mqtt', message: 'Home Assistant: broker is required.' });
+	} else if (!brokerSchemeValid(cfg.mqtt.broker)) {
+		result.mqtt.broker = 'Broker must start with tcp://, ssl://, ws:// or wss://.';
+		result.issues.push({ section: 'mqtt', message: 'Home Assistant: broker address is invalid.' });
 	}
 	if (!bridgeEnabled) return;
 	const required: [keyof ValidationResult['mqtt'], string, string][] = [
@@ -166,6 +169,25 @@ function validateMqtt(cfg: ConfigResponseBody, result: ValidationResult) {
 			message: `Home Assistant: ${label.toLowerCase()} is required.`
 		});
 	}
+}
+
+// Mirrors the Go brokerSchemes; a scheme-less broker defaults to tcp.
+const BROKER_SCHEMES = [
+	'tcp',
+	'mqtt',
+	'tcps',
+	'ssl',
+	'tls',
+	'mqtts',
+	'mqtt+ssl',
+	'ws',
+	'wss',
+	'unix'
+];
+
+function brokerSchemeValid(broker: string): boolean {
+	const [scheme, rest] = broker.trim().split('://', 2);
+	return rest === undefined || BROKER_SCHEMES.includes(scheme.toLowerCase());
 }
 
 // Maps a backend 422 detail ("<section>: <msg>") to the section to open.

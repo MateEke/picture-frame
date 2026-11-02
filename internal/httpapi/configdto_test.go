@@ -643,3 +643,40 @@ func TestApplyDTOUpdateHourEdges(t *testing.T) {
 		t.Fatal("expected error for update_hour -1")
 	}
 }
+
+func TestApplyDTOTrimsWhitespace(t *testing.T) {
+	current := fullTestConfig()
+	dto := toDTO(current)
+	dto.Mqtt.Broker = " ssl://broker:8883 "
+	dto.Mqtt.Username = " user\t"
+	dto.Mqtt.ClientID = " frame "
+	dto.Mqtt.Bridge.NodeID = " node "
+	dto.Mqtt.Bridge.BaseTopic = " base "
+	dto.Mqtt.Bridge.DiscoveryPrefix = " homeassistant\n"
+	dto.Library.Immich.ShareURL = " https://immich.example/share/key "
+
+	out, err := applyDTO(dto, current)
+	if err != nil {
+		t.Fatalf("applyDTO: %v", err)
+	}
+	m := out.Mqtt
+	got := []string{m.Broker, m.Username, m.ClientID, m.Bridge.NodeID, m.Bridge.BaseTopic, m.Bridge.DiscoveryPrefix, out.Library.Immich.ShareURL}
+	want := []string{"ssl://broker:8883", "user", "frame", "node", "base", "homeassistant", "https://immich.example/share/key"}
+	if !slices.Equal(got, want) {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestApplyDTOKeepsPasswordWhitespace(t *testing.T) {
+	current := fullTestConfig()
+	dto := toDTO(current)
+	dto.Mqtt.Password = " pass "
+
+	out, err := applyDTO(dto, current)
+	if err != nil {
+		t.Fatalf("applyDTO: %v", err)
+	}
+	if out.Mqtt.Password != " pass " {
+		t.Errorf("password must be stored verbatim, got %q", out.Mqtt.Password)
+	}
+}
