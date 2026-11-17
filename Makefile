@@ -166,7 +166,7 @@ vuln: embed-seed ## Scan dependencies for known vulnerabilities (reachable Go + 
 	@echo "==> Building UI for the bundle-truth SBOM..."
 	cd $(UI_DIR) && $(NPM_INSTALL) && npm run build
 	@echo "==> Scanning bundled npm packages (osv-scanner)..."
-	$(OSV_SCANNER) scan source --config osv-scanner.toml -L $(UI_DIR)/.svelte-kit/output/client/cyclonedx/bom.json
+	$(OSV_SCANNER) scan source -L $(UI_DIR)/.svelte-kit/output/client/cyclonedx/bom.json
 
 lint: embed-seed ## Run linters (Go, shell, workflows, and Frontend)
 	@echo "==> Linting Go code..."
