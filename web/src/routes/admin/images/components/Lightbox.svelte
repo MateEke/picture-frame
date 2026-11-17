@@ -2,7 +2,7 @@
 	import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
 	import { ExternalLinkIcon, Trash2Icon, XIcon } from '@lucide/svelte';
 
-	import { immichPhotoUrl } from '$lib/images';
+	import { immichPhotoUrl } from '#lib/images.js';
 
 	let {
 		name,
@@ -51,6 +51,8 @@
 					</div>
 					{#if immichUrl}
 						<div class="flex justify-end">
+							<!-- Absolute link to the configured Immich instance, so resolve() doesn't apply. -->
+							<!-- eslint-disable svelte/no-navigation-without-resolve -->
 							<a
 								class="btn preset-filled-primary-500 flex items-center gap-1.5"
 								data-testid="lightbox-immich"
@@ -60,6 +62,7 @@
 							>
 								<ExternalLinkIcon class="size-4" />Show in Immich
 							</a>
+							<!-- eslint-enable svelte/no-navigation-without-resolve -->
 						</div>
 					{/if}
 					{#if canDelete}
