@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { Component } from 'svelte';
-	import type { SensorPayload } from '$lib/api/types.gen';
+	import type { SensorPayload } from '#lib/api/types.gen.js';
 	import { ThermometerIcon, DropletIcon, RadarIcon, GaugeIcon } from '@lucide/svelte';
-	import { formatSensorValue, timeAgo, isSensorStale } from '$lib/helpers';
+	import { formatSensorValue, timeAgo, isSensorStale } from '#lib/helpers.js';
 
 	let { sensors, now }: { sensors: Record<string, SensorPayload>; now: number } = $props();
 

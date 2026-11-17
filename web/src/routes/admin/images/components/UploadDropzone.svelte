@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { FileUpload } from '@skeletonlabs/skeleton-svelte';
 	import { CloudUploadIcon } from '@lucide/svelte';
-	import { toaster } from '$lib/toaster';
+	import { toaster } from '#lib/toaster.js';
 	import { rejectedFilesMessage, type RejectedFile } from '../uploadFeedback';
 
 	let { onFiles }: { onFiles: (files: File[]) => void } = $props();

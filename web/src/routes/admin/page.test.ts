@@ -8,12 +8,14 @@ const mockLoadSystemInfo = vi.fn();
 const mockLoadLibrary = vi.fn();
 const mockLoadUpdate = vi.fn();
 
-vi.mock('$lib/screen', () => ({ loadScreen: (...a: unknown[]) => mockLoadScreen(...a) }));
-vi.mock('$lib/config', () => ({ loadConfig: (...a: unknown[]) => mockLoadConfig(...a) }));
-vi.mock('$lib/wifi', () => ({ loadWiFiStatus: (...a: unknown[]) => mockLoadWiFiStatus(...a) }));
-vi.mock('$lib/system', () => ({ loadSystemInfo: (...a: unknown[]) => mockLoadSystemInfo(...a) }));
-vi.mock('$lib/library', () => ({ loadLibrary: (...a: unknown[]) => mockLoadLibrary(...a) }));
-vi.mock('$lib/updater', () => ({ loadUpdate: (...a: unknown[]) => mockLoadUpdate(...a) }));
+vi.mock('#lib/screen.js', () => ({ loadScreen: (...a: unknown[]) => mockLoadScreen(...a) }));
+vi.mock('#lib/config.js', () => ({ loadConfig: (...a: unknown[]) => mockLoadConfig(...a) }));
+vi.mock('#lib/wifi.js', () => ({ loadWiFiStatus: (...a: unknown[]) => mockLoadWiFiStatus(...a) }));
+vi.mock('#lib/system.js', () => ({
+	loadSystemInfo: (...a: unknown[]) => mockLoadSystemInfo(...a)
+}));
+vi.mock('#lib/library.js', () => ({ loadLibrary: (...a: unknown[]) => mockLoadLibrary(...a) }));
+vi.mock('#lib/updater.js', () => ({ loadUpdate: (...a: unknown[]) => mockLoadUpdate(...a) }));
 
 // The loader only reads `fetch`; cast the minimal event once.
 function event() {

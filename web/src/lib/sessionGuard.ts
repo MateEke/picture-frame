@@ -1,4 +1,4 @@
-import { client } from '$lib/api/client.gen';
+import { client } from '#lib/api/client.gen.js';
 import { loginRedirectTarget } from './auth';
 
 // 401 from a gated endpoint → bounce to login. The decision (which 401s to skip and

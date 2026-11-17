@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Slider } from '@skeletonlabs/skeleton-svelte';
-	import { toSeconds, formatDuration } from '$lib/duration';
+	import { toSeconds, formatDuration } from '#lib/duration.js';
 	import Field from './Field.svelte';
 
 	let {

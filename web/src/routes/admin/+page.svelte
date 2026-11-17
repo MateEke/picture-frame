@@ -19,12 +19,12 @@
 		SunIcon
 	} from '@lucide/svelte';
 	import { resolve } from '$app/paths';
-	import { isSensorStale } from '$lib/helpers';
-	import { formatDuration } from '$lib/duration';
-	import { setScreen } from '$lib/screen';
-	import { networkTile } from '$lib/wifi';
-	import { getSSEContext } from '$lib/sse.svelte';
-	import { toaster } from '$lib/toaster';
+	import { isSensorStale } from '#lib/helpers.js';
+	import { formatDuration } from '#lib/duration.js';
+	import { setScreen } from '#lib/screen.js';
+	import { networkTile } from '#lib/wifi.js';
+	import { getSSEContext } from '#lib/sse.svelte.js';
+	import { toaster } from '#lib/toaster.js';
 	import NowPlaying from './components/NowPlaying.svelte';
 	import StatTile from './components/StatTile.svelte';
 	import SensorReadings from './components/SensorReadings.svelte';
@@ -33,8 +33,8 @@
 	import UpdatePanel from './components/UpdatePanel.svelte';
 	import RestartConfirmDialog from './settings/components/RestartConfirmDialog.svelte';
 	import PowerConfirmDialog from './components/PowerConfirmDialog.svelte';
-	import type { PowerAction } from '$lib/power';
-	import type { StatsSummary } from '$lib/api/types.gen';
+	import type { PowerAction } from '#lib/power.js';
+	import type { StatsSummary } from '#lib/api/types.gen.js';
 
 	let { data }: PageProps = $props();
 	const sse = getSSEContext();

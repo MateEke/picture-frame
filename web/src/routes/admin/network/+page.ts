@@ -1,4 +1,4 @@
-import { loadWiFiStatus } from '$lib/wifi';
+import { loadWiFiStatus } from '#lib/wifi.js';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ fetch }) => {

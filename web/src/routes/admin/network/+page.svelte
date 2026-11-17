@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import type { PageProps } from './$types';
-	import { loadWiFiStatus, scanNetworks, connectWiFi, forgetNetwork } from '$lib/wifi';
-	import type { WiFiState, WiFiNetwork } from '$lib/api/types.gen';
-	import { toaster } from '$lib/toaster';
+	import { loadWiFiStatus, scanNetworks, connectWiFi, forgetNetwork } from '#lib/wifi.js';
+	import type { WiFiState, WiFiNetwork } from '#lib/api/types.gen.js';
+	import { toaster } from '#lib/toaster.js';
 	import ConnectBanner, { type ConnectBannerState } from './components/ConnectBanner.svelte';
 	import StatusCard from './components/StatusCard.svelte';
 	import NetworkList from './components/NetworkList.svelte';

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { getSSEContext } from '$lib/sse.svelte';
-	import { nextSlide, prevSlide, tapAction, wakeScreen, type TapZone } from '$lib/slideNav';
+	import { getSSEContext } from '#lib/sse.svelte.js';
+	import { nextSlide, prevSlide, tapAction, wakeScreen, type TapZone } from '#lib/slideNav.js';
 
 	// Read per tap: Fader.busy isn't reactive, so a boolean prop would stay false.
 	let { isBusy }: { isBusy: () => boolean } = $props();

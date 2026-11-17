@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { StatsSummary } from '$lib/api/types.gen';
+	import type { StatsSummary } from '#lib/api/types.gen.js';
 
 	let { stats }: { stats: StatsSummary | null } = $props();
 

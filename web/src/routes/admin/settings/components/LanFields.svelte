@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { SensorDto } from '$lib/api/types.gen';
+	import type { SensorDto } from '#lib/api/types.gen.js';
 	import { PlusIcon, XIcon } from '@lucide/svelte';
-	import { DURATION_STOPS } from '$lib/duration';
+	import { DURATION_STOPS } from '#lib/duration.js';
 	import Field from './Field.svelte';
 	import DurationSlider from './DurationSlider.svelte';
 

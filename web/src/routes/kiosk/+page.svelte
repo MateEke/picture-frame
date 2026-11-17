@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { Heartbeat } from '$lib/heartbeat';
-	import { getSSEContext } from '$lib/sse.svelte';
-	import { reloadOnBackendVersionChange } from '$lib/versionReload.svelte';
+	import { Heartbeat } from '#lib/heartbeat.js';
+	import { getSSEContext } from '#lib/sse.svelte.js';
+	import { reloadOnBackendVersionChange } from '#lib/versionReload.svelte.js';
 	import { onMount } from 'svelte';
 	import Images from './components/Images.svelte';
 	import Overlay from './components/Overlay.svelte';
-	import BatteryIndicator from '$lib/BatteryIndicator.svelte';
+	import BatteryIndicator from '#lib/BatteryIndicator.svelte';
 
 	const sse = getSSEContext();
 

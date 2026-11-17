@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { validate, sensorTypeError, sectionFromDetail } from './validate';
 import { createEmptyConfig } from './utils';
-import type { SensorDto } from '$lib/api/types.gen';
+import type { SensorDto } from '#lib/api/types.gen.js';
 
 describe('settings validate', () => {
 	const ble = (over: Partial<SensorDto> = {}): SensorDto => ({

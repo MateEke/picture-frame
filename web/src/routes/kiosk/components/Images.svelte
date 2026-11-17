@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
-	import { getSSEContext } from '$lib/sse.svelte';
-	import { Fader } from '$lib/fader.svelte';
-	import { isOnDeviceKiosk } from '$lib/slideNav';
-	import Slide from '$lib/Slide.svelte';
+	import { browser } from '$app/env';
+	import { getSSEContext } from '#lib/sse.svelte.js';
+	import { Fader } from '#lib/fader.svelte.js';
+	import { isOnDeviceKiosk } from '#lib/slideNav.js';
+	import Slide from '#lib/Slide.svelte';
 	import TouchNav from './TouchNav.svelte';
 	import { onDestroy, untrack } from 'svelte';
 

@@ -1,4 +1,4 @@
-import type { BulkUploadResult } from '$lib/images';
+import type { BulkUploadResult } from '#lib/images.js';
 
 // Matches the toaster's method names, so a caller can pick one by type.
 export interface ToastMessage {

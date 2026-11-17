@@ -1,11 +1,16 @@
 import { invalidate } from '$app/navigation';
-import { apiGetConfig, apiGetConfigMeta, apiPutConfig, apiSystemRestart } from '$lib/api/sdk.gen';
+import {
+	apiGetConfig,
+	apiGetConfigMeta,
+	apiPutConfig,
+	apiSystemRestart
+} from '#lib/api/sdk.gen.js';
 import type {
 	ConfigResponseBody,
 	ConfigMetaBody,
 	GetConfigData,
 	ConfigDtoWritable
-} from '$lib/api/types.gen';
+} from '#lib/api/types.gen.js';
 import { toaster } from './toaster';
 
 export type { ConfigResponseBody, ConfigMetaBody };

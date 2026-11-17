@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { BatteryPayload } from '$lib/api/types.gen';
+	import type { BatteryPayload } from '#lib/api/types.gen.js';
 
 	let {
 		battery,

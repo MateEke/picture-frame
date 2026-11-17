@@ -1,5 +1,5 @@
-import { version } from '$app/environment';
-import { apiHeartbeat } from '$lib/api/sdk.gen';
+import { version } from '$app/env';
+import { apiHeartbeat } from '#lib/api/sdk.gen.js';
 
 const HEARTBEAT_INTERVAL_MS = 20_000;
 

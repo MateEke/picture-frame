@@ -16,13 +16,13 @@
 		ChevronsDownIcon
 	} from '@lucide/svelte';
 	import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME, type DndEvent } from 'svelte-dnd-action';
-	import { deleteImage, deleteImages, setImageOrder, uploadImages } from '$lib/images';
-	import { toaster } from '$lib/toaster';
+	import { deleteImage, deleteImages, setImageOrder, uploadImages } from '#lib/images.js';
+	import { toaster } from '#lib/toaster.js';
 	import { bulkUploadMessage } from './uploadFeedback';
-	import { moveUp, moveDown, moveToStart, moveToEnd } from '$lib/reorder';
-	import { syncLibrary } from '$lib/library';
-	import { getSSEContext } from '$lib/sse.svelte';
-	import ConfirmDialog from '$lib/ConfirmDialog.svelte';
+	import { moveUp, moveDown, moveToStart, moveToEnd } from '#lib/reorder.js';
+	import { syncLibrary } from '#lib/library.js';
+	import { getSSEContext } from '#lib/sse.svelte.js';
+	import ConfirmDialog from '#lib/ConfirmDialog.svelte';
 	import Cropper from './components/Cropper.svelte';
 	import UploadDropzone from './components/UploadDropzone.svelte';
 	import UploadProgress from './components/UploadProgress.svelte';

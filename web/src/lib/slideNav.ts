@@ -1,4 +1,4 @@
-import { apiScreenWake, apiSlideshowNext, apiSlideshowPrev } from '$lib/api/sdk.gen';
+import { apiScreenWake, apiSlideshowNext, apiSlideshowPrev } from '#lib/api/sdk.gen.js';
 
 export type TapZone = 'left' | 'right';
 export type TapAction = 'wake' | 'next' | 'prev' | null;

@@ -6,7 +6,7 @@ const mockApiAuthLogin = vi.fn();
 const mockApiAuthLogout = vi.fn();
 const mockApiAuthSetPassword = vi.fn();
 
-vi.mock('$lib/api/sdk.gen', () => ({
+vi.mock('#lib/api/sdk.gen.js', () => ({
 	apiAuthStatus: (...args: unknown[]) => mockApiAuthStatus(...args),
 	apiAuthLogin: (...args: unknown[]) => mockApiAuthLogin(...args),
 	apiAuthLogout: (...args: unknown[]) => mockApiAuthLogout(...args),

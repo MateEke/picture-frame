@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { RefreshCwIcon } from '@lucide/svelte';
-	import { isWPA3Only, groupNetworks } from '$lib/wifi';
-	import type { WiFiState, WiFiNetwork } from '$lib/api/types.gen';
-	import SignalBars from '$lib/SignalBars.svelte';
+	import { isWPA3Only, groupNetworks } from '#lib/wifi.js';
+	import type { WiFiState, WiFiNetwork } from '#lib/api/types.gen.js';
+	import SignalBars from '#lib/SignalBars.svelte';
 
 	let {
 		networks,

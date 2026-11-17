@@ -1,6 +1,6 @@
 import { invalidate } from '$app/navigation';
-import { apiGetUpdate, apiApplyUpdate, apiCheckUpdate, apiGetLicenses } from '$lib/api/sdk.gen';
-import type { UpdateStatusResponse } from '$lib/api/types.gen';
+import { apiGetUpdate, apiApplyUpdate, apiCheckUpdate, apiGetLicenses } from '#lib/api/sdk.gen.js';
+import type { UpdateStatusResponse } from '#lib/api/types.gen.js';
 import { toaster } from './toaster';
 
 export type { UpdateStatusResponse };

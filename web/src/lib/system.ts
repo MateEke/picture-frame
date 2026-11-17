@@ -1,5 +1,5 @@
-import { apiGetSystemInfo } from '$lib/api/sdk.gen';
-import type { SystemInfoBody } from '$lib/api/types.gen';
+import { apiGetSystemInfo } from '#lib/api/sdk.gen.js';
+import type { SystemInfoBody } from '#lib/api/types.gen.js';
 
 export type { SystemInfoBody };
 

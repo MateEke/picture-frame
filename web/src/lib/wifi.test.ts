@@ -12,7 +12,7 @@ import {
 	apPasswordPayload,
 	networkTile
 } from './wifi';
-import type { WiFiNetwork, WiFiState } from '$lib/api/types.gen';
+import type { WiFiNetwork, WiFiState } from '#lib/api/types.gen.js';
 
 vi.mock('./toaster', () => ({
 	toaster: { error: vi.fn(), success: vi.fn() }
@@ -24,7 +24,7 @@ const mockWifiConnect = vi.fn();
 const mockWifiForget = vi.fn();
 const mockConfigureAp = vi.fn();
 
-vi.mock('$lib/api/sdk.gen', () => ({
+vi.mock('#lib/api/sdk.gen.js', () => ({
 	apiGetWifiStatus: (...args: unknown[]) => mockGetWifiStatus(...args),
 	apiGetWifiNetworks: (...args: unknown[]) => mockGetWifiNetworks(...args),
 	apiWifiConnect: (...args: unknown[]) => mockWifiConnect(...args),

@@ -17,7 +17,7 @@ const mockToasterInfo = vi.fn();
 const mockToasterError = vi.fn();
 const mockToasterSuccess = vi.fn();
 
-vi.mock('$lib/api/sdk.gen', () => ({
+vi.mock('#lib/api/sdk.gen.js', () => ({
 	apiGetUpdate: (...args: unknown[]) => mockGetUpdate(...args),
 	apiApplyUpdate: (...args: unknown[]) => mockApplyUpdate(...args),
 	apiCheckUpdate: (...args: unknown[]) => mockCheckUpdate(...args),

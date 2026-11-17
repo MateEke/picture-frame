@@ -4,10 +4,10 @@
 
 	import type { Attachment } from 'svelte/attachments';
 
-	import { uploadImage } from '$lib/images';
-	import { toaster } from '$lib/toaster';
-	import { CROP_RATIOS, getCropRatio, setCropRatio, type CropRatio } from '$lib/uploadPrefs';
-	import { fileToJpegBlob } from '$lib/imageProcessing';
+	import { uploadImage } from '#lib/images.js';
+	import { toaster } from '#lib/toaster.js';
+	import { CROP_RATIOS, getCropRatio, setCropRatio, type CropRatio } from '#lib/uploadPrefs.js';
+	import { fileToJpegBlob } from '#lib/imageProcessing.js';
 
 	interface Props {
 		file: File;

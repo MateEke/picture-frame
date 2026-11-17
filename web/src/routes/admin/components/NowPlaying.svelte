@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { ImagePayload } from '$lib/api/types.gen';
-	import { dev } from '$app/environment';
+	import type { ImagePayload } from '#lib/api/types.gen.js';
+	import { dev } from '$app/env';
 	import { ImageOffIcon, ShuffleIcon, ArrowRightIcon, MaximizeIcon } from '@lucide/svelte';
-	import { formatDuration } from '$lib/duration';
-	import { openKioskFullscreen } from '$lib/kioskMode';
-	import Slide from '$lib/Slide.svelte';
+	import { formatDuration } from '#lib/duration.js';
+	import { openKioskFullscreen } from '#lib/kioskMode.js';
+	import Slide from '#lib/Slide.svelte';
 	import { fade } from 'svelte/transition';
 	import { sineInOut } from 'svelte/easing';
 

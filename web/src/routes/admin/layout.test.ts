@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { load } from './+layout';
 
 const mockLoadAuthStatus = vi.fn();
-vi.mock('$lib/auth', () => ({
+vi.mock('#lib/auth.js', () => ({
 	loadAuthStatus: (...args: unknown[]) => mockLoadAuthStatus(...args)
 }));
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { DisplayDto } from '$lib/api/types.gen';
+	import type { DisplayDto } from '#lib/api/types.gen.js';
 	import { PlusIcon, Trash2Icon } from '@lucide/svelte';
 	import { eq } from '../utils';
 	import Field from './Field.svelte';

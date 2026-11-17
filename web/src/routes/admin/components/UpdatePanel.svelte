@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { DownloadIcon, RotateCcwIcon, ExternalLinkIcon } from '@lucide/svelte';
-	import ConfirmDialog from '$lib/ConfirmDialog.svelte';
+	import ConfirmDialog from '#lib/ConfirmDialog.svelte';
 	import {
 		applyUpdate,
 		followUpdate,
 		isApplyInProgress,
 		type UpdateStatusResponse,
 		type UpdatePhase
-	} from '$lib/updater';
+	} from '#lib/updater.js';
 
 	let { status }: { status: UpdateStatusResponse | null } = $props();
 

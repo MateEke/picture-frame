@@ -1,6 +1,6 @@
-import { loadImages } from '$lib/images';
-import { loadLibrary } from '$lib/library';
-import { loadConfig } from '$lib/config';
+import { loadImages } from '#lib/images.js';
+import { loadLibrary } from '#lib/library.js';
+import { loadConfig } from '#lib/config.js';
 import type { PageLoad } from './$types';
 
 function errorMessage(result: PromiseSettledResult<unknown>): string | undefined {

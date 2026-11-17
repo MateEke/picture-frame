@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ConfirmDialog from '$lib/ConfirmDialog.svelte';
+	import ConfirmDialog from '#lib/ConfirmDialog.svelte';
 
 	let {
 		target,

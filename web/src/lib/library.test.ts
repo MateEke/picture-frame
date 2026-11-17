@@ -7,7 +7,7 @@ const mockInvalidate = vi.fn();
 const mockToasterError = vi.fn();
 const mockToasterSuccess = vi.fn();
 
-vi.mock('$lib/api/sdk.gen', () => ({
+vi.mock('#lib/api/sdk.gen.js', () => ({
 	apiGetLibrary: (...args: unknown[]) => mockGetLibrary(...args),
 	apiSyncLibrary: (...args: unknown[]) => mockSyncLibrary(...args)
 }));

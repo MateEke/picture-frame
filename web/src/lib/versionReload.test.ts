@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { version } from '$app/environment';
+import { version } from '$app/env';
 import { shouldReload } from './versionReload.svelte';
 
 describe('shouldReload', () => {

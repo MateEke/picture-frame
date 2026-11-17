@@ -20,8 +20,8 @@
 		BookOpenIcon,
 		ExternalLinkIcon
 	} from '@lucide/svelte';
-	import { MANUAL_URL } from '$lib/links';
-	import { saveConfig } from '$lib/config';
+	import { MANUAL_URL } from '#lib/links.js';
+	import { saveConfig } from '#lib/config.js';
 	import { createEmptyConfig, createEmptyMeta, configPayload, eq } from './utils';
 	import { validate, sectionFromDetail } from './validate';
 	import EssentialsCard from './components/EssentialsCard.svelte';

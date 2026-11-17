@@ -3,7 +3,7 @@ import { loadSystemInfo } from './system';
 
 const mockGetSystemInfo = vi.fn();
 
-vi.mock('$lib/api/sdk.gen', () => ({
+vi.mock('#lib/api/sdk.gen.js', () => ({
 	apiGetSystemInfo: (...args: unknown[]) => mockGetSystemInfo(...args)
 }));
 

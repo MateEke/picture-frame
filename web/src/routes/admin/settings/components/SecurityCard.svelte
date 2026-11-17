@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { ShieldOffIcon, TriangleAlertIcon, KeyRoundIcon } from '@lucide/svelte';
 	import { invalidate } from '$app/navigation';
-	import PasswordInput from '$lib/PasswordInput.svelte';
-	import { setPassword } from '$lib/auth';
+	import PasswordInput from '#lib/PasswordInput.svelte';
+	import { setPassword } from '#lib/auth.js';
 
 	let { passwordSet }: { passwordSet: boolean } = $props();
 

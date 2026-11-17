@@ -1,6 +1,11 @@
 import { invalidate } from '$app/navigation';
-import { apiListImages, apiDeleteImage, apiUploadImage, apiSetImageOrder } from '$lib/api/sdk.gen';
-import type { ListImagesData } from '$lib/api/types.gen';
+import {
+	apiListImages,
+	apiDeleteImage,
+	apiUploadImage,
+	apiSetImageOrder
+} from '#lib/api/sdk.gen.js';
+import type { ListImagesData } from '#lib/api/types.gen.js';
 import { toaster } from './toaster';
 import { fileToJpegBlob } from './imageProcessing';
 

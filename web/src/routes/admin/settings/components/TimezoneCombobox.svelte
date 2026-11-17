@@ -1,6 +1,6 @@
 <script lang="ts">
 	import SearchCombobox from './SearchCombobox.svelte';
-	import { timezoneOffsetLabel } from '$lib/helpers';
+	import { timezoneOffsetLabel } from '#lib/helpers.js';
 
 	let {
 		value = $bindable(),

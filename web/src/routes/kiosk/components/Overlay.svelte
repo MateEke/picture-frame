@@ -1,6 +1,11 @@
 <script lang="ts">
-	import { getSSEContext } from '$lib/sse.svelte';
-	import { formatClockParts, formatMonthDay, formatWeekday, formatAlbumLabel } from '$lib/helpers';
+	import { getSSEContext } from '#lib/sse.svelte.js';
+	import {
+		formatClockParts,
+		formatMonthDay,
+		formatWeekday,
+		formatAlbumLabel
+	} from '#lib/helpers.js';
 	import { onMount } from 'svelte';
 	import { overlayShiftPair } from './overlayShift';
 

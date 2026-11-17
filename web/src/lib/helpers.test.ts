@@ -11,7 +11,7 @@ import {
 	formatSensorValue,
 	timeAgo
 } from './helpers';
-import type { SensorPayload } from '$lib/api/types.gen';
+import type { SensorPayload } from '#lib/api/types.gen.js';
 
 const base: SensorPayload = {
 	device_id: 'living_room',

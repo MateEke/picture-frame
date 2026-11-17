@@ -2,10 +2,10 @@
 	import { onMount } from 'svelte';
 	import { RouterIcon } from '@lucide/svelte';
 	import { Switch } from '@skeletonlabs/skeleton-svelte';
-	import { configureAP, apPasswordPayload } from '$lib/wifi';
-	import type { WiFiState } from '$lib/api/types.gen';
-	import SecretField from '$lib/SecretField.svelte';
-	import { toaster } from '$lib/toaster';
+	import { configureAP, apPasswordPayload } from '#lib/wifi.js';
+	import type { WiFiState } from '#lib/api/types.gen.js';
+	import SecretField from '#lib/SecretField.svelte';
+	import { toaster } from '#lib/toaster.js';
 
 	let {
 		status,

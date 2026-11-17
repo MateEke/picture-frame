@@ -1,4 +1,4 @@
-import { version } from '$app/environment';
+import { version } from '$app/env';
 
 const RELOAD_THROTTLE_MS = 60_000;
 

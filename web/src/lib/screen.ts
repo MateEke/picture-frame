@@ -1,4 +1,4 @@
-import { apiGetScreen, apiSetScreen } from '$lib/api/sdk.gen';
+import { apiGetScreen, apiSetScreen } from '#lib/api/sdk.gen.js';
 import { toaster } from './toaster';
 
 export async function loadScreen(fetch: typeof globalThis.fetch) {

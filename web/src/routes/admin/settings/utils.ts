@@ -1,4 +1,4 @@
-import type { ConfigMetaBody, ConfigResponseBody, SensorDto } from '$lib/api/types.gen';
+import type { ConfigMetaBody, ConfigResponseBody, SensorDto } from '#lib/api/types.gen.js';
 
 // structural equality for draft-vs-saved dirty checks
 export const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);

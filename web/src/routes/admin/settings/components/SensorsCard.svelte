@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { SensorDto, ConfigMetaBody } from '$lib/api/types.gen';
+	import type { SensorDto, ConfigMetaBody } from '#lib/api/types.gen.js';
 	import { PencilIcon, PlusIcon, TrashIcon } from '@lucide/svelte';
 	import SensorDialog from './SensorDialog.svelte';
 	import Field from './Field.svelte';

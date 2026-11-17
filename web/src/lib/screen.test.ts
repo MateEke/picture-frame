@@ -9,7 +9,7 @@ vi.mock('./toaster', () => ({
 const mockGetScreen = vi.fn();
 const mockSetScreen = vi.fn();
 
-vi.mock('$lib/api/sdk.gen', () => ({
+vi.mock('#lib/api/sdk.gen.js', () => ({
 	apiGetScreen: (...args: unknown[]) => mockGetScreen(...args),
 	apiSetScreen: (...args: unknown[]) => mockSetScreen(...args)
 }));

@@ -7,8 +7,8 @@
 		RefreshCwIcon,
 		ExternalLinkIcon
 	} from '@lucide/svelte';
-	import type { LibrarySync } from '$lib/api/types.gen';
-	import { timeAgo } from '$lib/helpers';
+	import type { LibrarySync } from '#lib/api/types.gen.js';
+	import { timeAgo } from '#lib/helpers.js';
 
 	let {
 		sync,

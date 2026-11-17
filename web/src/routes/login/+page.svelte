@@ -1,9 +1,9 @@
 <script lang="ts">
-	import '$lib/admin-theme.css';
+	import '#lib/admin-theme.css';
 	import { page } from '$app/state';
 	import { LockIcon, LogInIcon } from '@lucide/svelte';
-	import PasswordInput from '$lib/PasswordInput.svelte';
-	import { login } from '$lib/auth';
+	import PasswordInput from '#lib/PasswordInput.svelte';
+	import { login } from '#lib/auth.js';
 
 	let password = $state('');
 	let failed = $state(false);
