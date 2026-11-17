@@ -111,7 +111,7 @@ func (s *Slideshow) Run(ctx context.Context) {
 	// the events already reflected in the seed, which the loop skips.
 	screenCh, unsub := s.bus.Subscribe()
 	defer unsub()
-	screenOn, seedID := s.screenAtStartup()
+	on, seedID := s.screenAtStartup()
 
 	if slide := s.servable(s.planner.Current(), s.planner.Next); slide != nil {
 		// Publish even when the panel is off so the kiosk has a frame ready to
@@ -123,85 +123,118 @@ func (s *Slideshow) Run(ctx context.Context) {
 	interval := s.interval
 	s.mu.Unlock()
 
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-	// armed reports whether the dwell should run: there are slides to show and
-	// the panel is on. A nil tickerC is never ready in select, which pauses the
-	// dwell without disturbing the plan or the cursor.
-	armed := func() bool { return s.lib.Len() > 0 && screenOn }
-	// restart gives the next slide a full interval, unless the dwell is paused;
-	// a paused ticker stays stopped.
-	restart := func() <-chan time.Time {
-		if !armed() {
-			ticker.Stop()
-			return nil
-		}
-		return s.restartDwell(ticker)
-	}
-
-	var tickerC <-chan time.Time
-	if armed() {
-		tickerC = ticker.C
-	} else {
-		ticker.Stop()
-	}
+	rs := &runState{sl: s, ticker: time.NewTicker(interval), on: on, seedID: seedID}
+	defer rs.ticker.Stop()
+	rs.start()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-tickerC:
-			if slide := s.servable(s.planner.Next(), s.planner.Next); slide != nil {
-				s.publish(slide)
-				continue
-			}
-			// Library went empty between ticks; pause until next advance.
-			ticker.Stop()
-			tickerC = nil
+		case <-rs.ch:
+			rs.tick()
 		case <-s.advance:
-			tickerC = restart()
-			if slide := s.servable(s.planner.Next(), s.planner.Next); slide != nil {
-				s.publish(slide)
-			}
+			rs.step(s.planner.Next)
 		case <-s.back:
-			tickerC = restart()
-			if slide := s.servable(s.planner.Prev(), s.planner.Prev); slide != nil {
-				s.publish(slide)
-			}
+			rs.step(s.planner.Prev)
 		case <-s.restart:
-			s.planner.RestartCycle()
-			if slide := s.servable(s.planner.Current(), s.planner.Next); slide != nil {
-				tickerC = restart()
-				s.publish(slide)
-			} else {
-				ticker.Stop()
-				tickerC = nil
-			}
+			rs.restartCycle()
 		case event, ok := <-screenCh:
 			if !ok {
 				return
 			}
-			if event.ID <= seedID {
-				continue // already folded into the startup snapshot
-			}
-			on, isScreen := screenPower(event)
-			if !isScreen || on == screenOn {
-				continue
-			}
-			screenOn = on
-			if !screenOn {
-				// Nobody can see the frame: stop decoding and fetching slides.
-				ticker.Stop()
-				tickerC = nil
-				s.log.Debug("slideshow: paused (screen off)")
-				continue
-			}
-			// Wake: give the visible slide a full dwell before advancing.
-			tickerC = restart()
-			s.log.Debug("slideshow: resumed (screen on)")
+			rs.screenEvent(event)
 		}
 	}
+}
+
+// runState is Run's loop state: the dwell ticker plus the panel's power, which
+// together decide whether and when the slideshow advances.
+type runState struct {
+	sl     *Slideshow
+	ticker *time.Ticker
+	ch     <-chan time.Time
+	on     bool   // panel power
+	seedID uint64 // highest event ID already folded into the startup snapshot
+}
+
+// running reports whether the dwell should run: there are slides to show and
+// the panel is on.
+func (r *runState) running() bool { return r.sl.lib.Len() > 0 && r.on }
+
+// start makes a freshly created ticker selectable, or leaves it stopped when the
+// dwell is paused (a nil channel is never ready in select).
+func (r *runState) start() {
+	if !r.running() {
+		r.pause()
+		return
+	}
+	r.ch = r.ticker.C
+}
+
+// arm runs the dwell from a full interval onward; a paused ticker stays stopped.
+func (r *runState) arm() {
+	if !r.running() {
+		r.pause()
+		return
+	}
+	r.ch = r.sl.restartDwell(r.ticker)
+}
+
+// pause stops the dwell without disturbing the plan or the cursor.
+func (r *runState) pause() {
+	r.ticker.Stop()
+	r.ch = nil
+}
+
+// tick advances to the next slide, or pauses when the library emptied.
+func (r *runState) tick() {
+	if slide := r.sl.servable(r.sl.planner.Next(), r.sl.planner.Next); slide != nil {
+		r.sl.publish(slide)
+		return
+	}
+	r.pause() // library went empty between ticks; wait for the next advance
+}
+
+// step restarts the dwell and publishes the slide in the given direction.
+func (r *runState) step(next func() *slideplan.Slide) {
+	r.arm()
+	if slide := r.sl.servable(next(), next); slide != nil {
+		r.sl.publish(slide)
+	}
+}
+
+// restartCycle rebuilds the plan after a library or config change and starts
+// over from its first slide.
+func (r *runState) restartCycle() {
+	r.sl.planner.RestartCycle()
+	if slide := r.sl.servable(r.sl.planner.Current(), r.sl.planner.Next); slide != nil {
+		r.arm()
+		r.sl.publish(slide)
+		return
+	}
+	r.pause()
+}
+
+// screenEvent folds a bus screen event into the gate, pausing the dwell when the
+// panel turns off and resuming it (with a full interval) when it wakes.
+func (r *runState) screenEvent(event state.Event) {
+	if event.ID <= r.seedID {
+		return // already folded into the startup snapshot
+	}
+	on, isScreen := screenPower(event)
+	if !isScreen || on == r.on {
+		return
+	}
+	r.on = on
+	if !r.on {
+		// Nobody can see the frame: stop decoding and fetching slides.
+		r.pause()
+		r.sl.log.Debug("slideshow: paused (screen off)")
+		return
+	}
+	r.arm() // give the visible slide a full dwell before advancing
+	r.sl.log.Debug("slideshow: resumed (screen on)")
 }
 
 // screenAtStartup seeds the pause gate from the bus's retained events. It
