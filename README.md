@@ -17,7 +17,7 @@ private, and plugged into Home Assistant.
 
 [![CI](https://github.com/RiccardoMaistri/picture-frame/actions/workflows/ci.yml/badge.svg)](https://github.com/RiccardoMaistri/picture-frame/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/RiccardoMaistri/picture-frame?refresh=1)](https://github.com/RiccardoMaistri/picture-frame/releases/latest)
-[![License](https://img.shields.io/github/license/MateEke/picture-frame)](LICENSE)
+[![License](https://img.shields.io/github/license/RiccardoMaistri/picture-frame)](LICENSE)
 
 </div>
 
