@@ -25,6 +25,31 @@ type httpError struct{ Status int }
 
 func (e *httpError) Error() string { return fmt.Sprintf("status %d", e.Status) }
 
+// bucketParam returns the timeBucket value Immich expects. Immich 2 accepted a
+// bare YYYY-MM-DD; Immich 3 requires a full ISO-8601 timestamp. getTimelineBucket
+// retries the legacy form on a 400, so one client works with both server versions.
+func bucketParam(bucket string) string {
+	if len(bucket) == 10 && bucket[4] == '-' && bucket[7] == '-' {
+		return bucket + "T00:00:00.000Z"
+	}
+	return bucket
+}
+
+type jsonGetter func(ctx context.Context, path string, q url.Values, dst any) error
+
+// getTimelineBucket fetches one bucket, preferring the Immich 3 format and
+// falling back to the v2 format when the server rejects it with a 400.
+func getTimelineBucket(ctx context.Context, get jsonGetter, albumID, bucket string, dst any) error {
+	iso := url.Values{"albumId": {albumID}, "timeBucket": {bucketParam(bucket)}}
+	err := get(ctx, "/api/timeline/bucket", iso, dst)
+	var httpErr *httpError
+	if errors.As(err, &httpErr) && httpErr.Status == http.StatusBadRequest {
+		legacy := url.Values{"albumId": {albumID}, "timeBucket": {bucket}}
+		return get(ctx, "/api/timeline/bucket", legacy, dst)
+	}
+	return err
+}
+
 const noThumbhashToken = "0000000000000000"
 
 // thumbhashToken derives a fixed-length, filesystem-safe change token. thumbhash
@@ -242,8 +267,7 @@ func (c *Client) enumerate(ctx context.Context, albumID string, preferYear int) 
 	bodies := make([]timelineBucket, 0, len(metas))
 	for _, m := range metas {
 		var body timelineBucket
-		q := url.Values{"albumId": {albumID}, "timeBucket": {m.TimeBucket}}
-		if err := c.getJSON(ctx, "/api/timeline/bucket", q, &body); err != nil {
+		if err := getTimelineBucket(ctx, c.getJSON, albumID, m.TimeBucket, &body); err != nil {
 			return nil, 0, fmt.Errorf("immich: bucket %s: %w", m.TimeBucket, err)
 		}
 		bodies = append(bodies, body)

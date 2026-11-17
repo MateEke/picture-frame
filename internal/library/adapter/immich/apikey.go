@@ -177,8 +177,7 @@ func (c *APIClient) enumerate(ctx context.Context, albumID, albumName string, pr
 	bodies := make([]timelineBucket, 0, len(metas))
 	for _, m := range metas {
 		var body timelineBucket
-		q := url.Values{"albumId": {albumID}, "timeBucket": {m.TimeBucket}}
-		if err := c.getJSON(ctx, "/api/timeline/bucket", q, &body); err != nil {
+		if err := getTimelineBucket(ctx, c.getJSON, albumID, m.TimeBucket, &body); err != nil {
 			return nil, 0, fmt.Errorf("immich: bucket %s: %w", m.TimeBucket, err)
 		}
 		bodies = append(bodies, body)
