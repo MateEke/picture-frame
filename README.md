@@ -59,7 +59,7 @@ a guided tour of the admin interface, and every configuration option. For the en
 On a fresh Debian 13 x86-64 system, reachable over SSH:
 
 ```sh
-curl -fsSL https://github.com/MateEke/picture-frame/releases/latest/download/install.sh | sudo bash
+curl -fsSL https://github.com/RiccardoMaistri/picture-frame/releases/latest/download/install.sh | sudo bash
 ```
 
 See the [Install guide](https://pictureframe.ekemate.hu/getting-started/install/) for the
