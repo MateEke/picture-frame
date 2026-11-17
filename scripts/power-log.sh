@@ -13,7 +13,10 @@ set -euo pipefail
 
 interval=${1:-60}
 bat=${BAT:-/sys/class/power_supply/BAT0}
-bl=$(ls -d /sys/class/backlight/* 2>/dev/null | head -1)
+shopt -s nullglob
+backlights=(/sys/class/backlight/*)
+shopt -u nullglob
+bl=${backlights[0]:-}
 
 read_or() { cat "$1" 2>/dev/null || echo "$2"; }
 
@@ -23,11 +26,11 @@ while :; do
     i=$(read_or "$bat/current_now" 0)
     printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
         "$(date +%s)" "$(date +%FT%T%z)" \
-        "$(read_or "$bat/status" ?)" "$(read_or "$bat/capacity" ?)" \
-        "$v" "$i" "$(read_or "$bat/charge_now" ?)" \
-        "$((v / 1000 * (i / 1000) / 1000))" \
-        "$(read_or "$bl/brightness" ?)" "$(read_or "$bl/bl_power" ?)" \
-        "$(read_or /sys/power/suspend_stats/success ?)" \
+        "$(read_or "$bat/status" '?')" "$(read_or "$bat/capacity" '?')" \
+        "$v" "$i" "$(read_or "$bat/charge_now" '?')" \
+        "$((v * i / 1000000000))" \
+        "$(read_or "$bl/brightness" '?')" "$(read_or "$bl/bl_power" '?')" \
+        "$(read_or /sys/power/suspend_stats/success '?')" \
         "$(cut -d' ' -f1 /proc/loadavg)"
     sleep "$interval"
 done
