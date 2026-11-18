@@ -2,8 +2,10 @@ package immich
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -56,5 +58,53 @@ func TestGetTimelineBucketDoesNotRetryOtherErrors(t *testing.T) {
 	}
 	if calls != 1 {
 		t.Errorf("calls = %d, want 1", calls)
+	}
+}
+
+// Immich may report the bucket in ISO form on one server and accept only the
+// bare date; the fallback must still send a different value.
+func TestGetTimelineBucketFallsBackFromISOOn400(t *testing.T) {
+	var calls []string
+	get := func(_ context.Context, _ string, q url.Values, _ any) error {
+		calls = append(calls, q.Get("timeBucket"))
+		if len(calls) == 1 {
+			return &httpError{Status: http.StatusBadRequest, Detail: "invalid bucket"}
+		}
+		return nil
+	}
+	if err := getTimelineBucket(context.Background(), get, "album", "2026-05-01T00:00:00.000Z", &timelineBucket{}); err != nil {
+		t.Fatal(err)
+	}
+	if len(calls) != 2 || calls[0] != "2026-05-01T00:00:00.000Z" || calls[1] != "2026-05-01" {
+		t.Errorf("calls = %v", calls)
+	}
+}
+
+// An uninterpretable bucket has only one form; don't repeat a doomed request.
+func TestGetTimelineBucketDoesNotRepeatUnchangedBucket(t *testing.T) {
+	calls := 0
+	get := func(_ context.Context, _ string, _ url.Values, _ any) error {
+		calls++
+		return &httpError{Status: http.StatusBadRequest}
+	}
+	if err := getTimelineBucket(context.Background(), get, "album", "not-a-date", &timelineBucket{}); err == nil {
+		t.Fatal("expected error")
+	}
+	if calls != 1 {
+		t.Errorf("calls = %d, want 1", calls)
+	}
+}
+
+func TestHTTPErrorCarriesDetail(t *testing.T) {
+	resp := &http.Response{
+		StatusCode: http.StatusBadRequest,
+		Body:       io.NopCloser(strings.NewReader("  bad\n bucket  ")),
+	}
+	err := statusError(resp)
+	if got, want := err.HTTPStatus(), http.StatusBadRequest; got != want {
+		t.Errorf("status = %d, want %d", got, want)
+	}
+	if got, want := err.Error(), "status 400: bad bucket"; got != want {
+		t.Errorf("error = %q, want %q", got, want)
 	}
 }

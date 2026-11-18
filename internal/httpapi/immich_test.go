@@ -134,6 +134,28 @@ func TestListImmichAlbumsSurfacesUnauthorizedAs401(t *testing.T) {
 	}
 }
 
+// A 400 from Immich must reach the admin as a gateway error carrying Immich's
+// own explanation, not an opaque "status 400" that looks like our UI failed.
+func TestListImmichAlbumsSurfacesBadRequestDetail(t *testing.T) {
+	immich := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"message":"invalid time bucket"}`))
+	}))
+	defer immich.Close()
+	srv := albumsServer(t, immichConfig(t, immich.URL, "key", "a1"))
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/immich/albums", bytes.NewReader([]byte(`{}`)))
+	req.Header.Set("Content-Type", "application/json")
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("status: got %d, want 502; body: %s", rec.Code, rec.Body)
+	}
+	if !strings.Contains(rec.Body.String(), "invalid time bucket") {
+		t.Errorf("body should carry Immich's explanation: %s", rec.Body)
+	}
+}
+
 // The API key must never reach the wire in the query string.
 func TestListImmichAlbumsKeepsStoredKeyOutOfURL(t *testing.T) {
 	var seen string
