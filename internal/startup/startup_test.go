@@ -71,3 +71,15 @@ func TestSyncerStatusNonNilPassesThrough(t *testing.T) {
 		t.Error("got nil, want the syncer")
 	}
 }
+
+func TestAlbumRemoverForNilReturnsNilInterface(t *testing.T) {
+	if got := startup.AlbumRemoverFor(nil); got != nil {
+		t.Errorf("got %v, want a nil interface", got)
+	}
+}
+
+func TestAlbumRemoverForNonNilPassesThrough(t *testing.T) {
+	if got := startup.AlbumRemoverFor(&library.Syncer{}); got == nil {
+		t.Error("got nil, want the syncer")
+	}
+}

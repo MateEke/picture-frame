@@ -5,6 +5,7 @@ import {
 	loadImages,
 	deleteImage,
 	deleteImages,
+	removeImageFromAlbum,
 	uploadImage,
 	uploadImages,
 	immichPhotoUrl
@@ -30,12 +31,14 @@ function jpegs(...names: string[]): File[] {
 
 const mockListImages = vi.fn();
 const mockDeleteImage = vi.fn();
+const mockRemoveImageFromAlbum = vi.fn();
 const mockUploadImage = vi.fn();
 const mockSetImageOrder = vi.fn();
 
 vi.mock('#lib/api/sdk.gen.js', () => ({
 	apiListImages: (...args: unknown[]) => mockListImages(...args),
 	apiDeleteImage: (...args: unknown[]) => mockDeleteImage(...args),
+	apiRemoveImageFromAlbum: (...args: unknown[]) => mockRemoveImageFromAlbum(...args),
 	apiUploadImage: (...args: unknown[]) => mockUploadImage(...args),
 	apiSetImageOrder: (...args: unknown[]) => mockSetImageOrder(...args)
 }));
@@ -107,6 +110,46 @@ describe('images', () => {
 				description: 'Server returned an error'
 			});
 			expect(invalidate).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('removeImageFromAlbum', () => {
+		it('sends the image name in path param and invalidates on success', async () => {
+			mockRemoveImageFromAlbum.mockResolvedValue({ error: undefined });
+
+			await expect(removeImageFromAlbum('cat.jpg')).resolves.toBe(true);
+
+			expect(mockRemoveImageFromAlbum).toHaveBeenCalledWith({ path: { name: 'cat.jpg' } });
+			expect(invalidate).toHaveBeenCalledWith('/api/images');
+			expect(toaster.success).toHaveBeenCalledWith({
+				title: 'Removed from album',
+				description: 'The photo stays in Immich.'
+			});
+		});
+
+		it('uses the server detail when removal fails and skips invalidation', async () => {
+			mockRemoveImageFromAlbum.mockResolvedValue({
+				error: { status: 409, detail: 'shared links are read-only' }
+			});
+
+			await expect(removeImageFromAlbum('cat.jpg')).resolves.toBe(false);
+
+			expect(toaster.error).toHaveBeenCalledWith({
+				title: 'Could not remove photo from album',
+				description: 'shared links are read-only'
+			});
+			expect(invalidate).not.toHaveBeenCalled();
+		});
+
+		it('falls back to a generic description when the error has no detail', async () => {
+			mockRemoveImageFromAlbum.mockResolvedValue({ error: { status: 500 } });
+
+			await removeImageFromAlbum('cat.jpg');
+
+			expect(toaster.error).toHaveBeenCalledWith({
+				title: 'Could not remove photo from album',
+				description: 'Server returned an error'
+			});
 		});
 	});
 

@@ -89,6 +89,11 @@ Albums are merged in the order you picked them, and a photo in several albums is
 The key is stored on the frame and never sent anywhere except your Immich server; it is
 write-only in the API, so the settings page shows it as a placeholder rather than text.
 
+In API-key mode you can also remove a photo from its album: open it in the grid and choose
+**Remove from album** next to **Show in Immich**. The frame deletes its local copy and takes the
+photo out of that Immich album. The photo itself is not deleted from Immich, so it stays in your
+library and in any other album it belongs to.
+
 ### Share link (single album)
 
 1. In Immich, create a shared link for the album you want on the frame. A password is optional.
@@ -99,7 +104,8 @@ write-only in the API, so the settings page shows it as a placeholder rather tha
 
 The two modes are mutually exclusive: configure one or the other, not both.
 
-The frame then keeps a local copy of the album in sync, and the Images page becomes read-only:
+The frame then keeps a local copy of the album in sync. A share link is read-only, so the Images
+page offers no uploads, deletes, or album removal in that mode:
 
 ![The Photos page with Immich: a status card above the synced album](../../../assets/screenshots/immich-photos.png)
 

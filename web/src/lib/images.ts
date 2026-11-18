@@ -2,6 +2,7 @@ import { invalidate } from '$app/navigation';
 import {
 	apiListImages,
 	apiDeleteImage,
+	apiRemoveImageFromAlbum,
 	apiUploadImage,
 	apiSetImageOrder
 } from '#lib/api/sdk.gen.js';
@@ -24,6 +25,22 @@ export async function deleteImage(name: string): Promise<void> {
 		title: 'Could not delete image',
 		description: 'Server returned an error'
 	});
+}
+
+// Removes the synced photo from its Immich album and deletes the local copy.
+// The asset itself is not deleted from Immich.
+export async function removeImageFromAlbum(name: string): Promise<boolean> {
+	const { error } = await apiRemoveImageFromAlbum({ path: { name } });
+	if (error) {
+		toaster.error({
+			title: 'Could not remove photo from album',
+			description: error.detail ?? 'Server returned an error'
+		});
+		return false;
+	}
+	await invalidate('/api/images' satisfies ListImagesData['url']);
+	toaster.success({ title: 'Removed from album', description: 'The photo stays in Immich.' });
+	return true;
 }
 
 // One gallery invalidation for the whole batch.

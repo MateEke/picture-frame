@@ -10,8 +10,10 @@ package httpapi_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"hash/crc32"
 	"image"
 	"image/color"
@@ -711,6 +713,7 @@ func TestImageNameTagsMatchLibraryPattern(t *testing.T) {
 	for _, typ := range []reflect.Type{
 		reflect.TypeFor[httpapi.DeleteImageInput](),
 		reflect.TypeFor[httpapi.ServeImageInput](),
+		reflect.TypeFor[httpapi.RemoveImageFromAlbumInput](),
 	} {
 		field, ok := typ.FieldByName("Name")
 		if !ok {
@@ -868,6 +871,157 @@ func TestDeleteFileNotInLibraryKeepsFile(t *testing.T) {
 	}
 	if _, err := h.root.Stat("orphan.jpg"); err != nil {
 		t.Errorf("orphan file should survive the 404: %v", err)
+	}
+}
+
+type fakeAlbumRemover struct {
+	calls   int
+	name    string
+	albumID string
+	err     error
+}
+
+func (f *fakeAlbumRemover) RemoveFromAlbum(_ context.Context, name, albumID string) error {
+	f.calls++
+	f.name, f.albumID = name, albumID
+	return f.err
+}
+
+type fakeStatusError struct{ status int }
+
+func (e fakeStatusError) Error() string   { return "immich status" }
+func (e fakeStatusError) HTTPStatus() int { return e.status }
+
+func newImageServerWithRemover(t *testing.T, backend string, remover httpapi.AlbumRemover) *imageHarness {
+	t.Helper()
+	dir := t.TempDir()
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		t.Fatalf("OpenRoot: %v", err)
+	}
+	t.Cleanup(func() { _ = root.Close() })
+	lib := library.New(nil, false)
+	bus := state.NewBus()
+	ss := &fakeSlideshow{}
+	h := httpapi.NewServer(httpapi.Config{
+		Log: testutil.NopLogger(), Bus: bus, Library: lib, ImagesRoot: root,
+		Slideshow: ss, KioskBeater: &fakeBeater{}, Backend: backend, AlbumRemover: remover,
+	})
+	return &imageHarness{handler: h, lib: lib, bus: bus, root: root, slideshow: ss}
+}
+
+func removeFromAlbumRequest(name string) *http.Request {
+	return httptest.NewRequest(http.MethodPost, "/api/images/"+name+"/remove-from-album", nil)
+}
+
+func TestRemoveImageFromAlbumHappyPath(t *testing.T) {
+	rem := &fakeAlbumRemover{}
+	h := newImageServerWithRemover(t, "immich", rem)
+	name := "00000000-0000-0000-0000-00000000000a-1700000000.jpg"
+	h.lib.Add(name, "", 0)
+	h.lib.SetDetails(map[string]library.Details{name: {AlbumID: "album-1"}})
+
+	rec := httptest.NewRecorder()
+	h.handler.ServeHTTP(rec, removeFromAlbumRequest(name))
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status %d, body %s", rec.Code, rec.Body)
+	}
+	if rem.calls != 1 || rem.name != name || rem.albumID != "album-1" {
+		t.Errorf("remover calls=%d name=%q albumID=%q", rem.calls, rem.name, rem.albumID)
+	}
+}
+
+func TestRemoveImageFromAlbumRequiresImmichBackend(t *testing.T) {
+	rem := &fakeAlbumRemover{}
+	h := newImageServerWithRemover(t, "fs", rem)
+	rec := httptest.NewRecorder()
+	h.handler.ServeHTTP(rec, removeFromAlbumRequest("a.jpg"))
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status %d, want 409", rec.Code)
+	}
+	if rem.calls != 0 {
+		t.Error("remover must not be called on the fs backend")
+	}
+}
+
+func TestRemoveImageFromAlbumWithoutRemover(t *testing.T) {
+	h := newImageServerWithBackend(t, "immich")
+	rec := httptest.NewRecorder()
+	h.handler.ServeHTTP(rec, removeFromAlbumRequest("a.jpg"))
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status %d, want 409", rec.Code)
+	}
+}
+
+func TestRemoveImageFromAlbumNotFound(t *testing.T) {
+	h := newImageServerWithRemover(t, "immich", &fakeAlbumRemover{})
+	rec := httptest.NewRecorder()
+	h.handler.ServeHTTP(rec, removeFromAlbumRequest("a.jpg"))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status %d, want 404", rec.Code)
+	}
+}
+
+func TestRemoveImageFromAlbumRejectsShareLinkImages(t *testing.T) {
+	rem := &fakeAlbumRemover{}
+	h := newImageServerWithRemover(t, "immich", rem)
+	h.lib.Add("a.jpg", "", 0) // share-link assets have no album ID
+	rec := httptest.NewRecorder()
+	h.handler.ServeHTTP(rec, removeFromAlbumRequest("a.jpg"))
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status %d, want 409", rec.Code)
+	}
+	if rem.calls != 0 {
+		t.Error("remover must not be called without an album ID")
+	}
+}
+
+func TestRemoveImageFromAlbumUnsupported(t *testing.T) {
+	rem := &fakeAlbumRemover{err: library.ErrAlbumRemovalUnsupported}
+	h := newImageServerWithRemover(t, "immich", rem)
+	name := "a.jpg"
+	h.lib.Add(name, "", 0)
+	h.lib.SetDetails(map[string]library.Details{name: {AlbumID: "album-1"}})
+	rec := httptest.NewRecorder()
+	h.handler.ServeHTTP(rec, removeFromAlbumRequest(name))
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status %d, want 409", rec.Code)
+	}
+}
+
+func TestRemoveImageFromAlbumMapsImmichStatus(t *testing.T) {
+	cases := map[int]int{
+		401: http.StatusUnauthorized,
+		403: http.StatusForbidden,
+		404: http.StatusNotFound,
+		400: http.StatusBadGateway,
+	}
+	for status, want := range cases {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			rem := &fakeAlbumRemover{err: fakeStatusError{status: status}}
+			h := newImageServerWithRemover(t, "immich", rem)
+			name := "a.jpg"
+			h.lib.Add(name, "", 0)
+			h.lib.SetDetails(map[string]library.Details{name: {AlbumID: "album-1"}})
+			rec := httptest.NewRecorder()
+			h.handler.ServeHTTP(rec, removeFromAlbumRequest(name))
+			if rec.Code != want {
+				t.Fatalf("status %d, want %d", rec.Code, want)
+			}
+		})
+	}
+}
+
+func TestRemoveImageFromAlbumGenericErrorIsBadGateway(t *testing.T) {
+	rem := &fakeAlbumRemover{err: errors.New("dial failed")}
+	h := newImageServerWithRemover(t, "immich", rem)
+	name := "a.jpg"
+	h.lib.Add(name, "", 0)
+	h.lib.SetDetails(map[string]library.Details{name: {AlbumID: "album-1"}})
+	rec := httptest.NewRecorder()
+	h.handler.ServeHTTP(rec, removeFromAlbumRequest(name))
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("status %d, want 502", rec.Code)
 	}
 }
 

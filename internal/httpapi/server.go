@@ -73,6 +73,13 @@ type SlidePlanner interface {
 // so producers (e.g. startup) can return it without importing this package.
 type SyncerStatus = library.SyncerStatus
 
+// AlbumRemover removes a synced photo from its source album without deleting
+// it remotely, then deletes the local copy. Only remote backends that can
+// modify albums (Immich API-key mode) provide it.
+type AlbumRemover interface {
+	RemoveFromAlbum(ctx context.Context, name, albumID string) error
+}
+
 // Config holds the dependencies for the HTTP server.
 type Config struct {
 	Log         *slog.Logger
@@ -94,6 +101,9 @@ type Config struct {
 	Backend string
 	// Syncer is non-nil for remote backends; exposes sync status to the UI.
 	Syncer SyncerStatus
+	// AlbumRemover is non-nil when the remote backend can remove a photo from
+	// its album (Immich API-key mode).
+	AlbumRemover AlbumRemover
 	// Updater is non-nil when the self-updater is wired; nil reads as no update available.
 	Updater UpdaterStatus
 	// WiFi is non-nil in production; nil in dev returns 503 for wifi routes.
@@ -151,6 +161,7 @@ type server struct {
 	planner        SlidePlanner
 	backend        string
 	syncer         SyncerStatus
+	albumRemover   AlbumRemover
 	updater        UpdaterStatus
 	wifiMgr        WiFiManager
 	sysfsBase      string
@@ -198,6 +209,7 @@ func NewServer(cfg Config) http.Handler {
 		planner:        cfg.Planner,
 		backend:        backend,
 		syncer:         cfg.Syncer,
+		albumRemover:   cfg.AlbumRemover,
 		updater:        cfg.Updater,
 		wifiMgr:        cfg.WiFi,
 		sysfsBase:      sysfsBase,

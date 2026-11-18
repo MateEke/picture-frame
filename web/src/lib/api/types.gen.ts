@@ -1519,6 +1519,36 @@ export type DeleteImageResponses = {
 
 export type DeleteImageResponse = DeleteImageResponses[keyof DeleteImageResponses];
 
+export type RemoveImageFromAlbumData = {
+    body?: never;
+    path: {
+        /**
+         * Synced image filename
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/api/images/{name}/remove-from-album';
+};
+
+export type RemoveImageFromAlbumErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type RemoveImageFromAlbumError = RemoveImageFromAlbumErrors[keyof RemoveImageFromAlbumErrors];
+
+export type RemoveImageFromAlbumResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type RemoveImageFromAlbumResponse = RemoveImageFromAlbumResponses[keyof RemoveImageFromAlbumResponses];
+
 export type ListImmichAlbumsData = {
     body: ImmichAlbumsRequestWritable;
     path?: never;

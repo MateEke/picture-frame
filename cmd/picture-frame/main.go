@@ -297,6 +297,7 @@ func run() error {
 			KioskBeater:    kioskWatch,
 			Backend:        libraryBackend(cfg),
 			Syncer:         startup.SyncerStatus(librarySyncer),
+			AlbumRemover:   startup.AlbumRemoverFor(librarySyncer),
 			Updater:        updaterSvc,
 			WiFi:           wifiMgr,
 			Production:     production,

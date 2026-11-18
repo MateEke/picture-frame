@@ -4,6 +4,7 @@
 package startup
 
 import (
+	"context"
 	"log/slog"
 	"os"
 
@@ -44,6 +45,19 @@ func BuildSensorSpecs(cfg *config.Config) []mqtt.SensorSpec {
 // *library.Syncer straight into the interface field would yield a non-nil
 // interface value, so callers must funnel through this guard.
 func SyncerStatus(s *library.Syncer) library.SyncerStatus {
+	if s == nil {
+		return nil
+	}
+	return s
+}
+
+// AlbumRemover is the optional write capability exposed by a remote library.
+type AlbumRemover interface {
+	RemoveFromAlbum(ctx context.Context, name, albumID string) error
+}
+
+// AlbumRemoverFor applies the same typed-nil guard as SyncerStatus.
+func AlbumRemoverFor(s *library.Syncer) AlbumRemover {
 	if s == nil {
 		return nil
 	}

@@ -2477,6 +2477,40 @@
         "summary": "Delete an image"
       }
     },
+    "/api/images/{name}/remove-from-album": {
+      "post": {
+        "operationId": "remove-image-from-album",
+        "parameters": [
+          {
+            "description": "Synced image filename",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "description": "Synced image filename",
+              "pattern": "^[a-zA-Z0-9_.~-]+\\.(jpe?g|png)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Remove a synced photo from its source album"
+      }
+    },
     "/api/immich/albums": {
       "post": {
         "operationId": "list-immich-albums",
