@@ -1,6 +1,7 @@
 package immich
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/MateEke/picture-frame/internal/library"
 	"github.com/MateEke/picture-frame/providers"
@@ -45,11 +47,16 @@ type APIClient struct {
 	http   *http.Client
 	log    *slog.Logger
 
+	// mu guards albums: the syncer lists while the admin may remove a photo
+	// from an album at the same time.
+	mu sync.Mutex
+
 	// One entry per configured album, in config order; merged on List.
 	albums []albumState
 }
 
 var _ providers.Provider = (*APIClient)(nil)
+var _ providers.AlbumRemover = (*APIClient)(nil)
 
 // NewAPIClient validates cfg and returns a ready-to-use APIClient.
 func NewAPIClient(cfg APIConfig) (*APIClient, error) {
@@ -64,13 +71,20 @@ func NewAPIClient(cfg APIConfig) (*APIClient, error) {
 	if len(cfg.AlbumIDs) == 0 {
 		return nil, fmt.Errorf("immich: at least one album id required")
 	}
+	seen := make(map[string]bool, len(cfg.AlbumIDs))
+	ids := make([]string, 0, len(cfg.AlbumIDs))
 	for _, id := range cfg.AlbumIDs {
+		id = strings.TrimSpace(id)
 		if id == "" {
 			return nil, fmt.Errorf("immich: album id must not be empty")
 		}
+		if !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
 	}
 	c := &APIClient{base: base, apiKey: cfg.APIKey, http: cfg.HTTP, log: cfg.Logger}
-	for _, id := range cfg.AlbumIDs {
+	for _, id := range ids {
 		c.albums = append(c.albums, albumState{id: id})
 	}
 	if c.http == nil {
@@ -88,6 +102,8 @@ func NewAPIClient(cfg APIConfig) (*APIClient, error) {
 // moved (same conditional-GET gate as the shared-link client); a failed album
 // fails the whole List and the syncer keeps its cache for a backoff retry.
 func (c *APIClient) List(ctx context.Context) ([]library.Asset, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	buckets, reenumerated := 0, 0
 	for i := range c.albums {
 		a := &c.albums[i]
@@ -159,7 +175,7 @@ func (c *APIClient) albumChanged(ctx context.Context, a *albumState) (changed bo
 		}
 		return true, album.AlbumName, yearFromStartDate(album.StartDate), resp.Header.Get("ETag"), nil
 	default:
-		return false, "", 0, "", &httpError{Status: resp.StatusCode}
+		return false, "", 0, "", statusError(resp)
 	}
 }
 
@@ -207,10 +223,93 @@ func (c *APIClient) Fetch(ctx context.Context, assetID string) (io.ReadCloser, e
 		return nil, fmt.Errorf("immich: fetch %s: %w", assetID, err)
 	}
 	if resp.StatusCode != http.StatusOK {
+		err := statusError(resp)
 		_ = resp.Body.Close()
-		return nil, &httpError{Status: resp.StatusCode}
+		return nil, err
 	}
 	return resp.Body, nil
+}
+
+// bulkIDResult is one row of Immich's bulk asset response.
+type bulkIDResult struct {
+	ID      string `json:"id"`
+	Success bool   `json:"success"`
+	Error   string `json:"error"`
+}
+
+// RemoveFromAlbum removes assetID from albumID through Immich's bulk
+// album-assets endpoint. Immich's asset-deletion endpoint (/api/assets) is
+// never called: the photo stays in the user's library and in any other album
+// it belongs to. The album's cached listing is invalidated so the next List
+// re-enumerates even if Immich happens to keep its ETag unchanged.
+func (c *APIClient) RemoveFromAlbum(ctx context.Context, albumID, assetID string) error {
+	body, err := json.Marshal(struct {
+		IDs []string `json:"ids"`
+	}{IDs: []string{assetID}})
+	if err != nil {
+		return err
+	}
+	u := c.base + "/api/albums/" + url.PathEscape(albumID) + "/assets"
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, u, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	c.auth(req)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("immich: remove %s from album: %w", assetID, err)
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusNoContent:
+		c.invalidateAlbum(albumID)
+		return nil
+	case http.StatusOK:
+		var results []bulkIDResult
+		if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
+			return fmt.Errorf("immich: decode remove result: %w", err)
+		}
+		removed := len(results) == 0
+		failure := ""
+		for _, r := range results {
+			if r.ID != assetID {
+				continue
+			}
+			// not_found means the asset was already absent, which is the state
+			// we wanted; any other failure is real.
+			if r.Success || r.Error == "not_found" {
+				removed = true
+			} else {
+				failure = r.Error
+			}
+			break
+		}
+		if !removed {
+			if failure == "" {
+				failure = "no result for asset"
+			}
+			return fmt.Errorf("immich: remove %s from album: %s", assetID, failure)
+		}
+		c.invalidateAlbum(albumID)
+		return nil
+	default:
+		return statusError(resp)
+	}
+}
+
+// invalidateAlbum forces the next List to re-enumerate albumID.
+func (c *APIClient) invalidateAlbum(albumID string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for i := range c.albums {
+		if c.albums[i].id == albumID {
+			c.albums[i].etag = ""
+			c.albums[i].loaded = false
+			return
+		}
+	}
 }
 
 func (c *APIClient) getJSON(ctx context.Context, path string, q url.Values, dst any) error {
@@ -225,7 +324,7 @@ func (c *APIClient) getJSON(ctx context.Context, path string, q url.Values, dst 
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return &httpError{Status: resp.StatusCode}
+		return statusError(resp)
 	}
 	return json.NewDecoder(resp.Body).Decode(dst)
 }

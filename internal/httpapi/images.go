@@ -21,6 +21,8 @@ import (
 
 	"github.com/MateEke/picture-frame/internal/config"
 	"github.com/MateEke/picture-frame/internal/library"
+	"github.com/MateEke/picture-frame/internal/library/adapter/immich"
+	"github.com/MateEke/picture-frame/internal/redact"
 	"github.com/MateEke/picture-frame/internal/state"
 )
 
@@ -56,6 +58,10 @@ type UploadImageOutput struct {
 
 type DeleteImageInput struct {
 	Name string `path:"name" pattern:"^[a-zA-Z0-9_.~-]+\\.(jpe?g|png)$" doc:"Image filename"`
+}
+
+type RemoveImageFromAlbumInput struct {
+	Name string `path:"name" pattern:"^[a-zA-Z0-9_.~-]+\\.(jpe?g|png)$" doc:"Synced image filename"`
 }
 
 type SetImageOrderInput struct {
@@ -102,6 +108,14 @@ func (s *server) registerImageRoutes(api huma.API) {
 	}, s.handleDeleteImage)
 
 	huma.Register(api, huma.Operation{
+		OperationID:   "remove-image-from-album",
+		Method:        http.MethodPost,
+		Path:          "/api/images/{name}/remove-from-album",
+		Summary:       "Remove a synced photo from its source album",
+		DefaultStatus: http.StatusNoContent,
+	}, s.handleRemoveImageFromAlbum)
+
+	huma.Register(api, huma.Operation{
 		OperationID:   "set-image-order",
 		Method:        http.MethodPut,
 		Path:          "/api/images/order",
@@ -144,6 +158,68 @@ func (s *server) handleDeleteImage(_ context.Context, input *DeleteImageInput) (
 		})
 	}
 	return nil, nil
+}
+
+// handleRemoveImageFromAlbum drops a photo from its source album and deletes
+// the local copy. There is deliberately no path to Immich's asset-deletion
+// endpoint: the photo itself must stay in the user's Immich library.
+func (s *server) handleRemoveImageFromAlbum(ctx context.Context, input *RemoveImageFromAlbumInput) (*struct{}, error) {
+	if s.backend != config.BackendImmich {
+		return nil, huma.Error409Conflict("removing from an album requires the Immich library backend")
+	}
+	if s.albumRemover == nil {
+		return nil, huma.Error409Conflict("removing from an album is unavailable: configure Immich API-key mode")
+	}
+	albumID := ""
+	found := false
+	for _, img := range s.lib.List() {
+		if img.Name == input.Name {
+			albumID, found = img.AlbumID, true
+			break
+		}
+	}
+	if !found {
+		return nil, huma.Error404NotFound("image not found")
+	}
+	if albumID == "" {
+		return nil, huma.Error409Conflict("removing from an album is unavailable for a shared link; use Immich API-key mode")
+	}
+	if err := s.albumRemover.RemoveFromAlbum(ctx, input.Name, albumID); err != nil {
+		switch {
+		case errors.Is(err, library.ErrImageNotFound):
+			return nil, huma.Error404NotFound("image not found")
+		case errors.Is(err, library.ErrAlbumRemovalUnsupported):
+			return nil, huma.Error409Conflict("removing from an album is unavailable for the active Immich connection")
+		default:
+			return nil, albumRemoveError(err)
+		}
+	}
+	if s.lib.Len() == 0 {
+		s.bus.Publish(state.Event{
+			Kind:    state.KindImage,
+			Payload: state.ImagePayload{},
+		})
+	}
+	return nil, nil
+}
+
+// albumRemoveError maps an Immich failure to an HTTP status the UI can act on,
+// matching on the status rather than the rendered error string.
+func albumRemoveError(err error) error {
+	var statusErr immich.StatusError
+	if errors.As(err, &statusErr) {
+		switch statusErr.HTTPStatus() {
+		case http.StatusUnauthorized:
+			return huma.Error401Unauthorized("Immich rejected the API key; create a full-access key in the Immich UI")
+		case http.StatusForbidden:
+			return huma.Error403Forbidden("the API key cannot modify albums on this Immich server")
+		case http.StatusNotFound:
+			return huma.Error404NotFound("the album or photo no longer exists in Immich")
+		default:
+			return huma.Error502BadGateway("Immich returned " + statusErr.Error())
+		}
+	}
+	return huma.Error502BadGateway(redact.Path(err.Error()))
 }
 
 func (s *server) handleSetImageOrder(_ context.Context, input *SetImageOrderInput) (*struct{}, error) {

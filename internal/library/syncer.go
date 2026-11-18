@@ -14,6 +14,16 @@ import (
 	"time"
 
 	"github.com/MateEke/picture-frame/internal/redact"
+	"github.com/MateEke/picture-frame/providers"
+)
+
+// Errors returned by Syncer.RemoveFromAlbum.
+var (
+	// ErrImageNotFound means the local library has no such image.
+	ErrImageNotFound = errors.New("image not found")
+	// ErrAlbumRemovalUnsupported means the active provider cannot remove an
+	// asset from an album (no API-key mode, or an unknown album).
+	ErrAlbumRemovalUnsupported = errors.New("removing from the album is not supported")
 )
 
 // Syncer reconciles a RemoteAlbum with a local directory and Library on a tick.
@@ -181,6 +191,44 @@ func (s *Syncer) Status() Status {
 	return s.status
 }
 
+// RemoveFromAlbum removes a synced photo from its source album in the remote
+// service without deleting the photo there, then drops the local cached copy.
+// The remote asset itself is never touched: only the album membership is
+// removed, so the photo stays in the user's Immich library and in any other
+// album it belongs to. It needs a provider that implements
+// providers.AlbumRemover.
+func (s *Syncer) RemoveFromAlbum(ctx context.Context, name, albumID string) error {
+	if !s.lib.Has(name) {
+		return ErrImageNotFound
+	}
+	f, ok := parseSyncedName(name)
+	if !ok || albumID == "" {
+		return ErrAlbumRemovalUnsupported
+	}
+	remover, ok := s.remote.(providers.AlbumRemover)
+	if !ok {
+		return ErrAlbumRemovalUnsupported
+	}
+	if err := remover.RemoveFromAlbum(ctx, albumID, f.id); err != nil {
+		return err
+	}
+	if err := s.removeFile(f); err != nil {
+		return fmt.Errorf("delete local copy: %w", err)
+	}
+	if err := s.manifest.Flush(); err != nil {
+		s.log.Warn("library: flush manifest failed", "err", err)
+	}
+	if s.aspect != nil {
+		if err := s.aspect.Flush(); err != nil {
+			s.log.Warn("library: flush aspect index failed", "err", err)
+		}
+	}
+	// Re-list soon: makes the removal visible to Status and prunes anything a
+	// concurrent cycle may have downloaded from a stale listing.
+	s.Trigger()
+	return nil
+}
+
 func (s *Syncer) setError(err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -238,7 +286,9 @@ func (s *Syncer) syncOnce(ctx context.Context) bool {
 	wasEmpty := s.lib.Len() == 0
 	stale := local.staleAgainst(remote)
 	for _, file := range stale {
-		s.removeFile(file)
+		if err := s.removeFile(file); err != nil {
+			s.log.Warn("library: delete failed", "name", file.name, "err", err)
+		}
 	}
 	adopted := s.adopt(local, remote)
 	added, failed, skipped := 0, 0, 0
@@ -354,16 +404,16 @@ func (s *Syncer) cleanTmp() {
 	}
 }
 
-func (s *Syncer) removeFile(f localFile) {
+func (s *Syncer) removeFile(f localFile) error {
 	if err := s.root.Remove(f.name); err != nil && !errors.Is(err, os.ErrNotExist) {
-		s.log.Warn("library: delete failed", "name", f.name, "err", err)
-		return
+		return err
 	}
 	s.lib.Remove(f.name)
 	s.manifest.Delete(f.name)
 	if s.aspect != nil {
 		s.aspect.Delete(f.name)
 	}
+	return nil
 }
 
 // adopt records scanned files that are wanted but untracked (pre-manifest
@@ -480,4 +530,13 @@ func SyncedFilename(a Asset) string {
 // IsSyncedName reports whether name matches the synced-file pattern.
 func IsSyncedName(name string) bool {
 	return syncedNameRe.MatchString(strings.ToLower(name))
+}
+
+// parseSyncedName splits "<asset-id>-<version>.jpg" back into its parts.
+func parseSyncedName(name string) (localFile, bool) {
+	match := syncedNameRe.FindStringSubmatch(strings.ToLower(name))
+	if match == nil {
+		return localFile{}, false
+	}
+	return localFile{name: name, id: match[1], version: match[2]}, true
 }

@@ -267,18 +267,18 @@ func (s *server) registerImmichAlbumsRoute(api huma.API) {
 }
 
 // albumListError maps an Immich failure to an HTTP status with a message the UI
-// can act on. httpError renders as a bare "status 401", which tells an admin
-// nothing about whether the key or the URL is at fault.
+// can act on. Matching on the status (not the rendered string) keeps the
+// mapping correct when Immich's response body is appended for diagnostics.
 func albumListError(err error) error {
-	var hErr interface{ Error() string }
-	if errors.As(err, &hErr) && strings.HasPrefix(hErr.Error(), "status ") {
-		switch strings.TrimPrefix(hErr.Error(), "status ") {
-		case "401":
+	var statusErr immich.StatusError
+	if errors.As(err, &statusErr) {
+		switch statusErr.HTTPStatus() {
+		case http.StatusUnauthorized:
 			return huma.Error401Unauthorized("Immich rejected the API key; create a full-access key in the Immich UI")
-		case "403":
+		case http.StatusForbidden:
 			return huma.Error403Forbidden("the API key cannot read albums on this Immich server")
 		default:
-			return huma.Error502BadGateway("Immich returned " + hErr.Error())
+			return huma.Error502BadGateway("Immich returned " + statusErr.Error())
 		}
 	}
 	return huma.Error502BadGateway(redact.Path(err.Error()))

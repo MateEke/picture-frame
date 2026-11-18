@@ -24,3 +24,12 @@ type Provider interface {
 	List(ctx context.Context) ([]Asset, error)
 	Fetch(ctx context.Context, id string) (io.ReadCloser, error)
 }
+
+// AlbumRemover is an optional Provider capability: remove one asset from one
+// album without deleting the asset from the remote service. Implementations
+// must only break the album–asset association: the photo itself has to survive
+// in the user's remote library. Providers that cannot modify albums (for
+// example a read-only shared link) simply don't implement it.
+type AlbumRemover interface {
+	RemoveFromAlbum(ctx context.Context, albumID, assetID string) error
+}

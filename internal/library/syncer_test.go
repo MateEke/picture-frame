@@ -22,13 +22,15 @@ import (
 )
 
 type fakeRemote struct {
-	mu       sync.Mutex
-	assets   []library.Asset
-	bodies   map[string][]byte
-	failIDs  map[string]bool // per-asset fetch failures
-	listErr  error
-	fetchErr error
-	lists    int // List call count
+	mu        sync.Mutex
+	assets    []library.Asset
+	bodies    map[string][]byte
+	failIDs   map[string]bool // per-asset fetch failures
+	listErr   error
+	fetchErr  error
+	removeErr error
+	removed   []string // "albumID/assetID" pairs removed from an album
+	lists     int      // List call count
 }
 
 func (f *fakeRemote) set(assets ...library.Asset) {
@@ -71,6 +73,37 @@ func (f *fakeRemote) Fetch(_ context.Context, id string) (io.ReadCloser, error) 
 		return nil, errors.New("not found")
 	}
 	return io.NopCloser(bytes.NewReader(b)), nil
+}
+
+// RemoveFromAlbum simulates Immich removing the asset from just that album:
+// the asset is dropped from the listing but not deleted from bodies.
+func (f *fakeRemote) RemoveFromAlbum(_ context.Context, albumID, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.removeErr != nil {
+		return f.removeErr
+	}
+	f.removed = append(f.removed, albumID+"/"+id)
+	kept := f.assets[:0]
+	for _, a := range f.assets {
+		if a.ID != id {
+			kept = append(kept, a)
+		}
+	}
+	f.assets = kept
+	return nil
+}
+
+// listOnlyRemote is a Provider without the optional AlbumRemover capability,
+// like the Immich shared-link client.
+type listOnlyRemote struct{ inner *fakeRemote }
+
+func (r listOnlyRemote) List(ctx context.Context) ([]library.Asset, error) {
+	return r.inner.List(ctx)
+}
+
+func (r listOnlyRemote) Fetch(ctx context.Context, id string) (io.ReadCloser, error) {
+	return r.inner.Fetch(ctx, id)
 }
 
 type fakeAdvancer struct{ n int }
@@ -607,6 +640,88 @@ func TestSyncRetriesFailuresWithBackoff(t *testing.T) {
 			t.Errorf("library len = %d after recovery, want 1", lib.Len())
 		}
 	})
+}
+
+func TestRemoveFromAlbumRemovesRemoteAndLocalCopy(t *testing.T) {
+	root, lib := setup(t)
+	r := &fakeRemote{}
+	r.set(library.Asset{ID: idA, Version: "1", AlbumID: "album-1"})
+	s := library.NewSyncer(testutil.NopLogger(), r, lib, root, time.Hour, &fakeAdvancer{})
+	runOnce(t, s)
+	name := library.SyncedFilename(library.Asset{ID: idA, Version: "1"})
+	if _, err := root.Stat(name); err != nil {
+		t.Fatalf("file missing after sync: %v", err)
+	}
+
+	if err := s.RemoveFromAlbum(t.Context(), name, "album-1"); err != nil {
+		t.Fatalf("RemoveFromAlbum: %v", err)
+	}
+	r.mu.Lock()
+	removed := append([]string(nil), r.removed...)
+	body := append([]byte(nil), r.bodies[idA]...)
+	r.mu.Unlock()
+	if len(removed) != 1 || removed[0] != "album-1/"+idA {
+		t.Errorf("removed = %v, want [album-1/%s]", removed, idA)
+	}
+	// Removing from the album must leave the remote photo itself intact.
+	if len(body) == 0 {
+		t.Error("remote asset was deleted; removal must only drop the album membership")
+	}
+	if lib.Has(name) {
+		t.Error("library still has the removed image")
+	}
+	if _, err := root.Stat(name); !os.IsNotExist(err) {
+		t.Errorf("local file still present: err=%v", err)
+	}
+}
+
+func TestRemoveFromAlbumUnknownImage(t *testing.T) {
+	root, lib := setup(t)
+	s := library.NewSyncer(testutil.NopLogger(), &fakeRemote{}, lib, root, time.Hour, &fakeAdvancer{})
+	err := s.RemoveFromAlbum(t.Context(), idA+"-1.jpg", "album-1")
+	if !errors.Is(err, library.ErrImageNotFound) {
+		t.Errorf("err = %v, want ErrImageNotFound", err)
+	}
+}
+
+func TestRemoveFromAlbumRequiresAlbumID(t *testing.T) {
+	root, lib := setup(t)
+	name := idA + "-1.jpg"
+	lib.Add(name, "", 0)
+	s := library.NewSyncer(testutil.NopLogger(), &fakeRemote{}, lib, root, time.Hour, &fakeAdvancer{})
+	err := s.RemoveFromAlbum(t.Context(), name, "")
+	if !errors.Is(err, library.ErrAlbumRemovalUnsupported) {
+		t.Errorf("err = %v, want ErrAlbumRemovalUnsupported", err)
+	}
+}
+
+func TestRemoveFromAlbumUnsupportedProvider(t *testing.T) {
+	root, lib := setup(t)
+	name := idA + "-1.jpg"
+	lib.Add(name, "", 0)
+	r := &fakeRemote{}
+	s := library.NewSyncer(testutil.NopLogger(), listOnlyRemote{inner: r}, lib, root, time.Hour, &fakeAdvancer{})
+	err := s.RemoveFromAlbum(t.Context(), name, "album-1")
+	if !errors.Is(err, library.ErrAlbumRemovalUnsupported) {
+		t.Errorf("err = %v, want ErrAlbumRemovalUnsupported", err)
+	}
+	if !lib.Has(name) {
+		t.Error("unsupported removal must leave the local library untouched")
+	}
+}
+
+func TestRemoveFromAlbumRemoteFailureKeepsLocalCopy(t *testing.T) {
+	root, lib := setup(t)
+	name := idA + "-1.jpg"
+	lib.Add(name, "", 0)
+	r := &fakeRemote{removeErr: errors.New("boom")}
+	s := library.NewSyncer(testutil.NopLogger(), r, lib, root, time.Hour, &fakeAdvancer{})
+	if err := s.RemoveFromAlbum(t.Context(), name, "album-1"); err == nil {
+		t.Fatal("expected an error")
+	}
+	if !lib.Has(name) {
+		t.Error("local image must survive a failed remote removal")
+	}
 }
 
 // A successful cycle still waits the full interval: no backoff, no drift.

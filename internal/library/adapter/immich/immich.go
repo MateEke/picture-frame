@@ -20,14 +20,46 @@ import (
 	"strconv"
 )
 
-// httpError lets callers branch on HTTP status without parsing strings.
-type httpError struct{ Status int }
+// StatusError is the surface callers use to branch on the HTTP status Immich
+// returned without parsing an error string.
+type StatusError interface {
+	error
+	HTTPStatus() int
+}
 
-func (e *httpError) Error() string { return fmt.Sprintf("status %d", e.Status) }
+// httpError carries the Immich status plus a short slice of the response body.
+// The body is what turns an opaque "status 400" into an actionable admin error.
+type httpError struct {
+	Status int
+	Detail string
+}
+
+func (e *httpError) Error() string {
+	if e.Detail != "" {
+		return fmt.Sprintf("status %d: %s", e.Status, e.Detail)
+	}
+	return fmt.Sprintf("status %d", e.Status)
+}
+
+func (e *httpError) HTTPStatus() int { return e.Status }
+
+// maxErrorDetail caps how much of an Immich error body reaches logs and the UI.
+const maxErrorDetail = 240
+
+// statusError reads a bounded, single-line excerpt of an error response. It is
+// called before the body is closed; the caller remains responsible for closing.
+func statusError(resp *http.Response) *httpError {
+	detail := ""
+	if resp.Body != nil {
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorDetail))
+		detail = strings.Join(strings.Fields(string(b)), " ")
+	}
+	return &httpError{Status: resp.StatusCode, Detail: detail}
+}
 
 // bucketParam returns the timeBucket value Immich expects. Immich 2 accepted a
 // bare YYYY-MM-DD; Immich 3 requires a full ISO-8601 timestamp. getTimelineBucket
-// retries the legacy form on a 400, so one client works with both server versions.
+// tries the other form on a 400, so one client works with both server versions.
 func bucketParam(bucket string) string {
 	if len(bucket) == 10 && bucket[4] == '-' && bucket[7] == '-' {
 		return bucket + "T00:00:00.000Z"
@@ -35,19 +67,28 @@ func bucketParam(bucket string) string {
 	return bucket
 }
 
+// legacyBucketParam is the inverse of bucketParam: it recovers the bare date
+// even when Immich reported the bucket in ISO form.
+func legacyBucketParam(bucket string) string {
+	return strings.TrimSuffix(bucket, "T00:00:00.000Z")
+}
+
 type jsonGetter func(ctx context.Context, path string, q url.Values, dst any) error
 
-// getTimelineBucket fetches one bucket, preferring the Immich 3 format and
-// falling back to the v2 format when the server rejects it with a 400.
+// getTimelineBucket fetches one bucket. Immich versions disagree on the
+// timeBucket format: /api/timeline/buckets reports bare dates on v3, while
+// /api/timeline/bucket wants a full ISO timestamp (and older servers the bare
+// date). Try both forms on a 400 instead of assuming which one Immich returned.
 func getTimelineBucket(ctx context.Context, get jsonGetter, albumID, bucket string, dst any) error {
-	iso := url.Values{"albumId": {albumID}, "timeBucket": {bucketParam(bucket)}}
-	err := get(ctx, "/api/timeline/bucket", iso, dst)
+	iso := bucketParam(bucket)
+	legacy := legacyBucketParam(bucket)
+	first := url.Values{"albumId": {albumID}, "timeBucket": {iso}}
+	err := get(ctx, "/api/timeline/bucket", first, dst)
 	var httpErr *httpError
-	if errors.As(err, &httpErr) && httpErr.Status == http.StatusBadRequest {
-		legacy := url.Values{"albumId": {albumID}, "timeBucket": {bucket}}
-		return get(ctx, "/api/timeline/bucket", legacy, dst)
+	if !errors.As(err, &httpErr) || httpErr.Status != http.StatusBadRequest || legacy == iso {
+		return err
 	}
-	return err
+	return get(ctx, "/api/timeline/bucket", url.Values{"albumId": {albumID}, "timeBucket": {legacy}}, dst)
 }
 
 const noThumbhashToken = "0000000000000000"
@@ -188,7 +229,7 @@ func (c *Client) ensureAuth(ctx context.Context) error {
 		c.legacyPassword = true
 		return nil
 	default:
-		return fmt.Errorf("immich: shared-link login: %w", &httpError{Status: resp.StatusCode})
+		return fmt.Errorf("immich: shared-link login: %w", statusError(resp))
 	}
 }
 
@@ -248,7 +289,7 @@ func (c *Client) albumChanged(ctx context.Context, albumID string) (changed bool
 		}
 		return true, yearFromStartDate(album.StartDate), resp.Header.Get("ETag"), nil
 	default:
-		return false, 0, "", &httpError{Status: resp.StatusCode}
+		return false, 0, "", statusError(resp)
 	}
 }
 
@@ -443,8 +484,9 @@ func (c *Client) do(ctx context.Context, u string) (*http.Response, error) {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
+		err := statusError(resp)
 		_ = resp.Body.Close()
-		return nil, &httpError{Status: resp.StatusCode}
+		return nil, err
 	}
 	return resp, nil
 }

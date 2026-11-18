@@ -48,7 +48,7 @@ func ListAlbums(ctx context.Context, baseURL, apiKey string, httpc *http.Client)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, &httpError{Status: resp.StatusCode}
+		return nil, statusError(resp)
 	}
 	var albums []Album
 	if err := json.NewDecoder(resp.Body).Decode(&albums); err != nil {

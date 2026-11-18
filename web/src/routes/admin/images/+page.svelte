@@ -16,7 +16,13 @@
 		ChevronsDownIcon
 	} from '@lucide/svelte';
 	import { dndzone, SHADOW_ITEM_MARKER_PROPERTY_NAME, type DndEvent } from 'svelte-dnd-action';
-	import { deleteImage, deleteImages, setImageOrder, uploadImages } from '#lib/images.js';
+	import {
+		deleteImage,
+		deleteImages,
+		removeImageFromAlbum,
+		setImageOrder,
+		uploadImages
+	} from '#lib/images.js';
 	import { toaster } from '#lib/toaster.js';
 	import { bulkUploadMessage } from './uploadFeedback';
 	import { moveUp, moveDown, moveToStart, moveToEnd } from '#lib/reorder.js';
@@ -37,6 +43,8 @@
 	let bulkAbort: AbortController | null = null;
 	let pendingDelete = $state<string | null>(null);
 	let deleting = $state(false);
+	let pendingRemove = $state<string | null>(null);
+	let removing = $state(false);
 	let brokenImages = new SvelteSet<string>();
 	let lightboxName = $state<string | null>(null);
 	let selecting = $state(false);
@@ -49,6 +57,9 @@
 	// On-screen photos to badge (a split slide shows two).
 	const onScreen = $derived(new Set(sse.image?.names ?? []));
 	const images = $derived(data.images ?? []);
+	const lightboxImage = $derived(images.find((i) => i.name === lightboxName));
+	// Removing from an album needs Immich API-key mode (shared links are read-only).
+	const canRemoveFromAlbum = $derived(data.library?.backend === 'immich' && !!data.apiUrl);
 
 	let arranging = $state(false);
 
@@ -195,6 +206,22 @@
 		} finally {
 			deleting = false;
 			pendingDelete = null;
+		}
+	}
+
+	function requestRemoveFromAlbum(name: string) {
+		lightboxName = null;
+		pendingRemove = name;
+	}
+
+	async function confirmRemoveFromAlbum() {
+		if (!pendingRemove) return;
+		removing = true;
+		try {
+			await removeImageFromAlbum(pendingRemove);
+		} finally {
+			removing = false;
+			pendingRemove = null;
 		}
 	}
 
@@ -455,11 +482,13 @@
 
 <Lightbox
 	name={lightboxName}
-	albumId={images.find((i) => i.name === lightboxName)?.album_id}
+	albumId={lightboxImage?.album_id}
 	immichLinks={{ apiUrl: data.apiUrl, shareUrl: data.shareUrl }}
 	canDelete={isFs}
+	canRemoveFromAlbum={canRemoveFromAlbum && !!lightboxImage?.album_id}
 	onClose={() => (lightboxName = null)}
 	onDelete={requestDelete}
+	onRemoveFromAlbum={requestRemoveFromAlbum}
 />
 
 <ConfirmDialog
@@ -472,6 +501,19 @@
 	onclose={() => (pendingDelete = null)}
 >
 	This will permanently delete <span class="font-mono">{pendingDelete}</span>.
+</ConfirmDialog>
+
+<ConfirmDialog
+	open={pendingRemove !== null}
+	title="Remove from album?"
+	confirmLabel={removing ? 'Removing…' : 'Remove'}
+	busy={removing}
+	confirmTestid="photo-remove-from-album-confirm"
+	onconfirm={confirmRemoveFromAlbum}
+	onclose={() => (pendingRemove = null)}
+>
+	This removes <span class="font-mono">{pendingRemove}</span> from your Immich album and deletes the local
+	copy on the frame. The photo stays in Immich.
 </ConfirmDialog>
 
 <ConfirmDialog
