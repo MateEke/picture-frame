@@ -38,7 +38,12 @@ export async function removeImageFromAlbum(name: string): Promise<boolean> {
 		});
 		return false;
 	}
-	await invalidate('/api/images' satisfies ListImagesData['url']);
+	// Refresh the gallery and the library status card together: the server has
+	// already updated both, so no "Sync now" is needed to see the new count.
+	await Promise.all([
+		invalidate('/api/images' satisfies ListImagesData['url']),
+		invalidate('/api/library')
+	]);
 	toaster.success({ title: 'Removed from album', description: 'The photo stays in Immich.' });
 	return true;
 }

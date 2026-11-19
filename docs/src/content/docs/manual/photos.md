@@ -92,7 +92,8 @@ write-only in the API, so the settings page shows it as a placeholder rather tha
 In API-key mode you can also remove a photo from its album: open it in the grid and choose
 **Remove from album** next to **Show in Immich**. The frame deletes its local copy and takes the
 photo out of that Immich album. The photo itself is not deleted from Immich, so it stays in your
-library and in any other album it belongs to.
+library and in any other album it belongs to. The gallery, photo count, and on-screen slideshow
+update right away — there is no need to press **Sync now** afterwards.
 
 ### Share link (single album)
 

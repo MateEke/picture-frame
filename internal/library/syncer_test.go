@@ -675,6 +675,34 @@ func TestRemoveFromAlbumRemovesRemoteAndLocalCopy(t *testing.T) {
 	}
 }
 
+func TestRemoveFromAlbumRefreshesFrameImmediately(t *testing.T) {
+	root, lib := setup(t)
+	r := &fakeRemote{}
+	r.set(library.Asset{ID: idA, Version: "1", AlbumID: "album-1"})
+	advance := &fakeAdvancer{}
+	replans := 0
+	s := library.NewSyncer(testutil.NopLogger(), r, lib, root, time.Hour, advance,
+		library.WithDetailsChanged(func() { replans++ }))
+	runOnce(t, s)
+	name := library.SyncedFilename(library.Asset{ID: idA, Version: "1"})
+	if got := s.Status().AssetCount; got != 1 {
+		t.Fatalf("asset count before removal = %d, want 1", got)
+	}
+
+	if err := s.RemoveFromAlbum(t.Context(), name, "album-1"); err != nil {
+		t.Fatalf("RemoveFromAlbum: %v", err)
+	}
+	if advance.n == 0 {
+		t.Error("slideshow was not advanced; the removed photo would stay on screen")
+	}
+	if replans == 0 {
+		t.Error("slide plan was not invalidated; it can still contain the removed photo")
+	}
+	if got := s.Status().AssetCount; got != 0 {
+		t.Errorf("asset count after removal = %d, want 0", got)
+	}
+}
+
 func TestRemoveFromAlbumUnknownImage(t *testing.T) {
 	root, lib := setup(t)
 	s := library.NewSyncer(testutil.NopLogger(), &fakeRemote{}, lib, root, time.Hour, &fakeAdvancer{})

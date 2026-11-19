@@ -114,13 +114,14 @@ describe('images', () => {
 	});
 
 	describe('removeImageFromAlbum', () => {
-		it('sends the image name in path param and invalidates on success', async () => {
+		it('sends the image name in path param and refreshes gallery and status on success', async () => {
 			mockRemoveImageFromAlbum.mockResolvedValue({ error: undefined });
 
 			await expect(removeImageFromAlbum('cat.jpg')).resolves.toBe(true);
 
 			expect(mockRemoveImageFromAlbum).toHaveBeenCalledWith({ path: { name: 'cat.jpg' } });
 			expect(invalidate).toHaveBeenCalledWith('/api/images');
+			expect(invalidate).toHaveBeenCalledWith('/api/library');
 			expect(toaster.success).toHaveBeenCalledWith({
 				title: 'Removed from album',
 				description: 'The photo stays in Immich.'

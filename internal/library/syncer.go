@@ -38,8 +38,9 @@ type Syncer struct {
 	root     *os.Root
 	interval time.Duration
 	advance  Advancer
-	// onDetails runs when a sync changes known album/year details, so the
-	// slide plan (which pairs per album) can be rebuilt.
+	// onDetails runs when the library changes in a way that can affect the
+	// slide plan (album/year details on sync, or a photo removed from an
+	// album), so the cached plan can be rebuilt.
 	onDetails func()
 	trigger   chan struct{}
 	aspect    *AspectStore // optional: caches per-image dimensions
@@ -61,8 +62,8 @@ func WithAspectStore(a *AspectStore) SyncerOption {
 	return func(s *Syncer) { s.aspect = a }
 }
 
-// WithDetailsChanged registers fn to run after a sync changes any image's
-// album or year.
+// WithDetailsChanged registers fn to run when an image's album or year
+// changes on sync, or when a photo is removed from an album.
 func WithDetailsChanged(fn func()) SyncerOption {
 	return func(s *Syncer) { s.onDetails = fn }
 }
@@ -105,7 +106,8 @@ type SyncerStatus interface {
 	Trigger()
 }
 
-// Advancer is poked when the syncer brings an empty library to non-empty.
+// Advancer is poked when the library change should be visible on the frame
+// immediately: the first downloaded image, or a photo removed from an album.
 type Advancer interface {
 	Next()
 }
@@ -223,6 +225,23 @@ func (s *Syncer) RemoveFromAlbum(ctx context.Context, name, albumID string) erro
 			s.log.Warn("library: flush aspect index failed", "err", err)
 		}
 	}
+	// The slide plan is cached, so a removal alone would keep showing the old
+	// photo until the next full sync happens to change album details. Drop the
+	// plan and publish a fresh slide now: the frame updates without the admin
+	// having to press "Sync now".
+	if s.onDetails != nil {
+		s.onDetails()
+	}
+	if s.advance != nil {
+		s.advance.Next()
+	}
+	// Reflect the smaller album in the status card right away. The sync below
+	// reconciles the exact count against Immich again.
+	s.mu.Lock()
+	if s.status.AssetCount > 0 {
+		s.status.AssetCount--
+	}
+	s.mu.Unlock()
 	// Re-list soon: makes the removal visible to Status and prunes anything a
 	// concurrent cycle may have downloaded from a stale listing.
 	s.Trigger()
