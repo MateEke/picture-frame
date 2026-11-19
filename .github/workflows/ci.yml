@@ -289,3 +289,69 @@ jobs:
 
       - name: Vulnerability scan
         run: make vuln
+
+  # Release only when a pull request is merged into main: the gates must be green,
+  # and the commit must be associated with a merged PR (works for merge commits,
+  # squash, and rebase). Direct pushes to main are ignored. The tag is created
+  # here and the release dispatched at it: `git push` with GITHUB_TOKEN does not
+  # start another workflow, but a workflow_dispatch does. Retries reuse an
+  # existing tag and skip if its release was already published.
+  tag:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, test, codegen, build, e2e, vuln]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the tag
+      actions: write # dispatch release.yml
+      pull-requests: read # confirm the commit came from a merged PR
+    steps:
+      # A push to main can also be a direct push (e.g. a hotfix or a bot). Those
+      # are not releases; only commits associated with a merged PR are.
+      - name: Check the push came from a merged pull request
+        id: merged
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          count="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
+            --jq '[.[] | select(.merged_at != null)] | length')"
+          if [ "$count" -eq 0 ]; then
+            echo "$GITHUB_SHA is not a merged pull request; skipping release."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.merged.outputs.release == 'true'
+        with:
+          fetch-depth: 0 # history + tags for the version bump
+
+      - name: Create the release tag
+        id: tag
+        if: steps.merged.outputs.release == 'true'
+        run: |
+          set -euo pipefail
+          tag="$(scripts/next-version.sh)"
+          if [ -z "$tag" ]; then
+            echo "no version to tag"
+            exit 0
+          fi
+          if ! git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            git tag -a "$tag" -m "$tag"
+            git push origin "$tag"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch the release workflow
+        if: steps.tag.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.tag.outputs.tag }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "release $tag already exists; skipping dispatch"
+            exit 0
+          fi
+          gh workflow run release.yml --ref "$tag"

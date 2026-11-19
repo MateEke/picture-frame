@@ -1,11 +1,15 @@
 name: release
 
 # Cut a release by pushing a semver tag (vX.Y.Z, or vX.Y.Z-rc.N for a pre-release).
+# ci.yml's `tag` job also creates the next tag and dispatches this workflow after a
+# pull request is merged into main, so releases are normally automatic; manual
+# tags still work.
 # The full CI gate re-runs on the tagged commit first; publish only happens on green.
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write # create the GitHub Release
