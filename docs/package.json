@@ -10,17 +10,17 @@
 		"astro": "astro"
 	},
 	"dependencies": {
-		"@astrojs/markdown-remark": "^7.3.8",
-		"@astrojs/starlight": "^0.42.10",
+		"@astrojs/markdown-remark": "^7.3.10",
+		"@astrojs/starlight": "^0.43.1",
 		"@fontsource-variable/fraunces": "^5.3.0",
-		"@iconify-json/lucide": "^1.2.154",
-		"astro": "^7.4.12",
+		"@iconify-json/lucide": "^1.2.156",
+		"astro": "^7.4.13",
 		"astro-icon": "^1.2.0",
 		"rehype-external-links": "^3.0.0",
 		"sharp": "^0.35.5"
 	},
 	"devDependencies": {
-		"prettier": "^3.10.0",
+		"prettier": "^3.10.1",
 		"prettier-plugin-astro": "^1.1.2",
 		"starlight-links-validator": "^0.27.0"
 	}
