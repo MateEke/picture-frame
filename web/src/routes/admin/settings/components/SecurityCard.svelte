@@ -137,9 +137,9 @@
 			<p class="text-surface-700-300 text-sm font-medium">Disable password protection</p>
 			<p class="text-surface-500-400 text-xs">
 				Removes the password. The admin UI becomes open to anyone in range.
-				<span class="text-warning-600-400 mt-1 block font-medium"
-					>Requires your current password above.</span
-				>
+				<span class="text-warning-600-400 mt-1 block font-medium">
+					Requires your current password above.
+				</span>
 			</p>
 			<button
 				type="button"

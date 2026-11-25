@@ -48,8 +48,9 @@
 						</label>
 					{/if}
 					<div class="flex justify-end gap-2">
-						<button type="button" class="btn preset-tonal-surface" onclick={oncancel}>Cancel</button
-						>
+						<button type="button" class="btn preset-tonal-surface" onclick={oncancel}>
+							Cancel
+						</button>
 						<button
 							type="submit"
 							class="btn preset-tonal-primary"

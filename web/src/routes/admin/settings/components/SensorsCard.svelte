@@ -83,9 +83,9 @@
 					<div class="min-w-0 space-y-1">
 						<div class="flex items-center gap-2">
 							<span class="truncate font-medium">{sensor.role || sensor.id}</span>
-							<span class="badge preset-tonal-surface text-xs"
-								>{TYPE_LABELS[sensor.type] ?? sensor.type}</span
-							>
+							<span class="badge preset-tonal-surface text-xs">
+								{TYPE_LABELS[sensor.type] ?? sensor.type}
+							</span>
 						</div>
 						<div class="text-surface-500-400 flex flex-wrap items-center gap-1.5 text-xs">
 							<span class="font-mono">{sensor.id}</span>

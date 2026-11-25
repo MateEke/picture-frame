@@ -294,29 +294,37 @@
 					class="btn-icon btn-icon-sm preset-tonal"
 					data-testid="photo-move-start-{name}"
 					aria-label="Move {name} to start"
-					onclick={() => move(name, moveToStart)}><ChevronsUpIcon class="size-4" /></button
+					onclick={() => move(name, moveToStart)}
 				>
+					<ChevronsUpIcon class="size-4" />
+				</button>
 				<button
 					type="button"
 					class="btn-icon btn-icon-sm preset-tonal"
 					data-testid="photo-move-up-{name}"
 					aria-label="Move {name} up"
-					onclick={() => move(name, moveUp)}><ArrowUpIcon class="size-4" /></button
+					onclick={() => move(name, moveUp)}
 				>
+					<ArrowUpIcon class="size-4" />
+				</button>
 				<button
 					type="button"
 					class="btn-icon btn-icon-sm preset-tonal"
 					data-testid="photo-move-down-{name}"
 					aria-label="Move {name} down"
-					onclick={() => move(name, moveDown)}><ArrowDownIcon class="size-4" /></button
+					onclick={() => move(name, moveDown)}
 				>
+					<ArrowDownIcon class="size-4" />
+				</button>
 				<button
 					type="button"
 					class="btn-icon btn-icon-sm preset-tonal"
 					data-testid="photo-move-end-{name}"
 					aria-label="Move {name} to end"
-					onclick={() => move(name, moveToEnd)}><ChevronsDownIcon class="size-4" /></button
+					onclick={() => move(name, moveToEnd)}
 				>
+					<ChevronsDownIcon class="size-4" />
+				</button>
 			</div>
 		{/if}
 	</div>
@@ -371,8 +379,10 @@
 						<button
 							class="btn btn-sm preset-tonal-surface"
 							data-testid="photos-arrange-done"
-							onclick={stopArranging}>Done</button
+							onclick={stopArranging}
 						>
+							Done
+						</button>
 					{:else if selecting}
 						<div class="flex items-center gap-2">
 							<button
@@ -396,13 +406,17 @@
 							<button
 								class="btn btn-sm preset-tonal-surface"
 								data-testid="photos-arrange"
-								onclick={startArranging}>Arrange</button
+								onclick={startArranging}
 							>
+								Arrange
+							</button>
 							<button
 								class="btn btn-sm preset-tonal-surface"
 								data-testid="photos-select"
-								onclick={startSelecting}>Select</button
+								onclick={startSelecting}
 							>
+								Select
+							</button>
 						</div>
 					{/if}
 				{/if}
@@ -481,5 +495,6 @@
 	confirmTestid="photos-bulk-confirm"
 	onconfirm={confirmBulkDelete}
 	onclose={() => (bulkConfirm = false)}
-	>This will permanently delete the selected photos.</ConfirmDialog
 >
+	This will permanently delete the selected photos.
+</ConfirmDialog>

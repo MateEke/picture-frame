@@ -74,8 +74,10 @@
 				<button
 					class="btn preset-tonal-error btn-sm"
 					data-testid="wifi-forget-{net.ssid}"
-					onclick={() => onforget(net)}>Forget</button
+					onclick={() => onforget(net)}
 				>
+					Forget
+				</button>
 			{/if}
 		</div>
 	</div>

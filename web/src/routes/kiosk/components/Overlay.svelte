@@ -83,8 +83,10 @@
 							class={[
 								'text-5xl font-semibold tracking-widest',
 								clock.periodFirst ? 'order-first mr-2' : 'ml-2'
-							]}>{clock.period}</span
+							]}
 						>
+							{clock.period}
+						</span>
 					{/if}
 				</div>
 				<div class="mt-5 mb-4.5 h-0.5 w-16 bg-kiosk-fg/80 shadow-xs/50"></div>
