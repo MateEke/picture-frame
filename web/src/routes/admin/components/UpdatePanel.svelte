@@ -107,9 +107,9 @@
 		<div class="min-w-0">
 			<p class="font-semibold">Last update was rolled back</p>
 			<p class="text-surface-600-300 text-sm">
-				A newer build didn't start, so the frame safely returned to <span class="font-medium"
-					>{status?.current}</span
-				>.
+				A newer build didn't start, so the frame safely returned to <span class="font-medium">
+					{status?.current}
+				</span>.
 			</p>
 		</div>
 	</div>

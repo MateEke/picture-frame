@@ -167,8 +167,10 @@
 							type="button"
 							class="btn preset-tonal-surface"
 							onclick={onCancel}
-							data-testid="sensor-dialog-cancel">Cancel</button
+							data-testid="sensor-dialog-cancel"
 						>
+							Cancel
+						</button>
 						<button
 							type="submit"
 							class="btn preset-tonal-primary"
